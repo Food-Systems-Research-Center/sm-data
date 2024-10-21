@@ -24,6 +24,10 @@ pacman::p_load(
 # Load Census API Key
 census_key <- Sys.getenv('ARMS_API_KEY')
 
+# Function to pull from Census API, and filter by fips
+source('3_functions/get_census_data.R')
+source('3_functions/filter_fips.R')
+
 # county fips for New England (differences for CT restructuring)
 fips_2021 <- readRDS('5_objects/fips_2021.rds')
 fips_2024 <- readRDS('5_objects/fips_2024.rds')
@@ -43,27 +47,27 @@ metas <- list()
 # All relevant variables for American Community Survey data
 variables <- list(
   # Education
-  'education_total' = 'B15003_001E',
-  'education_hs' = 'B15003_017E',
-  'education_ged' = 'B15003_018E',
-  'education_bs' = 'B15003_022E',
+  'edTotal' = 'B15003_001E',
+  'edTotalHS' = 'B15003_017E',
+  'edTotalGED' = 'B15003_018E',
+  'edTotalBS' = 'B15003_022E',
   
   # Housing
-  'n_housing_units' = 'B25001_001E',
+  'nHousingUnits' = 'B25001_001E',
   # 'total_occupancy_status' = 'B25002_001E',
-  'n_occupied' = 'B25002_002E',
-  'n_vacant' = 'B25002_003E',
+  'nHousingOccupied' = 'B25002_002E',
+  'nHousingVacant' = 'B25002_003E',
   
   # Rent by bedrooms
-  'median_rent_1br' = 'B25031_003E',
-  'median_rent_4br' = 'B25031_006E',
+  'rentMedian1BR' = 'B25031_003E',
+  'rentMedian4BR' = 'B25031_006E',
   
   # Housing age
-  'median_construction_year' = 'B25035_001E',
-  
+  'medianHousingYear' = 'B25035_001E',
+   
   # More rent
-  'median_rent' = 'B25064_001E',
-  'median_rent_as_perc_of_household_income' = 'B25071_001E'
+  'rentMedian' = 'B25064_001E',
+  'rentMedianPercHH' = 'B25071_001E'
 )
 
 # B15003_001E educational attainment total
@@ -90,62 +94,55 @@ variables <- list(
 crosswalk <- setNames(names(variables), variables)
 
 
+## Pull Data ---------------------------------------------------------------
+
+
+#' Note that only 2017 and 2022 are working for some reason. Should go back 
+#' further. Maybe those variables weren't in use before then? 
+
+# Set parameters
+years <- list(2017, 2022)
+vars <- paste0(variables, collapse = ',')
+states <- paste0(state_codes$fips, collapse = ',')
+
+# Map over list of years to gather data for each
+out <- map(years, \(year){
+  get_census_data(
+    survey_year = year,
+    survey = 'acs/acs5',
+    vars = vars,
+    county = '*',
+    state = states
+  )
+})
+get_str(out)
+
+
 
 ## Wrangle -----------------------------------------------------------------
 
 
-year <- 2022
-survey <- 'acs/acs5'
-vars <- paste0(variables, collapse = ',')
-county <- '*'
-state <- paste0(state_codes$fips, collapse = ',')
-
-url <- glue(
-  'https://api.census.gov/data/{year}/{survey}',
-  '?get=GEO_ID,NAME,{vars}',
-  '&for=county:{county}',
-  '&in=state:{state}'
-  # '?key={api_key}',
-)
-url
-
-out <- GET(url) %>% 
-  content(as = 'text') %>%
-  fromJSON()
-get_str(out)
-
-# Clean it up
-dat <- out %>%
-  as.data.frame() %>%
-  row_to_names(1) %>%
-  mutate(
-    fips = paste0(state, county),
-    year = year
-  ) %>%
-  select(-state, -county) %>%
-  filter(fips %in% fips_all)
+# Combine years, convert to numeric, swap census names for our names
+dat <- bind_rows(out) %>% 
+  mutate(across(matches('^[A-Z][0-9]{5}_[0-9]{3}[A-Z]{1}$'), as.numeric)) %>% 
+  setNames(c(recode(names(.), !!!crosswalk)))
 get_str(dat)
 
-# Fix up names
-names(dat) <- recode(names(dat), !!!crosswalk)
-get_str(dat)
 
 # Calculations to get proportions for education, housing
 dat <- dat %>% 
   mutate(
-    across(c(2:median_rent_as_perc_of_household_income), as.numeric),
-    education_prop_hs_ged = (education_hs + education_ged) / education_total,
-    education_prop_bs = education_bs / education_total,
-    vacancy_rate = n_vacant / n_housing_units
+    edPercHSGED = ((edTotalHS + edTotalGED) / edTotal) * 100,
+    edPercBS = (edTotalBS / edTotal) * 100,
+    vacancyRate = (nHousingVacant / nHousingUnits) * 100
   ) %>% 
   select(-c(
-    education_total:education_bs,
-    n_occupied,
-    n_vacant,
+    matches('edTotal'),
     GEO_ID,
-    NAME
-  )) %>% 
-  select(fips, year, everything())
+    NAME,
+    state,
+    county
+  ))
 get_str(dat)
 
 # Now pivot longer to combine with other data
@@ -173,64 +170,72 @@ vars
 # Save metadata
 metas$acs5 <- tibble(
   dimension = c(
-    rep("health", 9)
+    rep("health", 11)
   ),
   index = c(
     rep('education', 2),
-    rep('physical health', 7)
+    rep('physical health', 9)
   ),
   indicator = c(
     rep('educational attainment', 2),
-    rep('housing supply and quality', 7)
+    rep('housing supply and quality', 9)
   ),
   metric = c(
-    'Proportion with bachelor\'s degree',
-    'Proportion with high school diploma, GED, or equivalent',
-    'Median year of construction',
+    'Percentage with bachelor\'s degree',
+    'Percentage with high school diploma, GED, or equivalent',
+    'Median housing age',
+    'Number of occupied housing units',
+    'Number of total housing units',
+    'Number of vacant housing units',
     'Median rent',
     'Median rent, 1br',
     'Median rent, 4br',
-    'Median rent as proportion of income',
-    'Total number of housing units',
-    'Vacancy rate'
-  ),
-  definition = c(
-    'Proportion of population age 25 or older with bachelor\'s degree',
-    'Proportion of population age 25 or older with high school diploma, GED, or equivalent',
-    'Median year in which housing unit was built',
-    'Median gross rent, aggregate',
-    'Median gross rent for a 1-bedroom apartment',
-    'Median gross rent for a 4-bedroom apartment',
-    'Median gross rent as a percentage of household income over the last 12 months',
-    'Total number of housing units',
-    'Vacancy rate, rentals'
+    'Median rent as a percentage of income',
+    'Rental vacancy rate'
   ),
   variable_name = c(
     vars
   ),
+  definition = c(
+    'Percentage of population age 25 or older with bachelor\'s degree',
+    'Percentage of population age 25 or older with high school diploma, GED, or equivalent',
+    'Median year in which housing unit was constructed',
+    'Number of occupied housing units',
+    'Number of total housing units',
+    'Number of vacant housing units',
+    'Median gross rent, aggregate',
+    'Median gross rent for a 1-bedroom apartment',
+    'Median gross rent for a 4-bedroom apartment',
+    'Median gross rent as a percentage of household income over the last 12 months',
+    'Vacancy rate, rentals'
+  ),
+  axis_name = c(
+    'Bachelor\'s degree (%)',
+    'HS or GED (%)',
+    'Median housing year',
+    'Number of occupied units',
+    'Number of housing units',
+    'Number of vacant units',
+    'Median rent',
+    'Median rent 1BR',
+    'Median rent 4BR',
+    'Rent as % of income',
+    'Vacancy rate'
+  ),
   units = c(
-    rep('proportion', 2),
+    rep('percentage', 2),
     'year',
-    rep('dollars', 3),
-    'percentage',
-    'count',
-    'proportion'
+    rep('count', 3),
+    rep('usd', 4),
+    'percentage'
   ),
   scope = 'national',
   resolution = 'county',
-  latest_year = '2023',
-  all_years = paste0(2009:2023, collapse = ','),
-  updates = "annual",
-  quality = '2',
-  source = c(
-    rep('U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022', 9)
-  ),
-  url = c(
-    rep('https://www.census.gov/data/developers/data-sets/acs-5year.html', 9)
-  ),
-  citation = c(
-    rep('U.S. Census Bureau, “American Community Survey: 5-Year Estimates: Detailed Tables,” 2022, <http://api.census.gov/data/2022/acs/acs5>, accessed on October 3, 2024.', 9)
-  ),
+  year = '2017|2022',
+  updates = "5 years",
+  source = c(rep('U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022', 11)),
+  url = c(rep('https://www.census.gov/data/developers/data-sets/acs-5year.html', 11)),
+  citation = c(rep('U.S. Census Bureau, “American Community Survey: 5-Year Estimates: Detailed Tables,” 2022, <http://api.census.gov/data/2022/acs/acs5>, accessed on October 21, 2024.', 11)),
   warehouse = FALSE
 )
 
@@ -238,104 +243,52 @@ get_str(metas$acs5)
 metas$acs5
 
 
-# Wage Rates --------------------------------------------------------------
-
-
-# Pulling this as updated version of warehouse data
-# variables <- list(
-  # "median_earnings_for_male_food_preparation_and_serving_related_occupations" = 'S2411_C02_023E',
-  # "median_earnings_for_female_food_preparation_and_serving_related_occupations" = 'S2411_C02_030E',
-  # "women's_earnings_as_a_percentage_of_men's_earning_food_preparation_and_serving_related_occupations" = 'S2411_C03_023E',
-  # "median_earnings_for_male_farming_fishing_and_forestry_occupations" = 'S2411_C03_030E',
-  # "median_earnings_for_female_farming_fishing_and_forestry_occupations" = 'S2411_C04_023E',
-  # "women's_earnings_as_a_percentage_of_men's_earning_farming_fishing_and_forestry_occupations" = 'S2411_C04_030E'
+# 
+# # Wage From Bulk ----------------------------------------------------------
+# 
+# 
+# acs <- read_csv('1_raw/census/ACSST1Y2023.S2411_2024-10-03T114322/ACSST1Y2023.S2411-Data.csv')
+# get_str(acs)
+# 
+# variables <- c(
+#   'S2411_C02_023E',
+#   'S2411_C02_030E',
+#   'S2411_C03_023E',
+#   'S2411_C03_030E',
+#   'S2411_C04_023E',
+#   'S2411_C04_030E'
 # )
 # 
-# base <- 'https://api.census.gov/data/'
-# year <- 2022
-# survey <- '/acs/acs1'
-# name <- '?get=NAME,'
-# county <- '*'
-# # state <- paste0(state_codes, collapse = ',')
-# state <- '*'
-# vars <- paste0(variables, collapse = ',')
-# 
-# url <- glue(
-#   base,
-#   year,
-#   survey,
-#   '?get=NAME,{vars}',
-#   # '&for=county:{county}',
-#   # '&for=state:{state}'
-#   # '?key={api_key}',
-# )
-# url
-# 
-# 
-# out <- GET(url) %>% 
-#   content(as = 'text') %>%
-#   fromJSON()
-# get_str(out)
-# 
-# dat <- out %>% 
-#   as.data.frame() %>% 
-#   row_to_names(1) %>% 
-#   mutate(
-#     fips = paste0(state, county),
-#     year = year
+# results$wage_rate <- acs %>% 
+#   select(
+#     GEO_ID,
+#     NAME,
+#     all_of(variables)
 #   ) %>% 
-#   select(-state, -county) %>% 
-#   filter(fips %in% fips_all)
-# get_str(dat)
-
-
-
-# Wage From Bulk ----------------------------------------------------------
-
-
-
-acs <- read_csv('1_raw/census/ACSST1Y2023.S2411_2024-10-03T114322/ACSST1Y2023.S2411-Data.csv')
-get_str(acs)
-
-variables <- c(
-  'S2411_C02_023E',
-  'S2411_C02_030E',
-  'S2411_C03_023E',
-  'S2411_C03_030E',
-  'S2411_C04_023E',
-  'S2411_C04_030E'
-)
-
-results$wage_rate <- acs %>% 
-  select(
-    GEO_ID,
-    NAME,
-    all_of(variables)
-  ) %>% 
-  rename(
-    "median_earnings_male_food_prep_and_serving" = 'S2411_C02_023E',
-    "median_earnings_male_farming_fishing_forestry" = 'S2411_C02_030E',
-    "median_earnings_female_food_prep_and_serving" = 'S2411_C03_023E',
-    "median_earnings_female_farming_fishing_and_forestry" = 'S2411_C03_030E',
-    "womens_earnings_as_perc_of_men_food_prep_and_serving" = 'S2411_C04_023E',
-    "womens_earnings_as_perc_of_men_farming_fishing_forestry" = 'S2411_C04_030E'
-  ) %>% 
-  slice(-1) %>% 
-  filter(str_detect(GEO_ID, 'US$', negate = TRUE)) %>% 
-  mutate(
-    fips = str_split_i(GEO_ID, 'US', 2),
-    year = 2023,
-    across(everything(), ~ str_replace(., '-', NA_character_))
-  ) %>% 
-  filter(fips %in% fips_all) %>%
-  select(-c(GEO_ID, NAME)) %>% 
-  pivot_longer(
-    cols = !c(fips, year),
-    names_to = 'variable_name',
-    values_to = 'value'
-  )
-
-get_str(results$wage_rate)
+#   rename(
+#     "median_earnings_male_food_prep_and_serving" = 'S2411_C02_023E',
+#     "median_earnings_male_farming_fishing_forestry" = 'S2411_C02_030E',
+#     "median_earnings_female_food_prep_and_serving" = 'S2411_C03_023E',
+#     "median_earnings_female_farming_fishing_and_forestry" = 'S2411_C03_030E',
+#     "womens_earnings_as_perc_of_men_food_prep_and_serving" = 'S2411_C04_023E',
+#     "womens_earnings_as_perc_of_men_farming_fishing_forestry" = 'S2411_C04_030E'
+#   ) %>% 
+#   slice(-1) %>% 
+#   filter(str_detect(GEO_ID, 'US$', negate = TRUE)) %>% 
+#   mutate(
+#     fips = str_split_i(GEO_ID, 'US', 2),
+#     year = 2023,
+#     across(everything(), ~ str_replace(., '-', NA_character_))
+#   ) %>% 
+#   filter(fips %in% fips_all) %>%
+#   select(-c(GEO_ID, NAME)) %>% 
+#   pivot_longer(
+#     cols = !c(fips, year),
+#     names_to = 'variable_name',
+#     values_to = 'value'
+#   )
+# 
+# get_str(results$wage_rate)
 
 
 ## Metadata ----------------------------------------------------------------

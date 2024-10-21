@@ -1,4 +1,3 @@
-source("renv/activate.R")
 # Load utils so we can use install.packages()
 library(utils)
 
@@ -48,3 +47,5 @@ if (Sys.info()["sysname"] == "Mac") {
 } else {
   cat('\nCould not open table of contents.')
 }
+
+source("renv/activate.R")

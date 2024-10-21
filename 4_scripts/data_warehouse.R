@@ -39,7 +39,9 @@ fips_2024 <- readRDS('5_objects/fips_2024.rds')
 fips_key <- readRDS('5_objects/fips_key.rds')
 
 # Helper function
-source('3_functions/wrangle_warehouse_meta.R')
+source('3_functions/warehouse_utilities.R')
+source('3_functions/data_pipeline_functions.R')
+source('3_functions/filter_fips.R')
 
 
 
@@ -63,33 +65,17 @@ vars
 
 # Pull them all
 results$local_sales <- local_sales %>% 
-  filter(variable_name %in% vars)
+  filter(variable_name %in% vars) %>% 
+  rename_local_sales_vars()
 get_str(results$local_sales)
 
 
 ## Wrangle metadata from data warehouse
-local_meta <- read_csv(
-  '1_raw/food_systems_data_warehouse/meta_localfoodsales.csv',
-  show_col_types = FALSE
-)
-
-# Rename variables [] do we want to do this or not?
-# results$local_sales <- results$local_sales %>% 
-#   mutate(variable_name = case_when(
-#     str_detect(variable_name, '^agri') ~ 'agTourSalesPct',
-#     str_detect(variable_name, '^d2c') ~ 'd2cSalesPct',
-#     str_detect(variable_name, '^local') ~ 'localSalesPct',
-#     str_detect(variable_name, '^number_csa') ~ 'nCSA',
-#     str_detect(variable_name, '^number_far') ~ 'nFarmersMarket',
-#     str_detect(variable_name, '^number_on') ~ 'nOnFarmMarket',
-#     variable_name == 'valueadded_farms' ~ 'nValueAddedFarms',
-#     variable_name == 'valueadded_farms_pct' ~ 'valueAddedFarmsPct',
-#     variable_name == 'valueadded_sales' ~ 'valueAddedSales',
-#     variable_name == 'valueadded_sales_pct' ~ 'valueAddedSalesPct'
-#   ))
+local_meta <- read.csv('1_raw/food_systems_data_warehouse/meta_localfoodsales.csv')
 
 metas$local_sales <- local_meta %>% 
-  wrangle_meta(vars) %>%  
+  wrangle_meta(vars) %>% 
+  rename_local_sales_vars() %>% 
   mutate(
     dimension = c(
       rep('economics', 6),
@@ -114,19 +100,30 @@ metas$local_sales <- local_meta %>%
       'direct to consumer sales',
       rep('value added market', 4)
     ),
+    axis_name = c(
+      'Agritourism sales (%)',
+      'D2C sales (% of total)',
+      'Local sales (% of total)',
+      'Number of CSAs',
+      'Number of farmers markets',
+      'Number of on-farm markets',
+      'Number of farms with value-added sales',
+      'Farms with value-added sales (%)',
+      'Number of farms with value-added sales',
+      'Value-added sales (% of total)'
+    ),
     units = case_when(
-      str_detect(variable_name, '_pct$') ~ 'percentage',
-      str_detect(variable_name, '^number|_farms') ~ 'count',
-      str_detect(variable_name, 'sales$') ~ 'usd'
+      str_detect(variable_name, '^n') ~ 'count',
+      str_detect(variable_name, 'Perc$') ~ 'percentage',
+      variable_name == 'valueAddedSales' ~ 'usd'
     ),
     scope = 'national',
     resolution = 'county',
-    quality = 2,
     warehouse = TRUE
   )
 
 get_str(metas$local_sales)
-rm(local_sales)
+metas$local_sales$units %>% unique
 
 
 
@@ -159,17 +156,17 @@ access_variables <- c(
 ) %>% 
   sort()
 
-# Filter to only relevant variables
+# Filter to only relevant variables, then rename
 results$access <- access %>% 
-  filter(variable_name %in% access_variables)
-
+  filter(variable_name %in% access_variables) %>% 
+  rename_access_vars()
 
 ## Edit Metadata
 metas$access <- read_csv(
   "1_raw/food_systems_data_warehouse/meta_foodaccess.csv"
 ) %>% 
   wrangle_meta(access_variables) %>% 
-  unique() %>% 
+  rename_access_vars() %>% 
   mutate(
     dimension = 'health',
     index = 'food security',
@@ -178,16 +175,15 @@ metas$access <- read_csv(
       .default = 'food affordability'
     ),
     units = case_when(
-      str_detect(variable_name, 'rate$') ~ 'proportion',
-      str_detect(variable_name, 'percent$') ~ 'percentage',
-      str_detect(variable_name, 'pth$') ~ 'density',
-      str_detect(variable_name, 'groc$') ~ 'count',
+      str_detect(variable_name, 'Insec') ~ 'proportion',
+      str_detect(variable_name, 'Perc') ~ 'percentage',
+      str_detect(variable_name, 'PTH$') ~ 'density',
+      str_detect(variable_name, '^n') ~ 'count',
       .default = NA
     ),
     scope = 'national',
     resolution = 'county',
-    warehouse = TRUE,
-    quality = 2
+    warehouse = TRUE
   )
 
 get_str(metas$access)
@@ -197,14 +193,9 @@ get_str(metas$access)
 # Business Development ----------------------------------------------------
 
 
-infra <- read_csv(
-  '1_raw/food_systems_data_warehouse/df_business_dev_infra.csv',
-  show_col_types = FALSE
-) %>% 
-  mutate(year = as.numeric(year)) %>% 
-  filter(
-    (fips %in% fips_all) | (state_name %in% ne_state_names)
-  )
+infra <- read_csv('1_raw/food_systems_data_warehouse/df_business_dev_infra.csv') %>% 
+  mutate(fips = as.character(fips)) %>% 
+  filter_fips('all')
 
 get_str(infra)
 infra$variable_name %>% 
@@ -223,7 +214,8 @@ vars <- c(
 
 # Select relevant vars
 results$dist_chain_capacity <- infra %>% 
-  filter(variable_name %in% vars)
+  filter(variable_name %in% vars) %>% 
+  rename_infra_vars()
 get_str(results$dist_chain_capacity)
 
 
@@ -232,6 +224,7 @@ metas$business_infrastructure <- read_csv(
   '1_raw/food_systems_data_warehouse/meta_business_dev_infra.csv'
 ) %>% 
   wrangle_meta(vars) %>% 
+  rename_infra_vars() %>% 
   mutate(
     dimension = 'economics',
     index = 'distribution chain localness',
@@ -239,26 +232,19 @@ metas$business_infrastructure <- read_csv(
     units = 'count',
     scope = 'national',
     resolution = c(rep('county', 4), rep('state', 2)),
-    quality = c(2, 2, 1, 2, 2, 2),
     warehouse = TRUE
   )
 
 get_str(metas$business_infrastructure)
-metas$business_infrastructure
-
-rm(infra)
+names(metas$business_infrastructure)
 
 
 
 # Labor -------------------------------------------------------------------
 
 
-labor <- read_csv(
-    '1_raw/food_systems_data_warehouse/df_labor.csv',
-    show_col_types = FALSE
-  ) %>% 
-  mutate(year = as.numeric(year)) %>% 
-  filter((fips %in% fips_all) | (state_name %in% ne_state_names))
+labor <- read_csv('1_raw/food_systems_data_warehouse/df_labor.csv') %>% 
+  filter_fips('all')
 get_str(labor)
 
 # Explore variables
@@ -268,48 +254,36 @@ labor$variable_name %>% unique %>% sort
 vars <- labor$variable_name %>% 
   str_subset('^median|^women') %>% 
   unique
+vars
 
 # Economics > community economy > wage rate
 results$labor <- labor %>% 
-  filter(variable_name %in% vars)
+  filter(variable_name %in% vars) %>% 
+  rename_labor_vars()
+
 get_str(results$labor)
-results$labor$year %>% unique
+results$labor$variable_name %>% unique
+
 
 ## Metadata
 metas$labor <- read_csv(
   '1_raw/food_systems_data_warehouse/meta_labor.csv'
 ) %>% 
   wrangle_meta(vars) %>% 
+  rename_labor_vars() %>% 
   mutate(
     dimension = 'economics',
     index = 'community economy',
     indicator = 'wage rate',
-    units = ifelse(str_detect(variable_name, '^median'), 'dollars', 'percentage'),
+    units = ifelse(str_detect(variable_name, '^median'), 'usd', 'percentage'),
     scope = 'national',
     resolution = 'county',
-    quality = 2,
-    warehouse = TRUE
+    warehouse = TRUE,
+    updates
   )
 
-metas$labor
-rm(labor)
+get_str(metas$labor)
 
-
-# Community Resources -----------------------------------------------------
-
-
-# cap <- read_csv(
-#   '1_raw/food_systems_data_warehouse/df_community_resources.csv',
-#   show_col_types = FALSE
-# )
-# get_str(cap)
-# 
-# # explore variables
-# cap %>% 
-#   select(category, topic_area, variable_name, fips) %>% 
-#   unique %>% 
-#   filter(str_detect(variable_name, 'nccs')) %>% 
-#   print(n = 100)
 
 
 # Consolidate ------------------------------------------------------------
@@ -318,6 +292,10 @@ rm(labor)
 get_str(results)
 map(results, get_str)
 
+# Fix year to all be numeric
+results <- map(results, ~ mutate(.x, year = as.numeric(year)))
+
+# Aggregate them and lose extraneous columns
 result <- results %>% 
   bind_rows() %>% 
   unique() %>% 
@@ -326,14 +304,16 @@ result <- results %>%
     topic_area,
     county_name,
     state_name
-  )) %>% 
-  filter(fips %in% fips_key$fips)
+  ))
 get_str(result)
 
+## Combine metadata
 map(metas, get_str)
+
+# All the warehouse variables should be TRUE from this script
 meta <- metas %>% 
-  bind_rows %>% 
-  rename(definition = variable_definition)
+  bind_rows() %>% 
+  mutate(warehouse = TRUE)
 get_str(meta)
 
 saveRDS(result, '5_objects/metrics/data_warehouse.RDS')
