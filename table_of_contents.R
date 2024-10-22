@@ -5,22 +5,30 @@
 # Housekeeping ------------------------------------------------------------
 
 
+# Prep keys to NE state and county fips codes, also county spatial layers
+source('4_scripts/spatial_wrangling.R')
+
+# Wrangle bulk download file from NASS 2022 Census of Agriculture
+source('4_scripts/nass_bulk_download.R')
+
+
 
 # Main Workflow -----------------------------------------------------------
 
 
-# Wrangle bulk download file from NASS 2022 Census of Agriculture
-# Also get county level spatial data
-source('4_scripts/nass_bulk_download.R')
+## Collect Data -----
+# Pull relevant NASS variables and compile them
 source('4_scripts/nass_wrangling.R')
 
 # Pull existing data from USDA ARMS Data Warehouse
 source('4_scripts/data_warehouse.R')
 
-# Test out census API
-source('4_scripts/census_api.R')
+# Pull census data (ACS5). [Process of switching from bulk to API calls]
+source('4_scripts/census.R')
 
-# Combine them
+
+## Aggregate Data -----
+# Combine data from all sources
 source('4_scripts/aggregate_data.R')
 
 # Explore aggregated data
@@ -45,11 +53,11 @@ source('4_scripts/epa_ghg_data.R')
 # Miscellany --------------------------------------------------------------
 
 
-# Get parameter values - saved into object for reference
+# Get parameter values - saved into object for reference.
 source('4_scripts/get_param_options.R')
 
-# NASS data from API - not doing this though. Bulk makes more sense
+# NASS data from API. Should revisit this instead of using bulk download above.
 source('4_scripts/pull_NASS_data.R')
 
-# Explore bulk download from USDA ARMS
+# Explore bulk download from USDA ARMS. ARMS isn't helpful for us though.
 source('4_scripts/arms.R')

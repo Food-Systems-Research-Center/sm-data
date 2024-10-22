@@ -24,18 +24,18 @@ results <- list()
 metas <- list()
 
 # NE state names
-ne_state_names <- c(
-  'Vermont',
-  'New Hampshire',
-  'Maine',
-  'Massachusetts',
-  'Rhode Island',
-  'Connecticut'
-)
+# ne_state_names <- c(
+#   'Vermont',
+#   'New Hampshire',
+#   'Maine',
+#   'Massachusetts',
+#   'Rhode Island',
+#   'Connecticut'
+# )
 
 # fips for before and after CT changes
-fips_2021 <- readRDS('5_objects/fips_2021.rds')
-fips_2024 <- readRDS('5_objects/fips_2024.rds')
+# fips_2021 <- readRDS('5_objects/fips_2021.rds')
+# fips_2024 <- readRDS('5_objects/fips_2024.rds')
 fips_key <- readRDS('5_objects/fips_key.rds')
 
 # Helper function
@@ -123,7 +123,6 @@ metas$local_sales <- local_meta %>%
   )
 
 get_str(metas$local_sales)
-metas$local_sales$units %>% unique
 
 
 
@@ -134,7 +133,7 @@ access <- read_csv(
   '1_raw/food_systems_data_warehouse/df_foodaccess.csv',
   show_col_types = FALSE
 ) %>% 
-  filter(state_name %in% c(ne_state_names, 'US')) %>% 
+  filter(state_name %in% fips_key$state_name) %>% 
   unique()
 get_str(access)
 
@@ -229,6 +228,14 @@ metas$business_infrastructure <- read_csv(
     dimension = 'economics',
     index = 'distribution chain localness',
     indicator = 'distribution chain capacity',
+    axis_name = c(
+      'Number of anaerobic digesters',
+      'Number of compost facilities',
+      'Number of food hubs',
+      'Number of meat processors',
+      'Number of private refrig.',
+      'Number of public refrig.'
+    ),
     units = 'count',
     scope = 'national',
     resolution = c(rep('county', 4), rep('state', 2)),
@@ -279,10 +286,19 @@ metas$labor <- read_csv(
     scope = 'national',
     resolution = 'county',
     warehouse = TRUE,
-    updates
+    updates,
+    axis_name = c(
+      'Median earnings, female, farming ($)',
+      'Median earnings, female, food service ($)',
+      'Median earnings, male, farming ($)',
+      'Median earnings, male, food service ($)',
+      'Women\'s earnings as % of male, farming',
+      'Women\'s earnings as % of male, food service'
+    )
   )
 
 get_str(metas$labor)
+metas$labor$metric
 
 
 
@@ -306,6 +322,7 @@ result <- results %>%
     state_name
   ))
 get_str(result)
+
 
 ## Combine metadata
 map(metas, get_str)

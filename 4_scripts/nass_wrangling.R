@@ -22,10 +22,8 @@ source('3_functions/add_citation.R')
 # Pull Census of Ag data filtered to New England
 coa_ne <- readRDS('5_objects/coa_ne.rds')
 
-# county fips for New England (differences for CT restructuring)
-fips_2021 <- readRDS('5_objects/fips_2021.rds')
-fips_2024 <- readRDS('5_objects/fips_2024.rds')
-fips_all <- readRDS('5_objects/fips_all.rds')
+# Pull fips key for NE counties and states
+# fips_key <- readRDS('5_objects/fips_key.rds')
 
 # Initialize results lists
 results <- list()
@@ -59,7 +57,8 @@ results$labor_costs <- coa_ne %>%
     year,
     variable_name,
     value,
-    value_codes
+    value_codes,
+    cv_percent
   ) %>% 
   filter(!is.na(variable_name)) %>% 
   
@@ -79,8 +78,11 @@ results$labor_costs <- coa_ne %>%
     year,
     variable_name,
     value,
-    value_codes
+    value_codes,
+    cv_percent
   )
+get_str(results$labor_costs)
+
 
 # Write metadata for farm labor
 metas$labor_costs <- data.frame(
@@ -111,7 +113,6 @@ metas$labor_costs <- data.frame(
   scope = 'national',
   resolution = 'county',
   year = '2022',
-  all_years = "2022",
   updates = "5 years",
   source = paste0(
     "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -148,7 +149,8 @@ results$total_costs <- coa_ne %>%
     year,
     variable_name,
     value,
-    value_codes
+    value_codes,
+    cv_percent
   ) %>% 
   filter(!is.na(variable_name))
   
@@ -169,7 +171,6 @@ metas$total_costs <- tibble(
   scope = 'national',
   resolution = 'county',
   year = '2022',
-  all_years = '2022',
   updates = "5 years",
   source = paste0(
     "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -210,7 +211,6 @@ metas$total_income <- tibble(
   scope = 'national',
   resolution = 'county',
   year = '2022',
-  all_years = '2022|2017|2012|2007|2002',
   updates = "5 years",
   source = paste0(
     "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -285,7 +285,6 @@ metas$acres_operated <- tibble(
   scope = 'national',
   resolution = 'county',
   year = '2022',
-  all_years = '2022|2017|2012|2007|2002',
   updates = "5 years",
   source = paste0(
     "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -424,7 +423,6 @@ metas$production_inputs <- tibble(
   scope = 'national',
   resolution = 'county',
   year = '2022',
-  all_years = '2022|2017|2012|2007|2002',
   updates = "5 years",
   source = paste0(
     "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -518,7 +516,6 @@ metas$total_animal_and_crop_sales <- tibble(
   scope = 'national',
   resolution = 'county',
   year = '2022',
-  all_years = '2022|2017|2012|2007|2002',
   updates = "5 years",
   source = paste0(
     "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -563,7 +560,6 @@ metas$total_forest_product_income <- tibble(
   scope = 'national',
   resolution = 'county',
   year = '2022',
-  all_years = '2022|2017|2012|2007|2002',
   updates = "5 years",
   source = paste0(
     "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -762,7 +758,6 @@ metas$social <- tibble(
   scope = 'national',
   resolution = 'county',
   year = '2022',
-  all_years = '2022|2017|2012|2007|2002',
   updates = "5 years",
   source = paste0(
     "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -778,8 +773,9 @@ metas$social <- tibble(
 
 
 get_str(results)
+map(results, get_str)
 result <- bind_rows(results) %>% 
-  select(fips, year, variable_name, value, value_codes)
+  select(fips, year, variable_name, value, value_codes, cv_percent)
 get_str(result)
 
 meta <- bind_rows(metas)

@@ -12,7 +12,7 @@ wrangle_meta <- function(df, vars) {
       variable_name,
       metric = user_friendly_variable_name,
       definition = variable_definition,
-      all_years = years,
+      year = years,
       updates = periodicity,
       units = format,
       source,
@@ -20,11 +20,11 @@ wrangle_meta <- function(df, vars) {
       citation
     ) %>% 
       mutate(
-        year = all_years %>% 
-          str_split('\\|') %>% 
-          unlist() %>% 
-          unique() %>% 
-          max(),
+        # year = all_years %>%
+        #   str_split('\\|') %>%
+        #   unlist() %>%
+        #   unique() %>%
+        #   max(),
         updates = updates %>% 
           str_remove('^Every |ly updated$') %>% 
           str_replace('^yearly$', 'annual'),

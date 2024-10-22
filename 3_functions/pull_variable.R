@@ -33,7 +33,8 @@ pull_variable <- function(df,
       year,
       variable_name,
       value,
-      value_codes
+      value_codes,
+      cv_percent
     ) %>% 
     filter(!is.na(variable_name))
 }

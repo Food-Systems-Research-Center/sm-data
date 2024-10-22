@@ -26,10 +26,10 @@ out <- list()
 out$metrics <- read_all_rds(path = '2_clean/', pattern = '^met')
 
 # Spatial objects and references
-out$fips <- read_all_rds(path = '5_objects/', pattern = '^fips')
+out$fips <- read_all_rds(path = '5_objects/', pattern = '_key.rds$')
 out$counties <- read_all_rds('2_clean/spatial/', pattern = '^ne_counties_')
 
-# get_str(out)
+# Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")
 get_str(out)
 
@@ -39,5 +39,5 @@ get_str(out)
 
 
 # Paths to SMquarto and SMexplorer
-saveRDS(out, '../SMquarto/data/sm_data.rds')
-saveRDS(out, '../SMexplorer/dev/data/sm_data.rds')
+saveRDS(out, '../sm-docs/data/sm_data.rds')
+saveRDS(out, '../sm-explorer/dev/data/sm_data.rds')

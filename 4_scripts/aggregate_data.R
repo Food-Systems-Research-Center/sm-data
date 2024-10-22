@@ -46,8 +46,8 @@ agg$variable_name %>%
   sort
 
 # Save this as clean dataset for use in docs and app. Also csv
-saveRDS(agg, '2_clean/metrics_long.rds')
-write_csv(agg, '6_outputs/metrics_long.csv')
+saveRDS(agg, '2_clean/metrics.rds')
+write_csv(agg, '6_outputs/metrics.csv')
 
 
 
@@ -56,17 +56,11 @@ write_csv(agg, '6_outputs/metrics_long.csv')
 
 map(meta, get_str)
 
-# Get quality to be the same class
-meta <- map(meta, ~ mutate(.x, quality = as.numeric(quality)))
-map(meta, get_str)
-
-# Combine them
-meta_agg <- bind_rows(meta)
+# Combine them, warehouse is FALSE if not inluded
+meta_agg <- bind_rows(meta) %>% 
+  mutate(warehouse = ifelse(is.na(warehouse), FALSE, warehouse))
 get_str(meta_agg)
-
 
 # Save this as clean set
 saveRDS(meta_agg, '2_clean/metadata.rds')
 write_csv(meta_agg, '6_outputs/metadata.csv')
-
-
