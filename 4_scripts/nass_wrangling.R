@@ -35,6 +35,11 @@ metas <- list()
 ## Labor Total -------------------------------------------------------------
 
 
+# Check labor
+labor_vars <- coa_ne$short_desc %>% str_subset('^LABOR') %>% unique() %>% sort
+
+
+
 results$labor_costs <- coa_ne %>% 
   filter(
     commodity_desc == 'LABOR',
@@ -45,7 +50,22 @@ results$labor_costs <- coa_ne %>%
   mutate(
     variable_name = case_when(
       short_desc == 'LABOR, HIRED - EXPENSE, MEASURED IN $' ~ 'expHiredLabor',
-      short_desc == 'LABOR, HIRED - OPERATIONS WITH EXPENSE' ~ 'nOpsHiredLabor'
+      short_desc == 'LABOR, HIRED - EXPENSE, MEASURED IN PCT OF OPERATING EXPENSES' ~ 'expHiredLaborPercOpExp',
+      short_desc == 'LABOR, HIRED - NUMBER OF WORKERS' ~ 'nHiredWorkers',
+      short_desc == 'LABOR, HIRED - OPERATIONS WITH EXPENSE' ~ 'nOpsHiredLaborExp',
+      short_desc == 'LABOR, HIRED - OPERATIONS WITH WORKERS' ~ 'nOpsHiredLabor',
+      
+      short_desc == 'LABOR, HIRED, GE 150 DAYS - NUMBER OF WORKERS' ~ 'nWorkersGE150',
+      short_desc == 'LABOR, HIRED, GE 150 DAYS - OPERATIONS WITH WORKERS' ~ 'nOpsWorkersGE150',
+      
+      short_desc == 'LABOR, HIRED, LT 150 DAYS - NUMBER OF WORKERS' ~ 'nWorkersLE150',
+      short_desc == 'LABOR, HIRED, LT 150 DAYS - OPERATIONS WITH WORKERS' ~ 'nOpsWorkersLE150',
+      
+      short_desc == 'LABOR, MIGRANT - NUMBER OF WORKERS' ~ 'nMigrantWorkers',
+      short_desc == 'LABOR, MIGRANT - OPERATIONS WITH WORKERS' ~ 'nOpsMigrantWorkers',
+      
+      short_desc == 'LABOR, UNPAID - NUMBER OF WORKERS' ~ 'nUnpaidWorkers',
+      short_desc == 'LABOR, UNPAID - OPERATIONS WITH WORKERS' ~ 'nOpsUnpaidWorkers'
     )
   ) %>% 
   
@@ -83,33 +103,66 @@ results$labor_costs <- coa_ne %>%
   )
 get_str(results$labor_costs)
 
+# Reference variables
+labor_vars <- results$labor_costs$variable_name %>% 
+  unique %>% 
+  sort()
+labor_vars
 
-# Write metadata for farm labor
+## Farm labor metadata
 metas$labor_costs <- data.frame(
   dimension = "economics",
   index = 'food business profitability',
   indicator = 'labor costs',
   metric = c(
     "Labor expenses",
-    "Number of farms with hired labor",
-    "Labor expenses per farm"
+    'Labor expenses as percentage',
+    "Labor expenses per farm",
+    'Number of migrant workers',
+    'Number of operations with hired labor',
+    'Number of operations with labor expenses',
+    'Number of operations with unpaid labor',
+    'Number of operations with long-term labor',
+    'Number of operations with short-term labor',
+    'Number of unpaid workers',
+    'Number of long-term workers',
+    'Number of short-term workers'
   ), 
-  variable_name = c(
-    "expHiredLabor",
-    "nOpsHiredLabor",
-    "expHiredLaborPF"
-  ),
+  variable_name = labor_vars,
   definition = c(
     "Total expenses from hired labor",
-    "Number of operations with hired labor expenses",
-    'Expenses of hired labor per farm (nOpsHiredLabor/expHiredLabor)'
+    'Hired labor expenses as a percentage of total operating expenses',
+    'Expenses of hired labor per farm (nOpsHiredLabor/expHiredLabor)',
+    'Number of migrant workers',
+    'Number of operations with any hired labor',
+    'Number of operations with any labor expenses',
+    'Number of operations with any unpaid labor',
+    'Number of operations with any long-term labor, greater than or equal to 150 days',
+    'Number of operations with any short-term labor, less than or equal to 150 days',
+    'Number of unpaid workers',
+    'Number of long-term workers, greater than or equal to 150 days',
+    'Number of short-term workers, less than equal to 150 days'
   ),
   axis_name = c(
     "Labor expenses ($)",
-    "n farms with hired labor",
-    "Labor expense per farm ($)"
+    'Labor expense (% of total)',
+    "Labor expense per farm ($)",
+    'Migrant workers (#)',
+    'Farms with labor (#)',
+    'Farms with labor expenses (#)',
+    'Farms with unpaid labor (#)',
+    'Farms with long-term labor (#)',
+    'Farms with short-term labor (#)',
+    'Unpaid workers (#)',
+    'Long-term workers (#)',
+    'Short-term workers (#)'
   ),
-  units = c('usd', 'count', 'usd'),
+  units = c(
+    'usd', 
+    'percentage', 
+    'usd',
+    rep('count', 9)
+  ),
   scope = 'national',
   resolution = 'county',
   year = '2022',
@@ -122,6 +175,7 @@ metas$labor_costs <- data.frame(
 ) %>% 
   add_citation()
 
+metas$labor_costs
 
 
 ## Total Costs ----------------------------------------------------------

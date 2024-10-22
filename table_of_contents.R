@@ -1,5 +1,5 @@
 # Table of Contents
-# 2024-09-10
+# 2024-10-22 update
 
 
 # Housekeeping ------------------------------------------------------------
@@ -17,13 +17,13 @@ source('4_scripts/nass_bulk_download.R')
 
 
 ## Collect Data -----
-# Pull relevant NASS variables and compile them
+# Pull relevant NASS variables and compile them [Shoudl switch these to API]
 source('4_scripts/nass_wrangling.R')
 
 # Pull existing data from USDA ARMS Data Warehouse
 source('4_scripts/data_warehouse.R')
 
-# Pull census data (ACS5). [Process of switching from bulk to API calls]
+# Pull census data (ACS5). [Switching from bulk download to API calls]
 source('4_scripts/census.R')
 
 
@@ -31,11 +31,11 @@ source('4_scripts/census.R')
 # Combine data from all sources
 source('4_scripts/aggregate_data.R')
 
+# Export data to sm-docs and sm-explorer
+source('4_scripts/export.R')
+
 # Explore aggregated data
 '4_scripts/explore.R'
-
-# Export data to SMquarto and SMexplorer
-source('4_scripts/export.R')
 
 
 
@@ -61,3 +61,6 @@ source('4_scripts/pull_NASS_data.R')
 
 # Explore bulk download from USDA ARMS. ARMS isn't helpful for us though.
 source('4_scripts/arms.R')
+
+# Sandbox
+'4_scripts/sandbox.R'

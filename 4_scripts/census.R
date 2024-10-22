@@ -22,17 +22,16 @@ pacman::p_load(
 )
 
 # Load Census API Key
-census_key <- Sys.getenv('ARMS_API_KEY')
+# census_key <- Sys.getenv('ARMS_API_KEY')
 
 # Function to pull from Census API, and filter by fips
 source('3_functions/get_census_data.R')
 source('3_functions/filter_fips.R')
+source('3_functions/add_citation.R')
 
 # county fips for New England (differences for CT restructuring)
-fips_2021 <- readRDS('5_objects/fips_2021.rds')
-fips_2024 <- readRDS('5_objects/fips_2024.rds')
-fips_all <- readRDS('5_objects/fips_all.rds')
-state_codes <- readRDS('5_objects/ne_state_codes.rds')
+fips_key <- readRDS('5_objects/fips_key.rds')
+state_codes <- readRDS('5_objects/state_key.rds')
 
 # lists of results
 results <- list()
@@ -43,6 +42,11 @@ metas <- list()
 # ACS 5-year --------------------------------------------------------------
 ## Variables ---------------------------------------------------------------
 
+
+#' NOTE
+#' _000E is the estimate
+#' _000M is the margin of error
+#' _000EA and _000MA are annotations for both. Not always there though
 
 # All relevant variables for American Community Survey data
 variables <- list(
@@ -101,7 +105,7 @@ crosswalk <- setNames(names(variables), variables)
 #' further. Maybe those variables weren't in use before then? 
 
 # Set parameters
-years <- list(2017, 2022)
+years <- as.list(2010:2022)
 vars <- paste0(variables, collapse = ',')
 states <- paste0(state_codes$fips, collapse = ',')
 
@@ -231,19 +235,85 @@ metas$acs5 <- tibble(
   ),
   scope = 'national',
   resolution = 'county',
-  year = '2017|2022',
+  year = paste0(results$acs5$year, collapse = '|'),
   updates = "5 years",
-  source = c(rep('U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022', 11)),
-  url = c(rep('https://www.census.gov/data/developers/data-sets/acs-5year.html', 11)),
-  citation = c(rep('U.S. Census Bureau, “American Community Survey: 5-Year Estimates: Detailed Tables,” 2022, <http://api.census.gov/data/2022/acs/acs5>, accessed on October 21, 2024.', 11)),
+  source = 'U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022',
+  url = 'https://www.census.gov/data/developers/data-sets/acs-5year.html',
   warehouse = FALSE
-)
+) %>% 
+  add_citation()
+
+# []
 
 get_str(metas$acs5)
 metas$acs5
+metas$acs5$citation[1]
 
 
-# 
+
+# Gini Index --------------------------------------------------------------
+
+
+gini_vars <- c('B19083_001E', "B19083_001M")
+
+# Set parameters
+years <- as.list(seq(2010, 2022, 1))
+vars <- paste0(gini_vars, collapse = ',')
+states <- paste0(state_codes$fips, collapse = ',')
+
+# Map over list of years to gather data for each
+out <- map(years, \(year){
+  get_census_data(
+    survey_year = year,
+    survey = 'acs/acs5',
+    vars = vars,
+    county = '*',
+    state = states
+  )
+})
+get_str(out)
+
+
+# Clean each set individually, then combine
+results$gini <- map(out, \(df) {
+  df %>% 
+    rename(
+      value = B19083_001E,
+      margin = B19083_001M
+    ) %>%
+    mutate(
+      variable_name = 'gini'
+    ) %>% 
+    select(-c(
+      GEO_ID, NAME, state, county
+    ))
+}) %>% 
+  bind_rows()
+get_str(results$gini)
+
+
+metas$gini <- tibble(
+  dimension = 'economics',
+  index = 'community economy',
+  indicator = 'wealth/income distribution',
+  metric = 'Gini Index',
+  variable_name = 'gini',
+  definition = 'Gini Index of income inequality. 0 is perfect inequality, while 1 is perfect inequality',
+  axis_name = 'Gini index',
+  units = 'index',
+  scope = 'national',
+  resolution = 'county',
+  year = paste0(unique(results$gini$year), collapse = '|'),
+  updates = "5 years",
+  source = 'U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022.',
+  url = 'https://www.census.gov/data/developers/data-sets/acs-5year.html',
+  warehouse = FALSE
+) %>% 
+  add_citation()
+get_str(metas$gini)
+
+
+
 # # Wage From Bulk ----------------------------------------------------------
 # 
 # 
@@ -293,57 +363,57 @@ metas$acs5
 
 ## Metadata ----------------------------------------------------------------
 
-
-# Reminder of names and order
-vars <- results$wage_rate$variable_name %>% unique %>% sort
-
-# Save metadata
-metas$wage_rate <- tibble(
-  dimension = "economics",
-  index = 'community economy',
-  indicator = 'wage rate',
-  metric = c(
-    'Median wage, female, farming fishing and forestry',
-    'Median wage, female, food service',
-    'Median wage, male, farming fishing and forestry',
-    'Median wage, male, food service',
-    'Female earnings as percentage of male, farming fishing forestry',
-    'Female earnings as percentage of male, food service'
-  ),
-  definition = c(
-    'Median earnings for female, Civilian employed population 16 years and over with earnings, Farming, fishing, and forestry occupations',
-    'Median earnings for female, Civilian employed population 16 years and over with earnings, Food preparation and serving related occupations',
-    'Median earnings for male, Civilian employed population 16 years and over with earnings, Farming, fishing, and forestry occupations',
-    'Median earnings for male, Civilian employed population 16 years and over with earnings, Food preparation and serving related occupations',
-    'Female earnings as a percentage of male earnings, Civilian employed population 16 years and over with earnings, Farming, fishing, and forestry occupations',
-    'Female earnings as a percentage of male earnings, Civilian employed population 16 years and over with earnings, Food preparation and serving related occupations'
-  ),
-  variable_name = c(
-    vars
-  ),
-  units = c(
-    rep('dollars', 4),
-    rep('percentage', 2)
-  ),
-  scope = 'national',
-  resolution = 'county',
-  latest_year = '2023',
-  all_years = paste0(2015:2023, collapse = ','),
-  updates = "annual",
-  quality = '2',
-  source = "Source: U.S. Census Bureau, 2023 American Community Survey 1-Year Estimates",
-  url = 'https://data.census.gov/table?q=S2411&g=010XX00US$0500000&y=2023',
-  citation = 
-  '@misc{Census2023ACSST1Y2023.S2411,
-    author={U.S. Census Bureau, U.S. Department of Commerce},
-    title={Occupation by Sex and Median Earnings in the Past 12 Months (in 2023 Inflation-Adjusted Dollars) for the Civilian Employed Population 16 Years and Over},
-    vintage=2023,
-    howpublished={U.S. Census Bureau},
-    url={https://data.census.gov/table/ACSST1Y2023.S2411?q=S2411: OCCUPATION BY SEX AND MEDIAN EARNINGS IN THE PAST 12 MONTHS (IN 2019 INFLATION-ADJUSTED DOLLARS) FOR THE CIVILIAN EMPLOYED POPULATION 16 YEARS AND OVER&g=010XX00US,$0500000&y=2023},
-    note={Accessed on 3 October 2024}
-  }',
-  warehouse = FALSE
-)
+# 
+# # Reminder of names and order
+# vars <- results$wage_rate$variable_name %>% unique %>% sort
+# 
+# # Save metadata
+# metas$wage_rate <- tibble(
+#   dimension = "economics",
+#   index = 'community economy',
+#   indicator = 'wage rate',
+#   metric = c(
+#     'Median wage, female, farming fishing and forestry',
+#     'Median wage, female, food service',
+#     'Median wage, male, farming fishing and forestry',
+#     'Median wage, male, food service',
+#     'Female earnings as percentage of male, farming fishing forestry',
+#     'Female earnings as percentage of male, food service'
+#   ),
+#   definition = c(
+#     'Median earnings for female, Civilian employed population 16 years and over with earnings, Farming, fishing, and forestry occupations',
+#     'Median earnings for female, Civilian employed population 16 years and over with earnings, Food preparation and serving related occupations',
+#     'Median earnings for male, Civilian employed population 16 years and over with earnings, Farming, fishing, and forestry occupations',
+#     'Median earnings for male, Civilian employed population 16 years and over with earnings, Food preparation and serving related occupations',
+#     'Female earnings as a percentage of male earnings, Civilian employed population 16 years and over with earnings, Farming, fishing, and forestry occupations',
+#     'Female earnings as a percentage of male earnings, Civilian employed population 16 years and over with earnings, Food preparation and serving related occupations'
+#   ),
+#   variable_name = c(
+#     vars
+#   ),
+#   units = c(
+#     rep('dollars', 4),
+#     rep('percentage', 2)
+#   ),
+#   scope = 'national',
+#   resolution = 'county',
+#   latest_year = '2023',
+#   all_years = paste0(2015:2023, collapse = ','),
+#   updates = "annual",
+#   quality = '2',
+#   source = "Source: U.S. Census Bureau, 2023 American Community Survey 1-Year Estimates",
+#   url = 'https://data.census.gov/table?q=S2411&g=010XX00US$0500000&y=2023',
+#   citation = 
+#   '@misc{Census2023ACSST1Y2023.S2411,
+#     author={U.S. Census Bureau, U.S. Department of Commerce},
+#     title={Occupation by Sex and Median Earnings in the Past 12 Months (in 2023 Inflation-Adjusted Dollars) for the Civilian Employed Population 16 Years and Over},
+#     vintage=2023,
+#     howpublished={U.S. Census Bureau},
+#     url={https://data.census.gov/table/ACSST1Y2023.S2411?q=S2411: OCCUPATION BY SEX AND MEDIAN EARNINGS IN THE PAST 12 MONTHS (IN 2019 INFLATION-ADJUSTED DOLLARS) FOR THE CIVILIAN EMPLOYED POPULATION 16 YEARS AND OVER&g=010XX00US,$0500000&y=2023},
+#     note={Accessed on 3 October 2024}
+#   }',
+#   warehouse = FALSE
+# )
 
 
 
