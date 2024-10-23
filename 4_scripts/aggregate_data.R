@@ -15,6 +15,7 @@ pacman::p_load(
 
 source('3_functions/read_all_rds.R')
 source('3_functions/data_pipeline_functions.R')
+source('3_functions/check_n_records.R')
 
 # Load datasets
 dat <- read_all_rds('5_objects/metrics/')  
@@ -31,10 +32,10 @@ get_str(meta)
 
 map(dat, get_str)
 
-# Keep only fips, year, variable_name, value
+# Keep all the weird variables, cv percent, disclosure, value codes, margins
+# Just make sure year is numeric
 agg <- map(dat, ~ {
   .x %>% 
-    select(fips, year, variable_name, value) %>% 
     mutate(across(c(year, value), as.numeric))
   }) %>% 
   bind_rows()
@@ -44,11 +45,7 @@ get_str(agg)
 agg$variable_name %>% 
   unique %>% 
   sort
-
-# Save this as clean dataset for use in docs and app. Also csv
-saveRDS(agg, '2_clean/metrics.rds')
-write_csv(agg, '6_outputs/metrics.csv')
-
+# Note that our variable count is fucked now that were have NAICS codes 
 
 
 # Metadata ----------------------------------------------------------------
@@ -61,6 +58,18 @@ meta_agg <- bind_rows(meta) %>%
   mutate(warehouse = ifelse(is.na(warehouse), FALSE, warehouse))
 get_str(meta_agg)
 
-# Save this as clean set
+
+
+# Check and save ----------------------------------------------------------
+
+
+# Check to make sure we have the same number of metrics and metas
+check_n_records(agg, meta_agg, 'Aggregation')
+
+# Save metrics as clean dataset for use in docs and app. Also csv
+saveRDS(agg, '2_clean/metrics.rds')
+write_csv(agg, '6_outputs/metrics.csv')
+
+# Save meta as clean set
 saveRDS(meta_agg, '2_clean/metadata.rds')
 write_csv(meta_agg, '6_outputs/metadata.csv')

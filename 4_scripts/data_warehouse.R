@@ -42,6 +42,7 @@ fips_key <- readRDS('5_objects/fips_key.rds')
 source('3_functions/warehouse_utilities.R')
 source('3_functions/data_pipeline_functions.R')
 source('3_functions/filter_fips.R')
+source('3_functions/check_n_records.R')
 
 
 
@@ -159,6 +160,8 @@ access_variables <- c(
 results$access <- access %>% 
   filter(variable_name %in% access_variables) %>% 
   rename_access_vars()
+get_str(results$access)
+results$access$variable_name %>% unique
 
 ## Edit Metadata
 metas$access <- read_csv(
@@ -255,11 +258,11 @@ labor <- read_csv('1_raw/food_systems_data_warehouse/df_labor.csv') %>%
 get_str(labor)
 
 # Explore variables
-labor$variable_name %>% unique %>% sort
+(all_vars <- labor$variable_name %>% unique %>% sort)
 
 # Identify relevant vars
 vars <- labor$variable_name %>% 
-  str_subset('^median|^women') %>% 
+  str_subset('^median|^women|naics') %>% 
   unique
 vars
 
@@ -283,22 +286,34 @@ metas$labor <- read_csv(
     index = 'community economy',
     indicator = 'wage rate',
     units = ifelse(str_detect(variable_name, '^median'), 'usd', 'percentage'),
+    units = case_when(
+      str_detect(variable_name, '^n') ~ 'count',
+      str_detect(variable_name, 'Wage|Earn') ~ 'usd',
+      str_detect(variable_name, 'Perc') ~ 'percentage',
+      str_detect(variable_name, '^lq') ~ 'ratio',
+      str_detect(variable_name, 'EmpLvl') ~ 'count'
+    ),
     scope = 'national',
     resolution = 'county',
     warehouse = TRUE,
     updates,
-    axis_name = c(
-      'Median earnings, female, farming ($)',
-      'Median earnings, female, food service ($)',
-      'Median earnings, male, farming ($)',
-      'Median earnings, male, food service ($)',
-      'Women\'s earnings as % of male, farming',
-      'Women\'s earnings as % of male, food service'
-    )
+    axis_name = variable_name
+    # axis_name = c(
+    #   'Median earnings, female, farming ($)',
+    #   'Median earnings, female, food service ($)',
+    #   'Median earnings, male, farming ($)',
+    #   'Median earnings, male, food service ($)',
+    #   'Women\'s earnings as % of male, farming',
+    #   'Women\'s earnings as % of male, food service'
+    # )
   )
 
 get_str(metas$labor)
 metas$labor$metric
+metas$labor$variable_name
+metas$labor$definition
+metas$labor$units
+
 
 
 
@@ -332,6 +347,8 @@ meta <- metas %>%
   bind_rows() %>% 
   mutate(warehouse = TRUE)
 get_str(meta)
+
+check_n_records(result, meta, 'Warehouse')
 
 saveRDS(result, '5_objects/metrics/data_warehouse.RDS')
 saveRDS(meta, '5_objects/metadata/data_warehouse.RDS')

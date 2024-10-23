@@ -28,6 +28,7 @@ pacman::p_load(
 source('3_functions/get_census_data.R')
 source('3_functions/filter_fips.R')
 source('3_functions/add_citation.R')
+source('3_functions/check_n_records.R')
 
 # county fips for New England (differences for CT restructuring)
 fips_key <- readRDS('5_objects/fips_key.rds')
@@ -119,6 +120,8 @@ out <- map(years, \(year){
     state = states
   )
 })
+# Note that the first five years didn't come through. Only have 2015 to 2022
+# So we only have 9?
 get_str(out)
 
 
@@ -127,7 +130,9 @@ get_str(out)
 
 
 # Combine years, convert to numeric, swap census names for our names
-dat <- bind_rows(out) %>% 
+dat <- out %>% 
+  keep(is.data.frame) %>% 
+  bind_rows() %>% 
   mutate(across(matches('^[A-Z][0-9]{5}_[0-9]{3}[A-Z]{1}$'), as.numeric)) %>% 
   setNames(c(recode(names(.), !!!crosswalk)))
 get_str(dat)
@@ -146,7 +151,7 @@ dat <- dat %>%
     NAME,
     state,
     county
-  ))
+   ))
 get_str(dat)
 
 # Now pivot longer to combine with other data
@@ -243,7 +248,7 @@ metas$acs5 <- tibble(
 ) %>% 
   add_citation()
 
-# []
+# [] consider fixing up citation function
 
 get_str(metas$acs5)
 metas$acs5
@@ -275,19 +280,21 @@ get_str(out)
 
 
 # Clean each set individually, then combine
-results$gini <- map(out, \(df) {
-  df %>% 
-    rename(
-      value = B19083_001E,
-      margin = B19083_001M
-    ) %>%
-    mutate(
-      variable_name = 'gini'
-    ) %>% 
-    select(-c(
-      GEO_ID, NAME, state, county
-    ))
-}) %>% 
+results$gini <- out %>% 
+  keep(is.data.frame) %>% 
+  map(\(df) {
+    df %>% 
+      rename(
+        value = B19083_001E,
+        margin = B19083_001M
+      ) %>%
+      mutate(
+        variable_name = 'gini'
+      ) %>% 
+      select(-c(
+        GEO_ID, NAME, state, county
+      ))
+  }) %>% 
   bind_rows()
 get_str(results$gini)
 
@@ -310,6 +317,7 @@ metas$gini <- tibble(
   warehouse = FALSE
 ) %>% 
   add_citation()
+
 get_str(metas$gini)
 
 
@@ -440,6 +448,10 @@ get_str(metas)
 map(metas, get_str)
 meta <- bind_rows(metas)
 get_str(meta)
+
+
+## Check to make sure we have the same number of metrics and metas
+check_n_records(result, meta, 'Census')
 
 # Save them
 saveRDS(result, '5_objects/metrics/census.RDS')

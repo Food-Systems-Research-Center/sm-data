@@ -4,9 +4,22 @@
 # Collection of functions to reorganize metrics and metadata from data warehouse
 
 
+# Housekeeping ------------------------------------------------------------
+
+
+pacman::p_load(
+  dplyr,
+  stringr,
+  snakecase
+)
+
+
+
+# Functions ---------------------------------------------------------------
+
+
 # Pull metadata from data warehouse and select relevant parts
 wrangle_meta <- function(df, vars) {
-  
   df %>% 
     select(
       variable_name,
@@ -20,17 +33,13 @@ wrangle_meta <- function(df, vars) {
       citation
     ) %>% 
       mutate(
-        # year = all_years %>%
-        #   str_split('\\|') %>%
-        #   unlist() %>%
-        #   unique() %>%
-        #   max(),
         updates = updates %>% 
           str_remove('^Every |ly updated$') %>% 
           str_replace('^yearly$', 'annual'),
         warehouse = TRUE
       ) %>% 
       filter(variable_name %in% vars) %>% 
+      unique() %>% 
       arrange(variable_name)
 }
 
@@ -96,7 +105,39 @@ rename_labor_vars <- function(df) {
         str_detect(variable_name, 'women\'s.*food') ~ 'womenEarnPercMaleFood',
         str_detect(variable_name, 'median_earnings_for_male_farm') ~ 'medianEarnMaleFarm',
         str_detect(variable_name, 'median_earnings_for_female_farm') ~ 'medianEarnFemaleFarm',
-        str_detect(variable_name, 'women\'s.*farming') ~ 'womenEarnPercMaleFarm'
+        str_detect(variable_name, 'women\'s.*farming') ~ 'womenEarnPercMaleFarm',
+        
+        # NAICS variables
+        str_detect(variable_name, 'naics') ~ case_when(
+          str_detect(variable_name, 'annual_avg_wkly_wage') ~ paste0(
+            'avgWeekWageNAICS',
+            str_extract(variable_name, '[0-9].*')
+          ),
+          str_detect(variable_name, 'total_annual') ~ paste0(
+            'annualWageNaics',
+            str_extract(variable_name, '[0-9].*')
+          ),
+          str_detect(variable_name, '^annual_avg_estabs') ~ paste0(
+            'nAvgEstabsNaics',
+            str_extract(variable_name, '[0-9].*')
+          ),
+          str_detect(variable_name, '^annual_avg_emplvl') ~ paste0(
+            'avgEmpLvl',
+            str_extract(variable_name, '[0-9].*')
+          ),
+          str_detect(variable_name, '^lq') ~ paste0(
+            'lq',
+            str_extract(variable_name, '[0-9].*')
+          )
+        ) %>% 
+          snakecase::to_lower_camel_case()
       )
     )
 }
+
+
+
+# all_vars %>% 
+#   str_subset('naics') %>% 
+#   str_extract('^.*[0-9]') %>% 
+#   snakecase::to_lower_camel_case()

@@ -17,7 +17,7 @@ source('4_scripts/nass_bulk_download.R')
 
 
 ## Collect Data -----
-# Pull relevant NASS variables and compile them [Shoudl switch these to API]
+# Pull relevant NASS variables and compile them [Should switch these to API]
 source('4_scripts/nass_wrangling.R')
 
 # Pull existing data from USDA ARMS Data Warehouse
@@ -41,6 +41,9 @@ source('4_scripts/export.R')
 
 # Other datasets ----------------------------------------------------------
 
+
+# BLS QCEW API
+'4_scripts/bls_api.R'
 
 # EPA GHG inventory explorer
 source('4_scripts/epa_ghg_data.R')

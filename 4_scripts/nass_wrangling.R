@@ -18,6 +18,7 @@ pacman::p_load(
 # Source functions
 source('3_functions/pull_variable.R')
 source('3_functions/add_citation.R')
+source('3_functions/check_n_records.R')
 
 # Pull Census of Ag data filtered to New England
 coa_ne <- readRDS('5_objects/coa_ne.rds')
@@ -835,6 +836,9 @@ get_str(result)
 meta <- bind_rows(metas)
 get_str(meta)
 head(meta)
+
+# Check records to make sure they are the same, meta and metrics
+check_n_records(result, meta, 'NASS')
 
 saveRDS(result, '5_objects/metrics/nass.RDS')
 saveRDS(meta, '5_objects/metadata/nass_meta.RDS')
