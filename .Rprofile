@@ -17,7 +17,7 @@ suppressPackageStartupMessages(
 
 # Load conflicted for namespace conflicts
 pacman::p_load(conflicted)
-# pacman::p_load_gh('ChrisDonovan307/projecter')
+pacman::p_load_gh('ChrisDonovan307/projecter')
 
 # Set conflict winners
 conflicts_prefer(

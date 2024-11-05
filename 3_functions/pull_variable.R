@@ -23,7 +23,7 @@ pull_variable <- function(df,
     ) %>% 
     mutate(
       variable_name = case_when(
-        short_desc == short_desc ~ variable_name
+        short_desc == !!short_desc ~ variable_name
       )
     ) %>% 
     select(

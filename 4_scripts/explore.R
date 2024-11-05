@@ -45,6 +45,12 @@ get_str(dat)
 # Check variables
 (vars <- dat$variable_name %>% unique)
 length(vars)
+# Includes NAICS vars...
+
+# Check without NAICS
+no_NAICS <- vars %>% 
+  str_subset('NAICS', negate = TRUE)
+length(no_NAICS)
 
 
 
@@ -52,26 +58,49 @@ length(vars)
 
 
 get_str(meta)
-dim(meta)
-# 84
+meta$variable_name %>% 
+  length
+
+meta$variable_name %>% 
+  str_subset('Naics', negate = TRUE) %>% 
+  length
+
+meta$variable_name %>% 
+  unique %>% 
+  str_subset(regex('wage', ignore_case = TRUE))
 
 
 
-# Check diference ---------------------------------------------------------
+# Check difference ---------------------------------------------------------
 
 
-setdiff(
+diff <- setdiff(
   meta$variable_name,
   vars
-  # unique(dat$variable_name)
 )
+diff
+# the lq and oty stuff are because in the variable names they are split into 
+# NAICS codes.
 
-meta %>% 
-  filter(dimension == 'health') %>% 
-  select(metric, variable_name, year) %>% 
-  print(n = 100)
-# Issue is wi and snap stuff
+# Check without those
+diff %>% 
+  str_subset('^oty|^lq', negate = TRUE)
 
+# Explore these
+meta$variable_name %>% sort
+vars %>% sort
+# Okay these are all fine - they are just split out into NAICS codes too
+
+
+
+# Rando -------------------------------------------------------------------
+
+# Check out what NAICS data looks like - is it raw or percent
+get_str(dat)
+dat %>% 
+  filter(str_detect(variable_name, 'EmpLvl'))
+# These are raw numbers. Percentages would be nice, but we need civilian 
+# labor force
 
 
 # Test Colors -------------------------------------------------------------

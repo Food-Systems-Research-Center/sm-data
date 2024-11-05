@@ -374,7 +374,7 @@ metas$acres_operated <- tibble(
 
 ## Operator salary ---------------------------------------------------------
 
-# 
+
 # results$operator_salary <- pull_variable(
 #   coa_ne,
 #   sector_desc = 'ECONOMICS',
@@ -382,14 +382,75 @@ metas$acres_operated <- tibble(
 #   domain_desc = 'TOTAL',
 #   short_desc = 'FARM OPERATIONS - ACRES OPERATED',
 #   variable_name = 'total_acres_operated'
-# ) %>% 
+# ) %>%
 #   mutate(
 #     dimension = 'economics',
 #     index = 'food business profitability',
 #     indicator = 'acreage in production'
 #   )
 # 
-# get_str(results$acres_operated)
+# get_str(results$operator_salary)
+# results$operator_salary$variable_name %>% unique
+
+
+
+## Assets ------------------------------------------------------------------
+
+
+get_str(coa_ne)
+
+results$assets <- pull_variable(
+  coa_ne,
+  sector_desc = 'ECONOMICS',
+  commodity_desc = 'AG LAND',
+  domain_desc = 'TOTAL',
+  short_desc = 'AG LAND, INCL BUILDINGS - ASSET VALUE, MEASURED IN $ / OPERATION',
+  variable_name = 'landValPF'
+)
+get_str(results$assets)
+
+results$assets_acre <- pull_variable(
+  coa_ne,
+  sector_desc = 'ECONOMICS',
+  commodity_desc = 'AG LAND',
+  domain_desc = 'TOTAL',
+  short_desc = 'AG LAND, INCL BUILDINGS - ASSET VALUE, MEASURED IN $ / ACRE',
+  variable_name = 'landValPerAcre'
+)
+get_str(results$assets_acre)
+
+metas$assets <- tibble(
+  dimension = "economics",
+  index = 'food business profitability',
+  indicator = 'assets and liabilities',
+  metric = c(
+    'Land and building value per farm',
+    'Land and building value per acre'
+  ),
+  definition = c(
+    'Value of agricultural land, including buildings, per operation',
+    'Value of agricultural land, including buildings, per acre'
+  ),
+  variable_name = c(
+    'landValPF',
+    'landValPerAcre'
+  ),
+  axis_name = c(
+    'Land Value Per Farm ($)',
+    'Land Value Per Acre ($)'
+  ),
+  units = 'usd',
+  scope = 'national',
+  resolution = 'county',
+  year = '2022',
+  updates = "5 years",
+  source = paste0(
+    "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
+    "(2024). 2022 Census of Agriculture."
+  ),
+  url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
+) %>% 
+  add_citation()
 
 
 

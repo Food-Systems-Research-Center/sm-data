@@ -322,6 +322,72 @@ get_str(metas$gini)
 
 
 
+# Unemployment ------------------------------------------------------------
+
+
+gini_vars <- c('B19083_001E', "B19083_001M")
+
+# Set parameters
+years <- as.list(seq(2010, 2022, 1))
+vars <- paste0(gini_vars, collapse = ',')
+states <- paste0(state_codes$fips, collapse = ',')
+
+# Map over list of years to gather data for each
+out <- map(years, \(year){
+  get_census_data(
+    survey_year = year,
+    survey = 'acs/acs5',
+    vars = vars,
+    county = '*',
+    state = states
+  )
+})
+get_str(out)
+
+
+# Clean each set individually, then combine
+results$gini <- out %>% 
+  keep(is.data.frame) %>% 
+  map(\(df) {
+    df %>% 
+      rename(
+        value = B19083_001E,
+        margin = B19083_001M
+      ) %>%
+      mutate(
+        variable_name = 'gini'
+      ) %>% 
+      select(-c(
+        GEO_ID, NAME, state, county
+      ))
+  }) %>% 
+  bind_rows()
+get_str(results$gini)
+
+
+metas$gini <- tibble(
+  dimension = 'economics',
+  index = 'community economy',
+  indicator = 'wealth/income distribution',
+  metric = 'Gini Index',
+  variable_name = 'gini',
+  definition = 'Gini Index of income inequality. 0 is perfect inequality, while 1 is perfect inequality',
+  axis_name = 'Gini index',
+  units = 'index',
+  scope = 'national',
+  resolution = 'county',
+  year = paste0(unique(results$gini$year), collapse = '|'),
+  updates = "5 years",
+  source = 'U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022.',
+  url = 'https://www.census.gov/data/developers/data-sets/acs-5year.html',
+  warehouse = FALSE
+) %>% 
+  add_citation()
+
+get_str(metas$gini)
+
+
+
 # # Wage From Bulk ----------------------------------------------------------
 # 
 # 
