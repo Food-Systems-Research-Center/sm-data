@@ -50,9 +50,6 @@ state <- tidycensus::fips_codes %>%
   mutate(state_code = ne_states) %>% 
   `rownames<-`(NULL)
 
-# Save these state codes
-saveRDS(state, '5_objects/state_key.rds')
-
 # Merge so we have county and state data in one data frame
 county_state <- bind_rows(county, state) %>%
   add_row(
@@ -60,9 +57,6 @@ county_state <- bind_rows(county, state) %>%
     county_name = NA,
     state_name = "US"
   )
-
-# Save this as fips_key for filtering counties and states
-saveRDS(county_state, '5_objects/fips_key.rds')
 
 # Import county spatial data frame
 counties_2021 <- tigris::counties(
@@ -84,7 +78,26 @@ counties_2024 <- tigris::counties(
   mutate(fips = paste0(statefp, countyfp)) %>% 
   select(fips, aland, awater, geometry)
 
+states_2024 <- tigris::states(
+  progress_bar = TRUE,
+  year = 2024
+) %>% 
+  filter(STUSPS %in% ne_states) %>% 
+  setNames(snakecase::to_snake_case(names(.))) %>% 
+  select(
+    fips = statefp,
+    name,
+    aland,
+    awater,
+    intptlat,
+    intptlon,
+    geometry
+  )
+states_2024
+
+
 saveRDS(counties_2021, '2_clean/spatial/ne_counties_2021.RDS')
 saveRDS(counties_2024, '2_clean/spatial/ne_counties_2024.RDS')
+saveRDS(states_2024, '2_clean/spatial/ne_states_2024.RDS')
 
 clear_data()

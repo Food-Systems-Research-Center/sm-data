@@ -1,7 +1,9 @@
 # BLS QCEW
 # 2024-10-23
 
-# Pulling QCEW data from BLS. This is source of NAICS labor data in FAME warehouse
+# Pulling QCEW data from BLS. This is source of NAICS labor data in FAME
+# warehouse Playing around with BLS API, but then using a bulk BLS download for
+# the most part. Should update at some point to lean into API.
 
 
 
@@ -15,7 +17,11 @@ pacman::p_load(
   httr,
   glue,
   snakecase,
-  readxl
+  readxl,
+  tidyr,
+  stringr,
+  readr,
+  purrr
 )
 
 source('3_functions/add_citation.R')
@@ -33,33 +39,32 @@ metas <- list()
 ## Pull All Counties -------------------------------------------------------
 
 
-
-# Try mapping over several counties
-out <- map(fips_key$fips, \(fips) {
-  
-  tryCatch({
-    blsQCEW(
-      method = 'Area',
-      year = '2023',
-      quarter = 'a',
-      area = fips
-    )
-  }, error = function(e) {
-    cat("Error: ", e$message, "\n")
-    return(
-      list(
-        error_message = e$message,
-        fips = fips
-      )
-    )
-  })
-})
-
-get_str(out)
-# Works!
-
-# Save this as intermediate object so we don't have to call API
-saveRDS(out, '5_objects/api_outs/bls_qcew.rds')
+# # Try mapping over several counties
+# out <- map(fips_key$fips, \(fips) {
+#   
+#   tryCatch({
+#     blsQCEW(
+#       method = 'Area',
+#       year = '2023',
+#       quarter = 'a',
+#       area = fips
+#     )
+#   }, error = function(e) {
+#     cat("Error: ", e$message, "\n")
+#     return(
+#       list(
+#         error_message = e$message,
+#         fips = fips
+#       )
+#     )
+#   })
+# })
+# 
+# get_str(out)
+# # Works!
+# 
+# # Save this as intermediate object so we don't have to call API
+# saveRDS(out, '5_objects/api_outs/bls_qcew.rds')
 
 
 
@@ -117,7 +122,7 @@ results$qcew$variable_name %>% unique %>% sort
 ## Metadata ----------------------------------------------------------------
 
 
-(vars <- dat$variable_name %>% unique %>% sort)
+(vars <- results$qcew$variable_name %>% unique %>% sort)
 
 # Join qcew data to the NAICS key
 qcew_fields <- read_csv('1_raw/bls/naics-based-annual-layout.csv')
@@ -137,6 +142,7 @@ metas$qcew <- results$qcew %>%
     variable_name = snakecase::to_lower_camel_case(variable_name)
   )
 
+metas$qcew
 metas$qcew <- metas$qcew %>% 
   mutate(
     dimension = 'economics',
@@ -149,6 +155,36 @@ metas$qcew <- metas$qcew %>%
     ),
     axis_name = variable_name, # fix this eventually...
     metric = variable_name, # fix this eventually...
+    metric = c(
+      'Average Number of Establishments',
+      'Average Employment Level',
+      'Total Annual Wages',
+      'Taxable Annual Wages',
+      'Annual Contributions',
+      'Average Weekly Wage',
+      'Average Annual Pay',
+      'LQ: Establishments to US',
+      'LQ: Employment to US',
+      'LQ: Total Annual Wages to US',
+      'LQ: Taxable Annual Wages to US',
+      'LQ: Contributions to US',
+      'LQ: Average Weekly Wage to US',
+      'LQ: Average Annual Pay to US',
+      'OTY Change in Establishments',
+      'OTY Percent Change in Establishments',
+      'OTY Change in Employment',
+      'OTY Percent Change in Employment',
+      'OTY Change in Annual Wages',
+      'OTY Percent Change in Annual Wages',
+      'OTY Change in Taxable Wages',
+      'OTY Percent Change in Taxable Wages',
+      'OTY Change in Contributions',
+      'OTY Percent Change in Contributions',
+      'OTY Change in Weekly Wage',
+      'OTY Percent Change in Weekly Wages',
+      'OTY Change in Annual Pay',
+      'OTY Percent change in Annual Pay'
+    ),
     units = case_when(
       str_detect(variable_name, 'Estabs') ~ 'ratio',
       str_detect(variable_name, 'Emplvl') ~ 'count',
@@ -192,7 +228,7 @@ get_str(metas$qcew)
 
 
 
-# BLS Bulk ----------------------------------------------------------------
+# BLS Bulk Unemployment ---------------------------------------------------
 
 
 # Using unemployment and household income data from BLS, bulk download
@@ -246,7 +282,7 @@ get_str(results$unemp)
 
 
 # Unique variable names
-vars <- unemp$variable_name %>% 
+vars <- results$unemp$variable_name %>% 
   unique %>% 
   sort
 vars
@@ -284,6 +320,7 @@ metas$unemp <- data.frame(
     'Unemployment Rate',
     'Urban Influence Code'
   ), 
+  variable_name = vars,
   definition = c(
     paste(
       'Number of civilians age 16 or older who are classified either as employed or unemployed.',
@@ -351,10 +388,82 @@ metas$unemp <- data.frame(
     rep('https://www.bls.gov/lau/tables.htm', 2),
     'https://www.ers.usda.gov/topics/rural-economy-population/rural-classifications/'
   )
-)
+) %>% 
+  add_citation()
 
 get_str(metas$unemp)
 metas$unemp
+
+
+
+# BLS Bulk Farm Income ----------------------------------------------------
+
+
+# https://www.ers.usda.gov/data-products/farm-income-and-wealth-statistics/data-files-u-s-and-state-level-farm-income-and-wealth-statistics/
+# Getting returns to operators by state
+dat <- read.csv('1_raw/bls/FarmIncome_WealthStatisticsData_September2024.csv')
+get_str(dat)
+
+# Pull only relevant variables - for data or metadata
+clean <- dat %>% 
+  filter(VariableDescriptionPart2 == 'Returns to operators') %>% 
+  select(
+    year = Year,
+    state = State,
+    description = VariableDescriptionTotal,
+    Amount,
+    Source
+  )
+get_str(clean)
+
+# Arrange data by state
+farm_income <- clean %>% 
+  select(year, state, value = Amount) %>% 
+  mutate(
+    value = value * 1000,
+    variable_name = 'netReturnOperators'
+  ) 
+get_str(farm_income)
+
+# Join to fips key to to add fips and lose state names
+# Also filter to 2000 or later
+farm_income <- fips_key %>% 
+  select(fips, state_code) %>% 
+  right_join(farm_income, by = join_by(state_code == state)) %>% 
+  select(-state_code) %>% 
+  filter(year >= 2000)
+get_str(farm_income)
+
+# Join to results list
+results$farm_income <- farm_income
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+get_str(clean)
+
+metas$farm_income <- data.frame(
+  dimension = 'economics',
+  index = 'farmer personal finance',
+  indicator = 'operator salary/wage',
+  axis_name = 'Net Return to Operators ($)',
+  metric = 'Net return to operators',
+  definition = unique(clean$description),
+  units = 'usd',
+  annotation = NA,
+  scope = 'national',
+  resolution = 'state',
+  year = paste0(unique(farm_income$year), collapse = '|'), 
+  updates = 'annual',
+  warehouse = FALSE,
+  source = 'U.S. Department of Agriculture, Economic Research Service, Farm Income and Wealth Statistics',
+  url = 'https://www.ers.usda.gov/data-products/farm-income-and-wealth-statistics/data-files-u-s-and-state-level-farm-income-and-wealth-statistics/'
+)
+
+get_str(metas$farm_income)
+metas$farm_income
 
 
 

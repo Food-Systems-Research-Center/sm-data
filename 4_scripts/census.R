@@ -240,7 +240,7 @@ metas$acs5 <- tibble(
   ),
   scope = 'national',
   resolution = 'county',
-  year = paste0(results$acs5$year, collapse = '|'),
+  year = paste0(unique(results$acs5$year), collapse = '|'),
   updates = "5 years",
   source = 'U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022',
   url = 'https://www.census.gov/data/developers/data-sets/acs-5year.html',

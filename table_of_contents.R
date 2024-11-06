@@ -26,6 +26,9 @@ source('4_scripts/data_warehouse.R')
 # Pull census data (ACS5). [Switching from bulk download to API calls]
 source('4_scripts/census.R')
 
+# BLS QCEW
+source('4_scripts/bls_api.R')
+
 
 ## Aggregate Data -----
 # Combine data from all sources
@@ -41,11 +44,6 @@ source('4_scripts/export.R')
 
 # Other datasets ----------------------------------------------------------
 
-
-# BLS QCEW API
-'4_scripts/bls_api.R'
-# This is currently not in workflow - using aggregated figures from Warehouse.
-# Should eventually switch to using API for more recent data and easy updates
 
 # EPA GHG inventory explorer
 source('4_scripts/epa_ghg_data.R')

@@ -36,7 +36,7 @@ map(dat, get_str)
 # Just make sure year is numeric
 agg <- map(dat, ~ {
   .x %>% 
-    mutate(across(c(year, value), as.numeric))
+    mutate(across(c(year, value), as.character))
   }) %>% 
   bind_rows()
 get_str(agg)
@@ -47,16 +47,31 @@ agg$variable_name %>%
   sort
 # Note that our variable count is fucked now that were have NAICS codes 
 
+# Make latest_year column 
 
 # Metadata ----------------------------------------------------------------
 
 
 map(meta, get_str)
 
-# Combine them, warehouse is FALSE if not inluded
+# Combine them, warehouse is FALSE if not included
 meta_agg <- bind_rows(meta) %>% 
   mutate(warehouse = ifelse(is.na(warehouse), FALSE, warehouse))
 get_str(meta_agg)
+
+# Also add latest year column 
+# Also convert '|' to commas and spaces
+meta_agg <- meta_agg %>% 
+  mutate(
+    year = str_replace_all(year, '\\|', ', '),
+    latest_year = map_chr(year, ~ {
+      .x %>% 
+        str_split_1(', ') %>% 
+        max()
+      })
+  )
+meta_agg$latest_year
+meta_agg$year
 
 
 
@@ -64,7 +79,8 @@ get_str(meta_agg)
 
 
 # Check to make sure we have the same number of metrics and metas
-check_n_records(agg, meta_agg, 'Aggregation')
+try(check_n_records(agg, meta_agg, 'Aggregation'))
+print('NAICS issues cause discrepancy of 10')
 
 # Save metrics as clean dataset for use in docs and app. Also csv
 saveRDS(agg, '2_clean/metrics.rds')

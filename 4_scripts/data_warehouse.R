@@ -323,8 +323,8 @@ metas$labor$units
 get_str(results)
 map(results, get_str)
 
-# Fix year to all be numeric
-results <- map(results, ~ mutate(.x, year = as.numeric(year)))
+# Fix year to all be character
+results <- map(results, ~ mutate(.x, year = as.character(year)))
 
 # Aggregate them and lose extraneous columns
 result <- results %>% 
