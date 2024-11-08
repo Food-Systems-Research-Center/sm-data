@@ -78,19 +78,21 @@ results$labor_costs <- coa_ne %>%
     year,
     variable_name,
     value,
-    value_codes,
-    cv_percent
+    value_codes
+    # cv_percent
   ) %>% 
   filter(!is.na(variable_name)) %>% 
   
   # Pivot to get average by operation, then put it back to long format
   pivot_wider(
-    names_from = 'variable_name'
+    names_from = 'variable_name',
+    values_from = 'value'
   ) %>% 
   mutate(expHiredLaborPF = expHiredLabor / nOpsHiredLabor) %>% 
   pivot_longer(
-    cols = nOpsHiredLabor:last_col(),
-    names_to = 'variable_name'
+    cols = !c(fips, county_name, state_name, year, value_codes),
+    names_to = 'variable_name',
+    values_to = 'value'
   ) %>% 
   select(
     fips,
@@ -99,10 +101,17 @@ results$labor_costs <- coa_ne %>%
     year,
     variable_name,
     value,
-    value_codes,
-    cv_percent
+    value_codes
+    # cv_percent
   )
 get_str(results$labor_costs)
+
+# CHECK
+results$labor_costs %>% 
+  filter(variable_name == 'nOpsHiredLabor') %>% 
+  filter(year == '2022') %>% 
+  arrange(fips) %>% 
+  print(n = 100)
 
 # Reference variables
 labor_vars <- results$labor_costs$variable_name %>% 
@@ -117,11 +126,13 @@ metas$labor_costs <- data.frame(
   indicator = 'labor costs',
   metric = c(
     "Labor expenses",
-    'Labor expenses as percentage',
+    'Labor expenses as percentage of expenses',
     "Labor expenses per farm",
-    'Number of migrant workers',
+    'Number of hired workers',
+    'Number of migrant workers', #
     'Number of operations with hired labor',
     'Number of operations with labor expenses',
+    'Number of operations with migrant labor', #
     'Number of operations with unpaid labor',
     'Number of operations with long-term labor',
     'Number of operations with short-term labor',
@@ -133,10 +144,12 @@ metas$labor_costs <- data.frame(
   definition = c(
     "Total expenses from hired labor",
     'Hired labor expenses as a percentage of total operating expenses',
-    'Expenses of hired labor per farm (nOpsHiredLabor/expHiredLabor)',
+    'Hired labor expenses per farm (nOpsHiredLabor/expHiredLabor)',
+    'Number of hired workers',
     'Number of migrant workers',
-    'Number of operations with any hired labor',
+    'Number of operations with any hired labor', #
     'Number of operations with any labor expenses',
+    'Number of operations with any migrant labor', 
     'Number of operations with any unpaid labor',
     'Number of operations with any long-term labor, greater than or equal to 150 days',
     'Number of operations with any short-term labor, less than or equal to 150 days',
@@ -148,9 +161,11 @@ metas$labor_costs <- data.frame(
     "Labor expenses ($)",
     'Labor expense (% of total)',
     "Labor expense per farm ($)",
+    'Hired Workers (#)',
     'Migrant workers (#)',
     'Farms with labor (#)',
     'Farms with labor expenses (#)',
+    'Farms with migrant labor (#)',
     'Farms with unpaid labor (#)',
     'Farms with long-term labor (#)',
     'Farms with short-term labor (#)',
@@ -162,7 +177,7 @@ metas$labor_costs <- data.frame(
     'usd', 
     'percentage', 
     'usd',
-    rep('count', 9)
+    rep('count', 11)
   ),
   scope = 'national',
   resolution = 'county',

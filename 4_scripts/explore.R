@@ -53,6 +53,18 @@ no_NAICS <- vars %>%
 length(no_NAICS)
 
 
+# Check nOps variables
+test <- dat %>% 
+  filter(
+    str_detect(variable_name, '^nOpsHiredLabor$'),
+    year == '2022'
+  )
+
+test %>% 
+  arrange(fips) %>% 
+  print(n = 100)
+
+
 
 # Check meta --------------------------------------------------------------
 
