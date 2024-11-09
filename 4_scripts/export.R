@@ -27,12 +27,12 @@ out$metrics <- read_all_rds(path = '2_clean/', pattern = '^met')
 
 # Spatial objects and references
 out$fips <- read_all_rds(path = '5_objects/', pattern = '_key.rds$')
-out$counties <- read_all_rds('2_clean/spatial/', pattern = '^ne_counties_')
+out$counties <- read_all_rds('2_clean/spatial/', pattern = '^ne_')
 
 # Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")
-get_str(out)
-
+str(out)
+names(out)
 
 
 # Export Data -------------------------------------------------------------

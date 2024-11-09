@@ -30,7 +30,7 @@ source('4_scripts/census.R')
 source('4_scripts/bls_api.R')
 
 
-## Aggregate Data -----
+## Aggregate and Export -----
 # Combine data from all sources
 source('4_scripts/aggregate_data.R')
 
