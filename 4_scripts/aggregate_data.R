@@ -89,3 +89,5 @@ write_csv(agg, '6_outputs/metrics.csv')
 # Save meta as clean set
 saveRDS(meta_agg, '2_clean/metadata.rds')
 write_csv(meta_agg, '6_outputs/metadata.csv')
+
+clear_data()

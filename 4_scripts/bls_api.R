@@ -72,43 +72,67 @@ metas <- list()
 
 
 out <- readRDS('5_objects/api_outs/bls_qcew.rds')
+get_str(out)
 
-# Bind, then filter to relevant industries
-dat <- out %>% 
+# Clean up each county dataframe, then bind together
+dat <- out %>%
   keep(is.data.frame) %>% 
-  bind_rows() %>% 
-  mutate(
-    area_fips = as.character(area_fips),
-    area_fips = ifelse(
-      str_length(area_fips) == 4, 
-      paste0('0', area_fips), 
-      area_fips
-    )
-  ) %>% 
-  filter(industry_code %in% naics_key$naics)
+  map(\(x) {
+    x %>% 
+      filter(
+        industry_code %in% naics_key$naics
+        ) %>% 
+      mutate(
+        across(everything(), as.character),
+        area_fips = ifelse(
+          str_length(area_fips) == 4,
+          paste0('0', area_fips),
+          area_fips
+        )
+      ) %>%
+      pivot_longer(
+        cols = c(
+          annual_avg_estabs:last_col(),
+          -matches('disclosure')
+        ),
+        names_to = "variable_name",
+        values_to = "value"
+      ) %>%
+      filter(if_all(contains("disclosure"), ~ . != "N")) %>% 
+      mutate(variable_name = paste(variable_name, industry_code, sep = "_")) %>%
+      select(-c(
+        industry_code,
+        matches('disclosure')
+      ))
+  }) %>% 
+  bind_rows()
 get_str(dat)
+
+# Check for issues with 25009
+# dat %>%
+#   filter(
+#     # area_fips == '25009',
+#     variable_name == 'annual_avg_estabs_111'
+#   ) %>% 
+#   group_by(area_fips) %>% 
+#   filter(n() == 1) %>% 
+#   ungroup()
 
 # Remove irrelevant columns
 results$qcew <- dat %>% 
   select(-c(
     own_code, agglvl_code, size_code, qtr
   )) %>% 
-  unite(
-    col = 'disclosure',
-    matches('disclosure'),
-    sep = ''
-  ) %>% 
-  pivot_longer(
-    cols = !c('area_fips', 'industry_code', 'year', 'disclosure'),
-    names_to = 'variable_name',
-    values_to = 'value'
-  ) %>%
+  # unite(
+  #   col = 'disclosure',
+  #   matches('disclosure'),
+  #   sep = ''
+  # ) %>% 
   mutate(
-    disclosure = ifelse(disclosure == '', NA, 'N'),
+    # disclosure = ifelse(disclosure == '', NA, 'N'),
     variable_name = paste0(
       snakecase::to_lower_camel_case(variable_name),
-      'NAICS',
-      industry_code
+      'NAICS'
     ),
     .keep = 'unused'
   ) %>% 
@@ -116,6 +140,13 @@ results$qcew <- dat %>%
 get_str(results$qcew)
 
 results$qcew$variable_name %>% unique %>% sort
+
+# Let's just get rid of disclosure codes actually
+# Could deal with these later...
+results$qcew <- results$qcew %>% 
+  # select(-disclosure) %>% 
+  filter(str_detect(variable_name, 'DisclosureCode', negate = TRUE))
+get_str(results$qcew)
 
 
 
@@ -125,24 +156,31 @@ results$qcew$variable_name %>% unique %>% sort
 (vars <- results$qcew$variable_name %>% unique %>% sort)
 
 # Join qcew data to the NAICS key
+# Keeping both old var name and new var name
 qcew_fields <- read_csv('1_raw/bls/naics-based-annual-layout.csv')
 metas$qcew <- results$qcew %>% 
   mutate(
-    variable_name = str_remove_all(variable_name, 'NAICS[0-9]*') %>% 
+    og_variable_name = str_remove_all(variable_name, '[0-9]*NAICS') %>% 
       snakecase::to_snake_case()
   ) %>% 
-  select(variable_name) %>% 
+  select(variable_name, og_variable_name) %>% 
   unique() %>% 
-  left_join(qcew_fields, by = join_by(variable_name == field_name)) %>% 
+  left_join(qcew_fields, by = join_by(og_variable_name == field_name)) %>% 
   select(
     variable_name,
+    og_variable_name,
     definition = field_description
   ) %>% 
   mutate(
-    variable_name = snakecase::to_lower_camel_case(variable_name)
+    variable_name = snakecase::to_lower_camel_case(variable_name) %>% 
+      str_replace_all('Naics', 'NAICS')
   )
-
 metas$qcew
+
+# Check og vars
+(og_vars <- metas$qcew$og_variable_name %>% unique %>% sort)
+
+# Made regular metadata file
 metas$qcew <- metas$qcew %>% 
   mutate(
     dimension = 'economics',
@@ -154,43 +192,43 @@ metas$qcew <- metas$qcew %>%
       .default = NA
     ),
     axis_name = variable_name, # fix this eventually...
-    metric = variable_name, # fix this eventually...
-    metric = c(
-      'Average Number of Establishments',
-      'Average Employment Level',
-      'Total Annual Wages',
-      'Taxable Annual Wages',
-      'Annual Contributions',
-      'Average Weekly Wage',
-      'Average Annual Pay',
-      'LQ: Establishments to US',
-      'LQ: Employment to US',
-      'LQ: Total Annual Wages to US',
-      'LQ: Taxable Annual Wages to US',
-      'LQ: Contributions to US',
-      'LQ: Average Weekly Wage to US',
-      'LQ: Average Annual Pay to US',
-      'OTY Change in Establishments',
-      'OTY Percent Change in Establishments',
-      'OTY Change in Employment',
-      'OTY Percent Change in Employment',
-      'OTY Change in Annual Wages',
-      'OTY Percent Change in Annual Wages',
-      'OTY Change in Taxable Wages',
-      'OTY Percent Change in Taxable Wages',
-      'OTY Change in Contributions',
-      'OTY Percent Change in Contributions',
-      'OTY Change in Weekly Wage',
-      'OTY Percent Change in Weekly Wages',
-      'OTY Change in Annual Pay',
-      'OTY Percent change in Annual Pay'
-    ),
+    metric = variable_name,
+    # metric = c(
+    #   'Average Employment Level',
+    #   'Average Number of Establishments',
+    #   'Average Weekly Wage',
+    #   'Annual Contributions',
+    #   'Average Annual Pay',
+    #   'LQ: Employment to US',
+    #   'LQ: Establishments to US',
+    #   'LQ: Average Weekly Wage to US',
+    #   'LQ: Contributions to US',
+    #   'LQ: Average Annual Pay to US',
+    #   'LQ: Taxable Annual Wages to US',
+    #   'LQ: Total Annual Wages to US',
+    #   'OTY Change in Employment',
+    #   'OTY Percent Change in Employment',
+    #   'OTY Change in Establishments',
+    #   'OTY Percent Change in Establishments',
+    #   'OTY Change in Weekly Wage',
+    #   'OTY Percent Change in Weekly Wages',
+    #   'OTY Change in Contributions',
+    #   'OTY Percent Change in Contributions',
+    #   'OTY Change in Annual Pay',
+    #   'OTY Percent change in Annual Pay',
+    #   'OTY Change in Annual Wages',
+    #   'OTY Percent Change in Annual Wages',
+    #   'OTY Change in Taxable Wages',
+    #   'OTY Percent Change in Taxable Wages',
+    #   'Taxable Annual Wages',
+    #   'Total Annual Wages'
+    # ),
     units = case_when(
       str_detect(variable_name, 'Estabs') ~ 'ratio',
       str_detect(variable_name, 'Emplvl') ~ 'count',
-      str_detect(variable_name, 'Wage|AnnualPay') ~ 'usd',
+      str_detect(variable_name, 'Wage|AnnualPay|Contribut') ~ 'usd',
       str_detect(variable_name, '^lq') ~ 'ratio',
-      str_detect(variable_name, '^oty') ~ 'percentage',
+      str_detect(variable_name, '^oty.*PctChg') ~ 'percentage',
     ),
     annotation = 'disclosure',
     scope = 'national',
@@ -201,9 +239,11 @@ metas$qcew <- metas$qcew %>%
     source = 'U.S. Bureau of Labor Statistics, Quarterly Census of Employment and Wages (2023)',
     url = 'https://www.bls.gov/cew/'
   ) %>% 
-  add_citation()
+  add_citation() %>% 
+  select(-og_variable_name)
   
 get_str(metas$qcew)
+try(check_n_records(results$qcew, metas$qcew, 'QCEW'))
 
 
 
@@ -449,6 +489,7 @@ metas$farm_income <- data.frame(
   index = 'farmer personal finance',
   indicator = 'operator salary/wage',
   axis_name = 'Net Return to Operators ($)',
+  variable_name = unique(results$farm_income$variable_name),
   metric = 'Net return to operators',
   definition = unique(clean$description),
   units = 'usd',
@@ -465,6 +506,8 @@ metas$farm_income <- data.frame(
 get_str(metas$farm_income)
 metas$farm_income
 
+check_n_records(results$farm_income, metas$farm_income, 'Farm Income')
+
 
 
 # Save and Clear ----------------------------------------------------------
@@ -473,7 +516,13 @@ metas$farm_income
 # Wrangle data
 get_str(results)
 map(results, get_str)
-result <- map(results, ~ mutate(.x, year = as.character(year))) %>% 
+result <- map(results, ~ {
+  .x %>% 
+    mutate(
+      year = as.character(year),
+      value = as.character(value)
+    )
+}) %>% 
   bind_rows()
 get_str(result)
 
@@ -485,7 +534,8 @@ head(meta)
 
 # Check results
 try(check_n_records(result, meta, 'BLS'))
-print('BLS will not line up because of NAICS codes')
 
 saveRDS(result, '5_objects/metrics/bls.RDS')
 saveRDS(meta, '5_objects/metadata/bls_meta.RDS')
+
+clear_data()

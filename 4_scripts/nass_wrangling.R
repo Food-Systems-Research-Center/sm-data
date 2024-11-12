@@ -867,8 +867,8 @@ metas$social <- tibble(
     'racial diversity'
   ),
   metric = c(
-    'Ratio of female to male producers',
     'Mean producer age',
+    'Ratio of female to male producers',
     'Number of American Indian producers',
     'Number of Asian producers',
     'Number of Black producers',
@@ -918,3 +918,5 @@ check_n_records(result, meta, 'NASS')
 
 saveRDS(result, '5_objects/metrics/nass.RDS')
 saveRDS(meta, '5_objects/metadata/nass_meta.RDS')
+
+clear_data()

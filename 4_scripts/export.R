@@ -31,8 +31,18 @@ out$counties <- read_all_rds('2_clean/spatial/', pattern = '^ne_')
 
 # Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")
+<<<<<<< Updated upstream
 str(out)
 names(out)
+=======
+get_str(out)
+
+out$metrics %>% 
+  filter(
+    variable_name == 'annualAvgEstabs111NAICS',
+    fips == '25009'
+  )
+>>>>>>> Stashed changes
 
 
 # Export Data -------------------------------------------------------------
@@ -41,3 +51,5 @@ names(out)
 # Paths to SMquarto and SMexplorer
 saveRDS(out, '../sm-docs/data/sm_data.rds')
 saveRDS(out, '../sm-explorer/dev/data/sm_data.rds')
+
+clear_data()

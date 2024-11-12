@@ -15,11 +15,11 @@ check_n_records <- function(metric_vars,
     metrics <- str_remove_all(metrics, 'NAICS[0-9]*.*') %>% 
       unique()
   }
-  
+
   meta <- sort(unique(meta_vars[[var_col]]))
   
   # Check if they are all the same
-  if (all(metrics == meta)) {
+  if (all(metrics == meta) & length(metrics) == length(meta)) {
     cat('\n', section, ' variable check: PASS\n',
         'Number of metrics: ', length(metrics), '\n',
         'Number of metas: ', length(meta), '\n\n', 

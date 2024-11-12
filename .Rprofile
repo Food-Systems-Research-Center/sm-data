@@ -27,6 +27,13 @@ conflicts_prefer(
   .quiet = TRUE
 )
 
+# Set options
+options(
+  max.print = 950,
+  pillar.print_max = 950,
+  pillar.print_min = 950
+)
+
 # Load table of contents script
 if (Sys.info()["sysname"] == "Mac") {
   tryCatch({
