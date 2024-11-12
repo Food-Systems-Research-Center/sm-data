@@ -18,7 +18,7 @@ source('4_scripts/nass_bulk_download.R')
 
 ## Collect Data -----
 # Pull relevant NASS variables and compile them [Should switch these to API]
-source('4_scripts/nass_wrangling.R')
+source('4_scripts/nass.R')
 
 # Pull existing data from USDA ARMS Data Warehouse
 source('4_scripts/data_warehouse.R')

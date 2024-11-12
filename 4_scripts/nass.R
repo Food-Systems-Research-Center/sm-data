@@ -843,7 +843,7 @@ get_str(results$social)
 
 
 
-## Social Metadata ---------------------------------------------------------
+## Metadata ---------------------------------------------------------------
 
 
 get_str(results$social)
@@ -897,6 +897,193 @@ metas$social <- tibble(
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
   add_citation()
+
+
+
+# Environment -------------------------------------------------------------
+
+# New list for env variables
+env <- list()
+
+
+## Conservation Income -----------------------------------------------------
+
+
+# Note to filter by value or value codes - D is missing data, and there is a lot
+vars <- c(
+  'GOVT PROGRAMS, FEDERAL, CONSERVATION & WETLANDS - OPERATIONS WITH RECEIPTS',
+  'GOVT PROGRAMS, FEDERAL, CONSERVATION & WETLANDS - RECEIPTS, MEASURED IN $',
+  'GOVT PROGRAMS, FEDERAL, CONSERVATION & WETLANDS - RECEIPTS, MEASURED IN $ / OPERATION'
+)
+
+names <- c(
+  'opsConservationIncome',
+  'totalConservationIncome',
+  'conservationIncomePF'
+)
+
+env$cons <- map2(vars, names, \(var, name) {
+  print(paste(var, '/', name))
+  out <- pull_variable(
+    coa_ne,
+    sector_desc = 'ECONOMICS',
+    commodity_desc = 'GOVT PROGRAMS',
+    domain_desc = 'TOTAL',
+    short_desc = var,
+    variable_name = name
+  ) %>% 
+    filter(!is.na(value))
+  return(out)
+})
+get_str(env$cons)
+env$cons
+
+
+
+## Practices ---------------------------------------------------------------
+
+
+# Census > Economics > Practices
+vars <- c(
+  'PRACTICES, ALLEY CROPPING & SILVAPASTURE - NUMBER OF OPERATIONS',
+  
+  'PRACTICES, LAND USE, CONSERVATION EASEMENT - ACRES',
+  'PRACTICES, LAND USE, CONSERVATION EASEMENT - AREA, MEASURED IN ACRES / OPERATION',
+  'PRACTICES, LAND USE, CONSERVATION EASEMENT - NUMBER OF OPERATIONS',
+  
+  'PRACTICES, LAND USE, CROPLAND, CONSERVATION TILLAGE, (EXCL NO-TILL) - ACRES',
+  'PRACTICES, LAND USE, CROPLAND, CONSERVATION TILLAGE, (EXCL NO-TILL) - AREA, MEASURED IN ACRES / OPERATION',
+  'PRACTICES, LAND USE, CROPLAND, CONSERVATION TILLAGE, (EXCL NO-TILL) - NUMBER OF OPERATIONS',
+  
+  'PRACTICES, LAND USE, CROPLAND, CONSERVATION TILLAGE, NO-TILL - ACRES',
+  'PRACTICES, LAND USE, CROPLAND, CONSERVATION TILLAGE, NO-TILL - AREA, MEASURED IN ACRES / OPERATION',
+  'PRACTICES, LAND USE, CROPLAND, CONSERVATION TILLAGE, NO-TILL - NUMBER OF OPERATIONS',
+  
+  'PRACTICES, LAND USE, CROPLAND, COVER CROP PLANTED, (EXCL CRP) - ACRES',
+  'PRACTICES, LAND USE, CROPLAND, COVER CROP PLANTED, (EXCL CRP) - AREA, MEASURED IN ACRES / OPERATION',
+  'PRACTICES, LAND USE, CROPLAND, COVER CROP PLANTED, (EXCL CRP) - NUMBER OF OPERATIONS',
+  
+  'PRACTICES, LAND USE, DRAINED BY ARTIFICIAL DITCHES - ACRES',
+  'PRACTICES, LAND USE, DRAINED BY ARTIFICIAL DITCHES - AREA, MEASURED IN ACRES / OPERATION',
+  'PRACTICES, LAND USE, DRAINED BY ARTIFICIAL DITCHES - NUMBER OF OPERATIONS',
+  
+  'PRACTICES, LAND USE, DRAINED BY TILE - ACRES',
+  'PRACTICES, LAND USE, DRAINED BY TILE - AREA, MEASURED IN ACRES / OPERATION',
+  'PRACTICES, LAND USE, DRAINED BY TILE - NUMBER OF OPERATIONS',
+  
+  'PRACTICES, PRECISION AGRICULTURE - NUMBER OF OPERATIONS',
+  'PRACTICES, ROTATIONAL OR MGMT INTENSIVE GRAZING - NUMBER OF OPERATIONS'
+)
+
+names <- c(1:length(vars))
+
+env$test <- map2(vars, names, \(var, name) {
+  print(paste(var, '/', name))
+  out <- pull_variable(
+    coa_ne,
+    sector_desc = 'ECONOMICS',
+    commodity_desc = 'PRACTICES',
+    domain_desc = 'TOTAL',
+    short_desc = var,
+    variable_name = name
+  )
+  return(out)
+})
+env$test
+get_str(env$test)
+
+# [] we are here. have to do meta data for the whole environment section.
+
+
+
+## Fertilizer --------------------------------------------------------------
+
+
+env$fert_expenses <- pull_variable(
+  coa_ne,
+  sector_desc = 'ECONOMICS',
+  commodity_desc = 'FERTILIZER TOTALS',
+  domain_desc = 'TOTAL',
+  short_desc = 'FERTILIZER TOTALS, INCL LIME & SOIL CONDITIONERS - EXPENSE, MEASURED IN $',
+  variable_name = 'totalFertExpense'
+)
+get_str(env$fert_expenses)
+
+env$fert_expenses_pct_operating_state <- pull_variable(
+  coa_ne,
+  sector_desc = 'ECONOMICS',
+  commodity_desc = 'FERTILIZER TOTALS',
+  domain_desc = 'TOTAL',
+  short_desc = 'FERTILIZER TOTALS, INCL LIME & SOIL CONDITIONERS - EXPENSE, MEASURED IN PCT OF OPERATING EXPENSES',
+  variable_name = 'fertExpensePF'
+)
+get_str(env$fert_expenses_pct_operating_state)
+# Note this is at state level
+
+env$fert_ops_with_expense <- pull_variable(
+  coa_ne,
+  sector_desc = 'ECONOMICS',
+  commodity_desc = 'FERTILIZER TOTALS',
+  domain_desc = 'TOTAL',
+  short_desc = 'FERTILIZER TOTALS, INCL LIME & SOIL CONDITIONERS - OPERATIONS WITH EXPENSE',
+  variable_name = 'opsFertExpense'
+)
+get_str(env$fert_ops_with_expense)
+# Consider calculating expenses per operation?
+
+
+
+## Energy ------------------------------------------------------------------
+
+
+# Do a bunch at once
+# These are all at state level
+vars <- c(
+  'ENERGY, RENEWABLE - NUMBER OF OPERATIONS',
+  'ENERGY, RENEWABLE, GEOEXCHANGE SYSTEMS - NUMBER OF OPERATIONS',
+  'ENERGY, RENEWABLE, WIND RIGHTS, RENTED TO OTHERS - NUMBER OF OPERATIONS',
+  'ENERGY, RENEWABLE, SOLAR PANELS - OPERATIONS WITH DEVICES',
+  'ENERGY, RENEWABLE, WIND TURBINES - OPERATIONS WITH DEVICES',
+  'ENERGY, RENEWABLE, METHANE DIGESTERS - OPERATIONS WITH DEVICES'
+)
+
+names <- c(
+  'nOpsRenewable',
+  'nOpsGeoexchange',
+  'nOpsWindRentedToOthers',
+  'nOpsWithSolar',
+  'nOpsWithWind',
+  'nOpsWithMethane'
+)
+
+env$renew <- map2(vars, names, \(var, name) {
+  print(paste(var, '/', name))
+  out <- pull_variable(
+    coa_ne,
+    sector_desc = 'DEMOGRAPHICS',
+    commodity_desc = 'ENERGY',
+    domain_desc = 'TENURE',
+    short_desc = var,
+    variable_name = name
+  )
+  return(out)
+})
+get_str(env$renew)
+env$renew
+
+# Clean it up
+env$renew <- map(env$renew, ~ {
+  .x %>% 
+    filter(!is.na(value)) %>% 
+    mutate(
+      tenure = domaincat_desc %>% 
+        str_remove_all('TENURE: \\(|\\)') %>% 
+        snakecase::to_upper_camel_case(),
+      variable_name = paste0(variable_name, tenure)
+    ) %>% 
+    select(-c(tenure, domaincat_desc))
+})
+env$renew
 
 
 

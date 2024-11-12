@@ -34,7 +34,8 @@ pull_variable <- function(df,
       variable_name,
       value,
       value_codes,
-      cv_percent
+      cv_percent,
+      domaincat_desc
     ) %>% 
     filter(!is.na(variable_name))
 }
