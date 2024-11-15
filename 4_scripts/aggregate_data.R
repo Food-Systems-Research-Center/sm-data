@@ -1,7 +1,7 @@
 #' Aggregate Data
 #' 2024-09-26
 
-#' Combine data from NASS and Data Warehouse, others sources, into one file
+#' Combine data from NASS and Data Warehouse, other sources, into one file
 
 
 # Housekeeping ------------------------------------------------------------
@@ -36,7 +36,8 @@ map(dat, get_str)
 # Just make sure year is numeric
 agg <- map(dat, ~ {
   .x %>% 
-    mutate(across(c(year, value), as.character))
+    mutate(across(c(year, value), as.character)) %>% 
+    select(-any_of('metric'))
   }) %>% 
   bind_rows()
 get_str(agg)
@@ -47,7 +48,7 @@ agg$variable_name %>%
   sort
 # Note that our variable count is fucked now that were have NAICS codes 
 
-# Make latest_year column 
+
 
 # Metadata ----------------------------------------------------------------
 
@@ -80,7 +81,6 @@ meta_agg$year
 
 # Check to make sure we have the same number of metrics and metas
 try(check_n_records(agg, meta_agg, 'Aggregation'))
-print('NAICS issues cause discrepancy of 10')
 
 # Save metrics as clean dataset for use in docs and app. Also csv
 saveRDS(agg, '2_clean/metrics.rds')

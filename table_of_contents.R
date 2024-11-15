@@ -1,5 +1,4 @@
 # Table of Contents
-# 2024-10-22 update
 
 
 # Housekeeping ------------------------------------------------------------
@@ -17,8 +16,10 @@ source('4_scripts/nass_bulk_download.R')
 
 
 ## Collect Data -----
-# Pull relevant NASS variables and compile them [Should switch these to API]
-source('4_scripts/nass.R')
+# Pulling NASS data from API, then aggregating, then cleaning and compiling
+'4_scripts/nass_api_call.R'
+source('4_scripts/nass_api_wrangle.R')
+source('4_scripts/nass_compilation.R')
 
 # Pull existing data from USDA ARMS Data Warehouse
 source('4_scripts/data_warehouse.R')
@@ -28,6 +29,9 @@ source('4_scripts/census.R')
 
 # BLS QCEW
 source('4_scripts/bls_api.R')
+
+# Other datasets. Mostly EPA so far
+source('4_scripts/other_datasets.R')
 
 
 ## Aggregate and Export -----
@@ -45,9 +49,6 @@ source('4_scripts/export.R')
 # Other datasets ----------------------------------------------------------
 
 
-# EPA GHG inventory explorer
-source('4_scripts/epa_ghg_data.R')
-
 # VT Open Geodataportal Base Land Cover 2022
 '4_scripts/lulc.R'
 
@@ -58,9 +59,6 @@ source('4_scripts/epa_ghg_data.R')
 
 # Get parameter values - saved into object for reference.
 source('4_scripts/get_param_options.R')
-
-# NASS data from API. Should revisit this instead of using bulk download above.
-source('4_scripts/pull_NASS_data.R')
 
 # Explore bulk download from USDA ARMS. ARMS isn't helpful for us though.
 source('4_scripts/arms.R')

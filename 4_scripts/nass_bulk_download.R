@@ -26,7 +26,7 @@ fips_key <- readRDS('5_objects/fips_key.rds')
 
 
 # Pull whole CoA dataset
-coa <- read_tsv('1_raw/qs.census2022.txt', show_col_types = FALSE) %>%
+coa <- read_tsv('1_raw/nass/qs.census2022.txt', show_col_types = FALSE) %>%
   janitor::clean_names()
 
 # Filter to New England
@@ -119,7 +119,7 @@ get_str(naics_key)
 # Save and Clear ----------------------------------------------------------
 
 
-saveRDS(coa_ne, '5_objects/coa_ne.rds')
+saveRDS(coa_ne, '1_raw/nass/coa_ne.rds')
 saveRDS(naics_key, '5_objects/naics_key.rds')
 
 clear_data()

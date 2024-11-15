@@ -26,17 +26,18 @@ pull_variable <- function(df,
         short_desc == !!short_desc ~ variable_name
       )
     ) %>% 
-    select(
-      fips,
-      county_name,
-      state_name,
-      year,
-      variable_name,
-      value,
-      value_codes,
-      cv_percent,
-      domaincat_desc
-    ) %>% 
+    select(any_of(c(
+      'fips',
+      'county_name',
+      'state_name',
+      'year',
+      'variable_name',
+      'value',
+      'value_codes',
+      'cv_percent',
+      'domaincat_desc',
+      'unit_desc'
+    ))) %>% 
     filter(!is.na(variable_name))
 }
 

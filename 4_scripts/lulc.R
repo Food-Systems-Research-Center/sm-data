@@ -13,67 +13,112 @@ pacman::p_load(
   stars,
   dplyr,
   mapview,
-  raster,
   terra,
-  stringr
+  stringr,
+  purrr,
+  furrr,
+  tictoc,
+  vegan
 )
 
 
-
-# Load and Wrangle --------------------------------------------------------
-
-
-raw <- read_stars('1_raw/spatial/Landlandcov_BaseLC2022/Landlandcov_BaseLC2022.tif')
-
-# Explore
-raw
-st_crs(raw)
-plot(raw)
+fips_key <- readRDS('5_objects/fips_key.rds')
+ne_counties <- readRDS('2_clean/spatial/ne_counties_2024.RDS')
 
 
 
-# Raster Package ----------------------------------------------------------
+# VT Biodiversity Project -------------------------------------------------
 
 
-dat <- rast('1_raw/spatial/Landlandcov_BaseLC2022/Landlandcov_BaseLC2022.tif')
-# It is too big to run ratify...
+hotspots <- st_read(
+  dsn = '1_raw/spatial/vt_bio_project/hotspots/',
+  layer = 'VT_Biodiversity_Project_-_Biological_Hotspots'
+)
+hotspots
 
-# Check categorical outcomes
-is.factor(dat)
-levels(dat)
+atlas <- st_read(
+  dsn = '1_raw/spatial/vt_bio_project/species_atlas/',
+  layer = 'VT_Biodiversity_Project_-_Plant_and_Animal_Species_Atlas'
+)
+atlas
+# Just save these as sf objects to put in map I guess?
 
-# Check
-dat
-get_str(dat)
-plot(dat)
 
-# Explore
-res(dat)
-dim(dat)
-ext(dat)
 
-# Check cells
-cells <- dim(dat)[1] * dim(dat)[2]
-format(cells, big.mark = ',')
-# 159 billion cells
+# LULC --------------------------------------------------------------------
 
-# freq(dat) # DONT RUN THIS - can't count to 159 billion
 
-# Summary. This is what we want. Sampling out of 1,000,000 for sanity
-set.seed(42)
-sum <- dat %>% 
-  summary(size = 1000000) %>% 
-  as.data.frame() %>% 
-  filter(str_detect(Freq, "NA\'s", negate = TRUE)) %>%
-  select(freq = Freq) %>% 
-  mutate(
-    class = str_split_i(freq, ':', 1) %>% str_trim(),
-    freq = str_split_i(freq, ':', 2) %>% str_trim() %>% as.numeric(),
-    perc = (freq / sum(freq, na.rm = TRUE) * 100) %>% round(2),
-    .keep = 'none'
-  ) %>% 
-  select(class, freq, perc)
-sum
-# Railroads, bare soil, and buildings are lumped into Other
-# NOTE: Should remove water from calculations
-# Also, is "Open" land just everything that isn't trees or development?
+# Trying to get land use diversity
+lulc <- read_stars('1_raw/spatial/mrlc_lulc/Annual_NLCD_LndCov_2023_CU_C1V0.tif')
+
+# Crop by New England, but first reproject our counties
+ne_counties_prj <- st_transform(ne_counties, st_crs(lulc))
+crop <- st_crop(lulc, ne_counties_prj)
+
+# Get table of values in each county
+lulc_by_county = function(x) {
+  table(x, useNA = 'always')
+}
+
+saveRDS(crop, '5_objects/lulc_crop.rds')
+
+# # Just once
+# test <- aggregate(
+#   crop, 
+#   ne_counties_prj, 
+#   FUN = lulc_by_county
+# )
+# test$Annual_NLCD_LndCov_2023_CU_C1V0.tif
+# test %>% 
+#   as.data.frame() %>% 
+#   select(-geometry)
+
+
+# Test map
+# out <- ne_counties_prj[1:2, ] %>% 
+#   split(seq(nrow(ne_counties_prj[1:2, ]))) %>% 
+#   map(\(row) {
+#     aggregate(crop, row, FUN = lulc_by_county)
+#   })
+# out
+# get_str(out)
+# This might be the way - easy to move into parallel here
+
+# check it
+out[[1]] %>% 
+  as.data.frame()
+test <- out %>% 
+  imap(~ {
+    .x %>% 
+      as.data.frame() %>%
+      pull(3) %>% 
+      diversity()
+  })
+test
+
+
+
+# Prep for parallel
+counties <- ne_counties_prj %>% 
+  split(seq(nrow(ne_counties_prj)))
+county_fips <- ne_counties_prj$fips
+config <- furrr_options(seed = TRUE)
+
+# Run parallel
+format(Sys.time(), '%H:%M:%S')
+tic()
+plan(multisession, workers = 6)
+out <- future_map(counties, \(county) {
+    aggregate(crop, county, FUN = lulc_by_county)
+  }, .options = config, .progress = TRUE) %>% 
+  setNames(c(county_fips))
+plan(sequential)
+toc()
+
+
+
+# Save and Clear ----------------------------------------------------------
+
+
+saveRDS(hotspots, '5_objects/spatial/hotspots.rds')
+saveRDS(atlas, '5_objects/spatial/atlas.rds')

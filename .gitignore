@@ -2,5 +2,12 @@
 .Rhistory
 .RData
 .Ruserdata
-1_raw/
+.Renviron
 
+# Large raw files
+1_raw/2017_cdqt_data.txt
+1_raw/2022-Bulk
+1_raw/food_systems_data_warehouse
+1_raw/nass/qs.census2022.txt
+1_raw/spatial/mrlc_lulc/
+1_raw/spatial

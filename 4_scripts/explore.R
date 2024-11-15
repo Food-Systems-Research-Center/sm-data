@@ -39,13 +39,4 @@ state_key <- readRDS('5_objects/state_key.rds')
 
 # Check Metrics -----------------------------------------------------------
 
-
 get_str(dat)
-
-dat %>%
-  filter(variable_name == 'annualAvgEstabs111NAICS') %>% 
-  group_by(fips) %>% 
-  filter(n() > 1) %>% 
-  ungroup()
-
-# 25009 doubled up on annualAvgEstabs111NAICS
