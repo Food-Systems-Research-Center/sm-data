@@ -40,3 +40,9 @@ state_key <- readRDS('5_objects/state_key.rds')
 # Check Metrics -----------------------------------------------------------
 
 get_str(dat)
+get_str(meta)
+
+env <- meta %>% 
+  filter(dimension == 'environment')
+env$metric %>%
+  sort

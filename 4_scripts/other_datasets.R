@@ -32,6 +32,8 @@ inv_paths <- list.files(
   '1_raw/epa/ghg_ide_agriculture_inventory/',
   full.names = TRUE
 )
+names <- map(inv_paths, ~ names(read_csv(.x))[1])
+
 inv <- map(inv_paths, ~ {
   df <- read_csv(.x)
   var_name <- names(df)[1]
@@ -44,7 +46,11 @@ inv <- map(inv_paths, ~ {
       values_to = 'value'
     ) %>% 
     mutate(
-      metric = paste0(var_name, '(Economic Sectors)'),
+      metric = paste(
+        str_replace(str_split_i(var_name, ', ', 2), '\\.', ','),
+        str_split_i(var_name, ',', 1),
+        '(Economic Sectors)'
+      ),
       variable_name = paste0(
         'mmtCo2',
         var_name %>%
@@ -54,6 +60,7 @@ inv <- map(inv_paths, ~ {
       )
     )
 })
+get_str(inv[[1]])
 get_str(inv)
 
 # Same for economic sectors
@@ -73,7 +80,11 @@ econ <- map(econ_paths, ~ {
       values_to = 'value'
     ) %>% 
     mutate(
-      metric = paste0(var_name, '(Economic Sectors)'),
+      metric = paste(
+        str_replace(str_split_i(var_name, ', ', 2), '\\.', ','),
+        str_split_i(var_name, ',', 1),
+        '(Economic Sectors)'
+      ),
       variable_name = paste0(
         'mmtCo2',
         var_name %>%

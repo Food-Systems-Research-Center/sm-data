@@ -9,7 +9,9 @@
 pacman::p_load(
   dplyr,
   purrr,
-  stringr
+  stringr,
+  stars,
+  sf
 )
 
 source('3_functions/read_all_rds.R')
@@ -29,8 +31,16 @@ out$metrics <- read_all_rds(path = '2_clean/', pattern = '^met')
 out$fips <- read_all_rds(path = '5_objects/', pattern = '_key.rds$')
 out$counties <- read_all_rds('2_clean/spatial/', pattern = '^ne_')
 
+# Map layers
+out$spatial <- read_all_rds('5_objects/spatial/', pattern = '.rds$')
+
 # Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")
+
+# Add a tif separately
+# out$core <- read_stars('5_objects/spatial/core_habitat.tif')
+
+
 get_str(out)
 
 

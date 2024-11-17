@@ -33,6 +33,9 @@ source('4_scripts/bls_api.R')
 # Other datasets. Mostly EPA so far
 source('4_scripts/other_datasets.R')
 
+# Spatial data - MRLC LULC, VT Biodiversity Project
+source('4_scripts/lulc.R')
+
 
 ## Aggregate and Export -----
 # Combine data from all sources
@@ -43,14 +46,6 @@ source('4_scripts/export.R')
 
 # Explore aggregated data
 '4_scripts/explore.R'
-
-
-
-# Other datasets ----------------------------------------------------------
-
-
-# VT Open Geodataportal Base Land Cover 2022
-'4_scripts/lulc.R'
 
 
 
