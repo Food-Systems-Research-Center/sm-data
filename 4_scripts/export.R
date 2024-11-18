@@ -32,7 +32,7 @@ out$fips <- read_all_rds(path = '5_objects/', pattern = '_key.rds$')
 out$counties <- read_all_rds('2_clean/spatial/', pattern = '^ne_')
 
 # Map layers
-out$spatial <- read_all_rds('5_objects/spatial/', pattern = '.rds$')
+out$spatial <- read_all_rds('2_clean/spatial/map_layers/', pattern = '.rds$')
 
 # Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")

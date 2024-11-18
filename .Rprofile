@@ -24,6 +24,8 @@ conflicts_prefer(
   dplyr::select(),
   dplyr::filter(),
   purrr::flatten(),
+  base::intersect(),
+  base::union(),
   .quiet = TRUE
 )
 

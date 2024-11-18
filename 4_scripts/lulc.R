@@ -20,7 +20,8 @@ pacman::p_load(
   tictoc,
   vegan,
   tibble,
-  lubridate
+  lubridate,
+  reticulate
 )
 
 source('3_functions/read_all_rds.R')
@@ -193,7 +194,8 @@ metas$lulc_prop <- codes %>%
       'Sioux Falls, SD'
     ),
     url = 'https://www.mrlc.gov/data/type/land-cover'
-  )
+  ) %>% 
+  add_citation(access_date = '2024-11-15')
 
 get_str(metas$lulc_prop)
 
@@ -202,22 +204,7 @@ get_str(metas$lulc_prop)
 ## Diversity ---------------------------------------------------------------
 
 
-# Shannon diversity of LULC
-get_str(county_tables)
-div <- map_dbl(county_tables, \(x) {
-  diversity(x$cell_count, index = 'shannon')
-}) %>% 
-  as.data.frame() %>% 
-  rownames_to_column() %>% 
-  setNames(c('fips', 'value')) %>% 
-  mutate(
-    fips = str_split_i(fips, '_', 2),
-    year = '2023',
-    variable_name = 'lulcDiversity'
-  )
-div
-
-# Try again by group
+# Shannon diversity of LULC by group
 get_str(county_tables)
 div <- map_dbl(county_tables, \(x) {
   df <- x %>% 
@@ -248,6 +235,14 @@ div
 
 # save to results list
 results$lulc_div <- div
+
+
+## Save a map layer for Quarto also
+ne_counties %>% 
+  right_join(div, by = 'fips') %>% 
+  left_join(fips_key, by = 'fips') %>% 
+  select(fips, county_name, lulc_div = value, geometry) %>% 
+  saveRDS('2_clean/spatial/map_layers/lulc_div.rds')
 
 
 
@@ -286,46 +281,14 @@ get_str(metas$lulc_div)
 # Imperiled Species -------------------------------------------------------
 
 
+# NOTE: This is not very useful - almost nothing going on in new england.
+
 # Richness of imperiled species
 # https://natureserve.maps.arcgis.com/home/item.html?id=5621d4789e174cc2b0695bfecd6dc6a8
 
-rip <- read_stars('1_raw/spatial/nature_serve/richness_imperiled_species.tif')
-rip
+# rip <- read_stars('1_raw/spatial/nature_serve/richness_imperiled_species.tif')
+# rip
 
-# This is not very useful - almost nothing going on in new england.
-
-
-
-# USDA Biomass ------------------------------------------------------------
-
-
-# # USDA Forest Service contiguous US Biomass Map
-# # https://data.fs.usda.gov/geodata/rastergateway/biomass/conus_forest_biomass.php
-# bio <- read_stars('1_raw/spatial/usda/conus_biomass.tif')
-# st_crs(bio)
-# 
-# # Crop by New England, but first reproject our counties
-# ne_counties_prj <- st_transform(ne_counties, st_crs(bio))
-# bio_crop <- st_crop(bio, ne_counties_prj)
-# # mapview(bio_crop)
-# 
-# # Aggregate to get mean by county
-# agg_out <- aggregate(bio_crop, ne_counties_prj, FUN = mean)
-# agg_out$conus_biomass.tif
-# 
-# # Create results file
-# bio_means <- agg_out$conus_biomass.tif %>%
-#   as.data.frame() %>%
-#   bind_cols(ne_counties_prj$fips) %>%
-#   setNames(c('value', 'fips')) %>%
-#   mutate(
-#     variable_name = 'meanAboveGrndForBiomass',
-#     year = '2008'
-#   )
-# bio_means
-# # Okay I just realized this dataset is from 2008. That is not very helpful.
-# 
-# results$biomass <- bio_means
 
 
 # TreeMap 2016 ------------------------------------------------------------
@@ -338,19 +301,73 @@ treemap <- read_stars('1_raw/spatial/usfs_treemap/TreeMap2016_CARBON_L.tif')
 ne_counties_prj <- st_transform(ne_counties, st_crs(treemap))
 treemap_crop <- st_crop(treemap, ne_counties_prj)
 
-# Function to get mean, removing NAs
-get_mean <- function(x) {
-  mean(x, na.rm = TRUE)
-}
+# Saving this raster to use straight up in Quarto
+# write_stars(treemap_crop, '2_clean/spatial/map_layers/treemap_biomass.tif')
+# NOTE: This is too big to get into Quarto conveniently...
 
-# Aggregate by county
-agg_out <- aggregate(treemap_crop, ne_counties_prj, FUN = get_mean)
-agg_out$conus_biomass.tif
-# [] run this again with na.rm = TRUE
+# Saving the counties file to a shapefile to use in python
+st_crs(ne_counties_prj)
+st_write(
+  ne_counties,
+  '5_objects/spatial/counties_shapefile.shp',
+  append = FALSE
+)
 
-# Turn into data frame, normal results format
-bio_means <- agg_out$conus_biomass.tif %>%
-  as.data.frame()
+
+## Pull it back in after aggregating in python
+agg <- st_read('5_objects/spatial/aggregated_biomass', 'biomass_by_counties')
+
+# Have to put the crs back in place
+st_crs(agg) <- st_crs(treemap)
+
+# Save a copy to use straight in map
+agg <- agg %>% 
+  left_join(fips_key, by = 'fips') %>% 
+  select(fips, mean_biomass = mean, county_name, geometry) %>% 
+  mutate(mean_biomass = round(mean_biomass, 3))
+
+saveRDS(agg, '2_clean/spatial/map_layers/mean_biomass.rds')
+
+# Now wrangle a copy like normal dataset
+agg <- agg %>% 
+  as.data.frame() %>% 
+  select(-geometry) %>% 
+  mutate(
+    variable_name = 'meanAboveGrndForBiomass',
+    year = '2016'
+  ) %>% 
+  rename(value = mean_biomass)
+get_str(agg)
+
+# Save to results
+results$mean_biomass <- agg
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+get_str(agg)
+
+metas$bio_means <- data.frame(
+  variable_name = unique(agg$variable_name),
+  definition = 'Above ground forest biomass, live, tons per acre',
+  axis_name = 'Live Biomass (tons / acre)',
+  dimension = "environment",
+  index = 'biodiversity',
+  indicator = 'above ground biomass',
+  units = 'tons / acre',
+  scope = 'national',
+  resolution = '30m',
+  year = '2016',
+  latest_year = '2016',
+  updates = "unknown",
+  source = 'Riley, Karin L.; Grenfell, Isaac C.; Shaw, John D.; Finney, Mark A. 2022. TreeMap 2016 dataset generates CONUS-wide maps of forest characteristics including live basal area, aboveground carbon, and number of trees per acre',
+  url = 'https://doi.org/10.1093/jofore/fvac022',
+  citation = 'Riley, Karin L.; Grenfell, Isaac C.; Shaw, John D.; Finney, Mark A. 2022. TreeMap 2016 dataset generates CONUS-wide maps of forest characteristics including live basal area, aboveground carbon, and number of trees per acre. Journal of Forestry. 2022: 607-632.'
+)
+
+get_str(metas$bio_means)
 
 
 
@@ -374,8 +391,8 @@ saveRDS(meta, '5_objects/metadata/lulc_meta.RDS')
 
 # Also save spatial files as is
 saveRDS(div, '5_objects/spatial/county_lulc_tables.rds')
-saveRDS(hotspots, '5_objects/spatial/hotspots.rds')
-saveRDS(atlas, '5_objects/spatial/atlas.rds')
-write_stars(core, '5_objects/spatial/rasters/core_habitat.tif')
+saveRDS(hotspots, '2_clean/spatial/map_layers/hotspots.rds')
+saveRDS(atlas, '2_clean/spatial/map_layers/atlas.rds')
+# write_stars(core, '5_objects/spatial/rasters/core_habitat.tif')
 
 clear_data()
