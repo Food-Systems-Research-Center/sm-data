@@ -37,7 +37,7 @@ map(dat, get_str)
 agg <- map(dat, ~ {
   .x %>% 
     mutate(across(c(year, value), as.character)) %>% 
-    select(-any_of('metric'))
+    select(-any_of(c('metric', 'county_name')))
   }) %>% 
   bind_rows()
 get_str(agg)

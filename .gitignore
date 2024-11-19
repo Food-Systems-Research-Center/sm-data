@@ -5,6 +5,9 @@
 .Renviron
 
 # Large raw files
+1_raw/
+5_objects/spatial/
+2_clean/spatial/
 1_raw/2017_cdqt_data.txt
 1_raw/2022-Bulk
 1_raw/food_systems_data_warehouse

@@ -160,32 +160,40 @@ prop <- map(county_tables, \(x) {
   select(
     fips,
     value = prop,
-    variable_name = metric
+    metric
   ) %>% 
-  mutate(year = '2023')
+  mutate(
+    year = '2023',
+    variable_name = metric %>%
+      str_remove_all(',|ortion|intensity|aceous|eloped|cultivated|emergent') %>%
+      snakecase::to_lower_camel_case()
+  )
 get_str(prop)
 prop
 
 # Save this to results
 results$lulc_prop <- prop
 
+# Save metric/variable crosswalk
+crosswalk <- prop %>% 
+  select(metric, variable_name) %>% 
+  unique
 
 
 ## Props metadata ----------------------------------------------------------
 
 
 metas$lulc_prop <- codes %>% 
+  inner_join(crosswalk) %>% 
+  select(-lulc_code) %>% 
   mutate(
-    variable_name = metric %>% 
-      str_remove_all(',|ortion|intensity|aceous|eloped|cultivated|emergent') %>% 
-      snakecase::to_lower_camel_case(),
-    axis_name = str_remove_all(definition, 'proportion, '),
+    axis_name = metric,
     dimension = "environment",
     index = 'biodiversity',
     indicator = 'land use diversity',
     units = 'proportion',
     scope = 'national',
-    resolution = '30m',
+    resolution = 'county',
     year = '2023',
     latest_year = '2023',
     updates = "annual",
@@ -262,7 +270,7 @@ metas$lulc_div <- data.frame(
   indicator = 'land use diversity',
   units = 'index',
   scope = 'national',
-  resolution = '30m',
+  resolution = 'county',
   year = '2023',
   latest_year = '2023',
   updates = "annual",
@@ -306,12 +314,12 @@ treemap_crop <- st_crop(treemap, ne_counties_prj)
 # NOTE: This is too big to get into Quarto conveniently...
 
 # Saving the counties file to a shapefile to use in python
-st_crs(ne_counties_prj)
-st_write(
-  ne_counties,
-  '5_objects/spatial/counties_shapefile.shp',
-  append = FALSE
-)
+# st_crs(ne_counties_prj)
+# st_write(
+#   ne_counties,
+#   '5_objects/spatial/counties_shapefile.shp',
+#   append = FALSE
+# )
 
 
 ## Pull it back in after aggregating in python
@@ -358,7 +366,7 @@ metas$bio_means <- data.frame(
   indicator = 'above ground biomass',
   units = 'tons / acre',
   scope = 'national',
-  resolution = '30m',
+  resolution = 'county',
   year = '2016',
   latest_year = '2016',
   updates = "unknown",
@@ -373,7 +381,7 @@ get_str(metas$bio_means)
 
 # Save and Clear ----------------------------------------------------------
 
-
+get_str(results)
 result <- results %>% 
   map(\(x) mutate(x, value = as.character(value))) %>% 
   bind_rows()

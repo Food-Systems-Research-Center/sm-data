@@ -46,3 +46,7 @@ env <- meta %>%
   filter(dimension == 'environment')
 env$metric %>%
   sort
+
+dat %>% 
+  filter(str_detect(variable_name, '^lulc'))
+         
