@@ -71,6 +71,11 @@ lulc <- read_stars('1_raw/spatial/mrlc_lulc/Annual_NLCD_LndCov_2023_CU_C1V0.tif'
 ne_counties_prj <- st_transform(ne_counties, st_crs(lulc))
 crop <- st_crop(lulc, ne_counties_prj)
 
+# Save a copy to include straight into docs. Also as R object, see if faster
+# write_stars(crop, '1_raw/spatial/mrlc_lulc/Annual_NLCD_LndCov_2023_NewEngland.tif')
+saveRDS(crop, '2_clean/spatial/map_layers/mrlc_lulc_ne.rds')
+
+
 # Get table of values in each county
 lulc_by_county = function(x) {
   table(x, useNA = 'always')
@@ -310,8 +315,7 @@ ne_counties_prj <- st_transform(ne_counties, st_crs(treemap))
 treemap_crop <- st_crop(treemap, ne_counties_prj)
 
 # Saving this raster to use straight up in Quarto
-# write_stars(treemap_crop, '2_clean/spatial/map_layers/treemap_biomass.tif')
-# NOTE: This is too big to get into Quarto conveniently...
+saveRDS(treemap_crop, '2_clean/spatial/map_layers/treemap_biomass.rds')
 
 # Saving the counties file to a shapefile to use in python
 # st_crs(ne_counties_prj)
@@ -376,6 +380,34 @@ metas$bio_means <- data.frame(
 )
 
 get_str(metas$bio_means)
+
+
+
+# Biofinder ---------------------------------------------------------------
+
+
+# Explore layers
+gdb_path <- '1_raw/spatial/biofinder/VCD2024.gdb'
+(layers <- st_layers(gdb_path))
+
+# Pull out all at once
+bio_layers <- map(layers$name, ~ st_read(gdb_path, layer = .x)) %>% 
+  setNames(c(layers$name))
+
+# Keepers
+# mapview(bio_layers$Bio4_UncommonSpecies_Priority)
+# mapview(bio_layers$Bio4_RTESpecies_HP)
+# P is polygon, A is area?
+
+# Take these two and save directly as map layers
+saveRDS(
+  bio_layers$Bio4_UncommonSpecies_Priority, 
+  '2_clean/spatial/map_layers/biofinder_uncommon_spp.rds'
+)
+saveRDS(
+  bio_layers$Bio4_RTESpecies_HP,
+  '2_clean/spatial/map_layers/biofinder_rte_spp.rds'
+)
 
 
 

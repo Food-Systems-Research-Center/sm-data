@@ -37,10 +37,6 @@ out$spatial <- read_all_rds('2_clean/spatial/map_layers/', pattern = '.rds$')
 # Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")
 
-# Add a tif separately
-# out$core <- read_stars('5_objects/spatial/core_habitat.tif')
-
-
 get_str(out)
 
 
