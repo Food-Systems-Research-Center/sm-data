@@ -23,6 +23,8 @@ pacman::p_load_gh('ChrisDonovan307/projecter')
 conflicts_prefer(
   dplyr::select(),
   dplyr::filter(),
+  dplyr::rename(),
+  dplyr::summarize(),
   purrr::flatten(),
   base::intersect(),
   base::union(),

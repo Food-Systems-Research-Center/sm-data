@@ -359,7 +359,8 @@ bees$state %>% unique
 
 
 
-# FSA Sec Declarations --------------------------------------------------
+# FSA Disaster Declarations -----------------------------------------------
+## Secretary ---------------------------------------------------------------
 
 
 # Secretary of Ag disaster declarations - load all
@@ -381,14 +382,10 @@ ag <- map(ag_raw, ~ {
       year = ifelse(year == '2011, 2012', '2012', year)
     ) %>% 
     filter(fips %in% fips_key$fips)
-    # full_join(select(fips_key, fips) %>% filter(str_length(fips) == 5))
 }) %>% 
   bind_rows()
 get_str(ag)
 
-
-
-## By County ---------------------------------------------------------------
 
 # Want variables by county, state, whole system
 # county first - number of unique events in each year
@@ -413,15 +410,120 @@ get_str(ag_county)
 
 # Arrange like a regular variable
 ag_county <- ag_county %>% 
-  rename(nAgSecDisasters = n_des) %>% 
+  rename(nFsaSecDisasters = n_des) %>% 
   pivot_longer(
-    cols = nAgSecDisasters,
+    cols = nFsaSecDisasters,
     values_to = 'value',
     names_to = 'variable_name'
   )
 get_str(ag_county)
 
-# [] 
+# [] Should we get state and system as well?
+
+# Save it
+results$fsa_sec <- ag_county
+
+
+
+## Presidential ------------------------------------------------------------
+
+
+# Presidential disaster declarations
+paths <- list.files(
+  '1_raw/usda/fsa/disaster_declarations/pres/',
+  full.names = TRUE
+)
+pres_raw <- map(paths, read_excel)
+  
+# Select cols 1, 5, and last, filter by fips to NE, combine all years
+# Note that we are not keeping info on what kind of events they are. May regret
+pres <- map(pres_raw, ~ {
+  .x %>% 
+    select(1, 5, contains('YEAR')) %>% 
+    setNames(c('fips', 'des', 'year')) %>% 
+    mutate(
+      across(everything(), as.character)
+    ) %>% 
+    filter(fips %in% fips_key$fips)
+}) %>% 
+  bind_rows()
+get_str(pres)
+
+
+# Want variables by county, state, whole system
+# county first - number of unique events in each year
+pres_county <- pres %>% 
+  group_by(fips, year) %>% 
+  summarize(n_des = length(unique(des))) %>% 
+  arrange(fips)
+get_str(pres_county)
+
+# Get grid of all possibilities of counties and years - make sure no missing
+old_fips <- fips_key %>% 
+  filter_fips('old') %>% 
+  pull(fips)
+all_years <- c(2017:2020, 2023)
+grid <- expand.grid(fips = old_fips, year = all_years) %>% 
+  mutate(across(everything(), as.character))
+
+# Join back to grid, turn NA into 0
+pres_county <- left_join(grid, pres_county) %>% 
+  mutate(across(everything(), ~ ifelse(is.na(.x), '0', .x)))
+get_str(pres_county)
+
+# Arrange like a regular variable
+pres_county <- pres_county %>% 
+  rename(nFsaPresDisasters = n_des) %>% 
+  pivot_longer(
+    cols = nFsaPresDisasters,
+    values_to = 'value',
+    names_to = 'variable_name'
+  ) %>% 
+  arrange(year)
+get_str(pres_county)
+
+# Save
+results$fsa_pres <- pres_county
+
+
+
+# Metadata ----------------------------------------------------------------
+
+names(results)
+results$fsa_pres$variable_name %>% unique
+results$fsa_sec$variable_name %>% unique
+
+metas$fsa <- data.frame(
+  variable_name = c(
+    'nFsaPresDisasters',
+    'nFsaSecDisasters'
+  ),
+  definition = c(
+    'Number of unique disaster declarations made by the Secretary of Agriculture. Used to trigger eligibility for emergency loans and FSA disaster assistance programs.',
+    'Number of unique Presidential major disaster declarations. Used to trigger eligibility for emergency loans and FSA disaster assistance programs.'
+  ),
+  axis_name = c(
+    'FSA Pres. Disasters',
+    'FSA Sec. Disasters'
+  ),
+  dimension = "environment",
+  index = 'water stability',
+  indicator = 'days / events of extremes',
+  units = 'count',
+  scope = 'national',
+  resolution = 'county',
+  year = c(
+    paste(c(2017:2020, 2023), collapse = ', '),
+    paste(c(2012:2020, 2022:2023), collapse = ', ')
+  ),
+  latest_year = '2023',
+  updates = "annual",
+  source = 'U.S. Department of Agriculture, Farm Service Agency Disaster Assistance',
+  url = 'https://www.fsa.usda.gov/resources/disaster-assistance-program/disaster-designation-information'
+) %>% 
+  add_citation('December 11, 2024')
+
+metas$fsa
 
 
 

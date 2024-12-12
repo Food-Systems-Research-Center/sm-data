@@ -19,7 +19,7 @@ add_citation <- function(df,
   df %>%
     mutate(citation = paste0(
       {{ source_col }},
-      ' ',
+      ', ',
       {{ url_col }},
       ', accessed on ',
       date_of_access,

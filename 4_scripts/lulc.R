@@ -447,9 +447,43 @@ saveRDS(
 # Plan 
 # Insect and Disease Dataset (IDS)
 raw <- st_read('1_raw/spatial/usfs/CONUS_Region9_2023.gdb/CONUS_Region9_2023.gdb/')
+# What are we doing here. I don't remember.
 
 
 
+# CroplandCROS ------------------------------------------------------------
+
+
+cros_raw <- read_stars('1_raw/nass/2023_30m_cdls/2023_30m_cdls.tif')
+st_crs(cros_raw) # 4269
+
+# crop by NE counties. First reproject counties
+ne_counties_prj <- st_transform(ne_counties, st_crs(cros_raw))
+st_crs(cros_raw) == st_crs(ne_counties_prj)
+
+# Crop cros by counties
+cros_crop <- st_crop(cros_raw, ne_counties_prj)
+
+# Save this as a layer for general use, as tif and rds
+saveRDS(cros_crop, '2_clean/spatial/map_layers/cropland_cros.rds')
+
+
+## County level data with python function
+reticulate::source_python('4_scripts/cat_zonal_stats.py')
+test <- cat_zonal_stats(
+  raster_path = '1_raw/nass/2023_30m_cdls/2023_30m_cdls.tif',
+  polygon_path = '2_clean/spatial/ne_counties_2024.gpkg'
+)
+get_str(test)
+
+dat <- test %>% 
+  select(fips, everything())
+get_str(dat)
+# Looks like this works, but we should test it
+mapview(cros_crop) + mapview(ne_counties, alpha.regions = 0)
+
+dat[1,]
+# [] Get the key so we can figure this out!
 
 
 
