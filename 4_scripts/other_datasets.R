@@ -11,11 +11,13 @@ pacman::p_load(
   purrr,
   readr,
   tidyr,
-  snakecase
+  snakecase,
+  readxl
 )
 
 source('3_functions/add_citation.R')
 source('3_functions/check_n_records.R')
+source('3_functions/filter_fips.R')
 fips_key <- readRDS('5_objects/fips_key.rds')
 
 results <- list()
@@ -336,6 +338,90 @@ get_str(metas$rivers)
 # Go back and fix data names
 results$rivers <- results$rivers %>% 
   mutate(variable_name = paste0('rivers', snakecase::to_upper_camel_case(variable_name)))
+
+
+
+# USDA Bees ---------------------------------------------------------------
+
+
+# Just want colonies for April 1st, 2024
+raw <- read_csv('1_raw/usda/hcny0824/hcny_p08_t022.csv', skip = 5)
+
+# Start on row 10, end on row 57
+# Only want columns 3 (state), 4 (colony count)
+# Then filter to NE states
+bees <- raw[4:(nrow(raw) - 10), 3:4] %>% 
+  setNames(c('state', 'colonies')) %>% 
+  filter(state %in% unique(fips_key$state_name))
+
+bees$state %>% unique
+# Only have four states represented here. Not that useful, not including for now
+
+
+
+# FSA Sec Declarations --------------------------------------------------
+
+
+# Secretary of Ag disaster declarations - load all
+paths <- list.files(
+  '1_raw/usda/fsa/disaster_declarations/sec/',
+  full.names = TRUE
+)
+ag_raw <- map(paths, read_excel)
+  
+
+# Select cols 1, 5, and last, filter by fips to NE, combine all years
+# Note that we are not keeping info on what kind of events they are. May regret
+ag <- map(ag_raw, ~ {
+  .x %>% 
+    select(1, 5, contains('YEAR')) %>% 
+    setNames(c('fips', 'des', 'year')) %>% 
+    mutate(
+      across(everything(), as.character),
+      year = ifelse(year == '2011, 2012', '2012', year)
+    ) %>% 
+    filter(fips %in% fips_key$fips)
+    # full_join(select(fips_key, fips) %>% filter(str_length(fips) == 5))
+}) %>% 
+  bind_rows()
+get_str(ag)
+
+
+
+## By County ---------------------------------------------------------------
+
+# Want variables by county, state, whole system
+# county first - number of unique events in each year
+ag_county <- ag %>% 
+  group_by(fips, year) %>% 
+  summarize(n_des = length(unique(des))) %>% 
+  arrange(fips)
+get_str(ag_county)
+
+# Get grid of all possibilities of counties and years - make sure no missing
+old_fips <- fips_key %>% 
+  filter_fips('old') %>% 
+  pull(fips)
+all_years <- c(2012:2020, 2022:2023)
+grid <- expand.grid(fips = old_fips, year = all_years) %>% 
+  mutate(across(everything(), as.character))
+
+# Join back to grid, turn NA into 0
+ag_county <- left_join(grid, ag_county) %>% 
+  mutate(across(everything(), ~ ifelse(is.na(.x), '0', .x)))
+get_str(ag_county)
+
+# Arrange like a regular variable
+ag_county <- ag_county %>% 
+  rename(nAgSecDisasters = n_des) %>% 
+  pivot_longer(
+    cols = nAgSecDisasters,
+    values_to = 'value',
+    names_to = 'variable_name'
+  )
+get_str(ag_county)
+
+# [] 
 
 
 

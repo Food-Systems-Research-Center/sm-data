@@ -7,7 +7,6 @@ pacman::p_load(
 )
 
 read_all_rds <- function(path, pattern = NULL, split = '\\.') {
-  
   paths <- list.files(path, pattern = pattern, full.names = TRUE)
   names <- list.files(path, pattern = pattern, full.names = FALSE) %>% 
     str_split_i(split, 1)

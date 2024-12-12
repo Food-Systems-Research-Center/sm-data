@@ -21,7 +21,8 @@ pacman::p_load(
   vegan,
   tibble,
   lubridate,
-  reticulate
+  reticulate,
+  tidyr
 )
 
 source('3_functions/read_all_rds.R')
@@ -72,7 +73,6 @@ ne_counties_prj <- st_transform(ne_counties, st_crs(lulc))
 crop <- st_crop(lulc, ne_counties_prj)
 
 # Save a copy to include straight into docs. Also as R object, see if faster
-# write_stars(crop, '1_raw/spatial/mrlc_lulc/Annual_NLCD_LndCov_2023_NewEngland.tif')
 saveRDS(crop, '2_clean/spatial/map_layers/mrlc_lulc_ne.rds')
 
 
@@ -81,9 +81,16 @@ lulc_by_county = function(x) {
   table(x, useNA = 'always')
 }
 
-# NOTE: Copy code processing counties here. For now just loading
+
+
+
+# NOTE: Copy code processing counties here. For now just loading []
 county_tables <- read_all_rds('1_raw/spatial/mrlc_lulc/counties/')
 get_str(county_tables)
+
+
+
+
 
 # Remove geometry and combine counties into one file with lulc diversity
 # Also, use title as identifier. It is the only identifier of fips
@@ -291,22 +298,10 @@ get_str(metas$lulc_div)
 
 
 
-# Imperiled Species -------------------------------------------------------
-
-
-# NOTE: This is not very useful - almost nothing going on in new england.
-
-# Richness of imperiled species
-# https://natureserve.maps.arcgis.com/home/item.html?id=5621d4789e174cc2b0695bfecd6dc6a8
-
-# rip <- read_stars('1_raw/spatial/nature_serve/richness_imperiled_species.tif')
-# rip
-
-
-
 # TreeMap 2016 ------------------------------------------------------------
 
 
+# This is just live biomass layer. Doing more below
 # https://www.fs.usda.gov/rds/archive/catalog/RDS-2021-0074
 treemap <- read_stars('1_raw/spatial/usfs_treemap/TreeMap2016_CARBON_L.tif')
 
@@ -317,70 +312,110 @@ treemap_crop <- st_crop(treemap, ne_counties_prj)
 # Saving this raster to use straight up in Quarto
 saveRDS(treemap_crop, '2_clean/spatial/map_layers/treemap_biomass.rds')
 
-# Saving the counties file to a shapefile to use in python
-# st_crs(ne_counties_prj)
-# st_write(
-#   ne_counties,
-#   '5_objects/spatial/counties_shapefile.shp',
-#   append = FALSE
-# )
 
 
-## Pull it back in after aggregating in python
-agg <- st_read('5_objects/spatial/aggregated_biomass', 'biomass_by_counties')
+# Redo TreeMap ------------------------------------------------------------
 
-# Have to put the crs back in place
-st_crs(agg) <- st_crs(treemap)
 
-# Save a copy to use straight in map
-agg <- agg %>% 
-  left_join(fips_key, by = 'fips') %>% 
-  select(fips, mean_biomass = mean, county_name, geometry) %>% 
-  mutate(mean_biomass = round(mean_biomass, 3))
+# Run python script to aggregate TreeMap2016 data by counties
+# Output is py_out
+reticulate::source_python('4_scripts/treemap_raster_aggregation.py')
+get_str(py_out)
+# Note that what we should really do here is just make it all a function,
+# source the function, then call the function from R so we can assign to a var
 
-saveRDS(agg, '2_clean/spatial/map_layers/mean_biomass.rds')
-
-# Now wrangle a copy like normal dataset
-agg <- agg %>% 
-  as.data.frame() %>% 
-  select(-geometry) %>% 
-  mutate(
-    variable_name = 'meanAboveGrndForBiomass',
-    year = '2016'
+# Rename columns, format variables
+treemap_dat <- py_out %>% 
+  setNames(c(
+    'fips',
+    'forestCarbonLive',
+    'forestCarbonDeadStanding',
+    'forestCarbonDeadDown',
+    'forestCanopyCover',
+    'forestLiveTreeVolume',
+    'forestLiveTrees',
+    'forestDeadTrees',
+    'forestStandHeight'
+  )) %>% 
+  pivot_longer(
+    cols = !fips,
+    names_to = 'variable_name',
+    values_to = 'value'
   ) %>% 
-  rename(value = mean_biomass)
-get_str(agg)
+  mutate(year = '2016')
+get_str(treemap_dat)
 
 # Save to results
-results$mean_biomass <- agg
+results$treemap <- treemap_dat
 
 
 
 ## Metadata ----------------------------------------------------------------
 
 
-get_str(agg)
+get_str(treemap_dat)
+vars <- treemap_dat$variable_name %>% 
+  unique %>% 
+  sort
+vars
 
-metas$bio_means <- data.frame(
-  variable_name = unique(agg$variable_name),
-  definition = 'Above ground forest biomass, live, tons per acre',
-  axis_name = 'Live Biomass (tons / acre)',
+metas$treemap <- data.frame(
+  variable_name = vars,
+  metric = c(
+    'Forest canopy cover',
+    'Forest carbon - dead and down',
+    'Forest carbon - standing dead',
+    'Forest carbon - live standing',
+    'Dead trees per forested acre',
+    'Live trees per forested acre',
+    'Forest live tree volume per acre',
+    'Forest stand height'
+  ),
+  definition = c(
+    'Mean live Canopy cover percentage derived from the Forest Vegatation Simulator',
+    'Mean carbon (tons per acre) of woody material greater than 3 inches in diameter on the ground, and stumps and their roots greater than 3 inches in diameter. Estimated from models based on geographic area, forest type, and live tree carbon density (Smith and Heath 2008).',
+    'Mean carbon, standing dead (tons per acre).',
+    'Mean carbon, live above ground (tons per acre).',
+    'Number of live trees (diamater > 5 inches) per acre',
+    'Number of standing dead trees (diamater > 5 inches) per acre',
+    'Mean volume, live, cubic feet per acre.',
+    'Height of dominant trees, in feet, derivedf from the Forest Vegatation Simulator'
+  ),
+  axis_name = c(
+    'Canopy Cover (%)',
+    'Dead Down Carbon (tons / acre)',
+    'Dead Standing Carbon (tons / acre)',
+    'Live Standing (tons / acre)',
+    'Live Trees / acre',
+    'Dead Trees / acre',
+    'Live Tree Volume (ft^3 / acre)',
+    'Stand Height (ft)'
+  ),
   dimension = "environment",
   index = 'biodiversity',
-  indicator = 'above ground biomass',
-  units = 'tons / acre',
+  indicator = c(
+    'tree vigor',
+    rep('above ground biomass', 3),
+    rep('tree vigor', 4)
+  ),
+  units = c(
+    'percentage',
+    rep('tons / acre', 3),
+    rep('number / acre', 2),
+    'cubic feet / acre',
+    'feet'
+  ),
   scope = 'national',
   resolution = 'county',
   year = '2016',
   latest_year = '2016',
-  updates = "unknown",
-  source = 'Riley, Karin L.; Grenfell, Isaac C.; Shaw, John D.; Finney, Mark A. 2022. TreeMap 2016 dataset generates CONUS-wide maps of forest characteristics including live basal area, aboveground carbon, and number of trees per acre',
-  url = 'https://doi.org/10.1093/jofore/fvac022',
-  citation = 'Riley, Karin L.; Grenfell, Isaac C.; Shaw, John D.; Finney, Mark A. 2022. TreeMap 2016 dataset generates CONUS-wide maps of forest characteristics including live basal area, aboveground carbon, and number of trees per acre. Journal of Forestry. 2022: 607-632.'
+  updates = "8 years",
+  source = 'TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016',
+  url = 'https://data.fs.usda.gov/geodata/rastergateway/treemap/index.php',
+  citation = 'Riley, Karin L.; Grenfell, Isaac C.; Finney, Mark A.; Shaw, John D. 2021. TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016. Fort Collins, CO: Forest Service Research Data Archive. https://doi.org/10.2737/RDS-2021-0074'
 )
 
-get_str(metas$bio_means)
-
+get_str(metas$treemap)
 
 
 # Biofinder ---------------------------------------------------------------
@@ -394,11 +429,6 @@ gdb_path <- '1_raw/spatial/biofinder/VCD2024.gdb'
 bio_layers <- map(layers$name, ~ st_read(gdb_path, layer = .x)) %>% 
   setNames(c(layers$name))
 
-# Keepers
-# mapview(bio_layers$Bio4_UncommonSpecies_Priority)
-# mapview(bio_layers$Bio4_RTESpecies_HP)
-# P is polygon, A is area?
-
 # Take these two and save directly as map layers
 saveRDS(
   bio_layers$Bio4_UncommonSpecies_Priority, 
@@ -408,6 +438,18 @@ saveRDS(
   bio_layers$Bio4_RTESpecies_HP,
   '2_clean/spatial/map_layers/biofinder_rte_spp.rds'
 )
+
+
+
+# USFS IDS ------------------------------------------------------------
+
+
+# Plan 
+# Insect and Disease Dataset (IDS)
+raw <- st_read('1_raw/spatial/usfs/CONUS_Region9_2023.gdb/CONUS_Region9_2023.gdb/')
+
+
+
 
 
 

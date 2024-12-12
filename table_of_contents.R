@@ -30,10 +30,10 @@ source('4_scripts/census.R')
 # BLS QCEW
 source('4_scripts/bls_api.R')
 
-# Other datasets. Mostly EPA so far
+# Other datasets. Mostly EPA, also USDA bee surveys, FSA disaster declarations
 source('4_scripts/other_datasets.R')
 
-# Spatial data - MRLC LULC, VT Biodiversity Project
+# Spatial data - MRLC, VT BioD Proj, USFS Treemap (long run time)
 source('4_scripts/lulc.R')
 
 

@@ -29,7 +29,7 @@ out$metrics <- read_all_rds(path = '2_clean/', pattern = '^met')
 
 # Spatial objects and references
 out$fips <- read_all_rds(path = '5_objects/', pattern = '_key.rds$')
-out$counties <- read_all_rds('2_clean/spatial/', pattern = '^ne_')
+out$counties <- read_all_rds('2_clean/spatial/', pattern = '(?i)^ne_.*.rds')
 
 # Map layers
 out$spatial <- read_all_rds('2_clean/spatial/map_layers/', pattern = '.rds$')
