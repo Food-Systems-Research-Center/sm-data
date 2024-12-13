@@ -30,6 +30,9 @@ source('4_scripts/census.R')
 # BLS QCEW
 source('4_scripts/bls_api.R')
 
+# County health rankings
+source('4_scripts/county_health_rankings.R')
+
 # Other datasets. Mostly EPA, also USDA bee surveys, FSA disaster declarations
 source('4_scripts/other_datasets.R')
 

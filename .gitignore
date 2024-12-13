@@ -4,14 +4,14 @@
 .Ruserdata
 .Renviron
 
-# Large raw files
-1_raw/
+# Files too large for git
+1_raw/food_systems_data_warehouse
+1_raw/nass
+1_raw/spatial
+1_raw/arms
+1_raw/bls
+1_raw/county_health_rankings
+
 5_objects/spatial/
 2_clean/spatial/
-1_raw/2017_cdqt_data.txt
-1_raw/2022-Bulk
-1_raw/food_systems_data_warehouse
-1_raw/nass/qs.census2022.txt
-1_raw/spatial/mrlc_lulc/
-1_raw/spatial
 5_objects/spatial/rasters/

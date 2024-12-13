@@ -31,7 +31,7 @@ dat <- readRDS('2_clean/metrics.rds')
 meta <- readRDS('2_clean/metadata.rds')
 
 # Spatial objects and references
-counties <- read_all_rds('2_clean/spatial/', pattern = '^ne_counties_')
+counties <- read_all_rds('2_clean/spatial/', pattern = '^ne_counties_*RDS')
 fips_key <- readRDS('5_objects/fips_key.rds')
 state_key <- readRDS('5_objects/state_key.rds')
 
@@ -50,3 +50,5 @@ env$metric %>%
 dat %>% 
   filter(str_detect(variable_name, '^lulc'))
          
+
+meta$dimension %>% unique
