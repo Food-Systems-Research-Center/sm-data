@@ -301,7 +301,7 @@ get_str(metas$lulc_div)
 # TreeMap 2016 ------------------------------------------------------------
 
 
-# This is just live biomass layer. Doing more below
+# This is just live carbon layer. Doing more below
 # https://www.fs.usda.gov/rds/archive/catalog/RDS-2021-0074
 treemap <- read_stars('1_raw/spatial/usfs_treemap/TreeMap2016_CARBON_L.tif')
 
@@ -318,14 +318,24 @@ saveRDS(treemap_crop, '2_clean/spatial/map_layers/treemap_biomass.rds')
 
 
 # Run python script to aggregate TreeMap2016 data by counties
-# Output is py_out
-reticulate::source_python('4_scripts/treemap_raster_aggregation.py')
-get_str(py_out)
-# Note that what we should really do here is just make it all a function,
-# source the function, then call the function from R so we can assign to a var
+county_path = '2_clean/spatial/ne_counties_2024.gpkg'
+path_list <- dir(
+  '1_raw/spatial/usfs_treemap/',
+  pattern = '*.tif',
+  full.names = TRUE
+)
+df_names <- path_list %>% 
+  str_split_i('2016_', 2) %>% 
+  str_remove('.tif') %>% 
+  str_to_lower()
 
-# Rename columns, format variables
-treemap_dat <- py_out %>% 
+# Map over path list to run function on each one
+reticulate::source_python('3_functions/raster_mean_by_polygon.py')
+py_out <- map2(path_list, df_names, ~ raster_mean_by_polygon(county_path, .x, .y))
+get_str(py_out)
+
+# Combine DFs, rename columns, format variables
+treemap_dat <- purrr::reduce(py_out, inner_join, by = 'fips') %>% 
   setNames(c(
     'fips',
     'forestCarbonLive',
@@ -439,6 +449,8 @@ saveRDS(
   '2_clean/spatial/map_layers/biofinder_rte_spp.rds'
 )
 
+rm(bio_layers)
+
 
 
 # USFS IDS ------------------------------------------------------------
@@ -446,44 +458,215 @@ saveRDS(
 
 # Plan 
 # Insect and Disease Dataset (IDS)
-raw <- st_read('1_raw/spatial/usfs/CONUS_Region9_2023.gdb/CONUS_Region9_2023.gdb/')
+# raw <- st_read('1_raw/spatial/usfs/CONUS_Region9_2023.gdb/CONUS_Region9_2023.gdb/')
 # What are we doing here. I don't remember.
 
 
 
-# CroplandCROS ------------------------------------------------------------
+# Cropland Data Layer -----------------------------------------------------
 
 
-cros_raw <- read_stars('1_raw/nass/2023_30m_cdls/2023_30m_cdls.tif')
-st_crs(cros_raw) # 4269
+## Note that we are using csvs below instead of this tif after all.
 
-# crop by NE counties. First reproject counties
-ne_counties_prj <- st_transform(ne_counties, st_crs(cros_raw))
-st_crs(cros_raw) == st_crs(ne_counties_prj)
+# # Pulling the 2023 raster. Next section we use more convenient csv data
+# cros_raw <- read_stars('1_raw/nass/2023_30m_cdls/2023_30m_cdls.tif')
+# st_crs(cros_raw) # 4269
+# 
+# # crop by NE counties. First reproject counties
+# ne_counties_prj <- st_transform(ne_counties, st_crs(cros_raw))
+# st_crs(cros_raw) == st_crs(ne_counties_prj)
+# 
+# # Crop cros by counties
+# cros_crop <- st_crop(cros_raw, ne_counties_prj)
+# 
+# # Save this as a layer for general use, as tif and rds
+# saveRDS(cros_crop, '2_clean/spatial/map_layers/cropland_cros.rds')
+# 
+# 
+# ## Pull the CDL key for crops
+# cdl_key <- read_csv(
+#   '1_raw/nass/2023_30m_cdls/cdl_key.csv', 
+#   col_select = c(1, 2)
+# )
+# 
+# 
+# ## County level data with python function
+# reticulate::source_python('3_functions/cat_zonal_stats.py')
+# out <- cat_zonal_stats(
+#   raster_path = '1_raw/nass/2023_30m_cdls/2023_30m_cdls.tif',
+#   polygon_path = '2_clean/spatial/ne_counties_2024.gpkg'
+# )
+# get_str(out)
+# 
+# # Clean and get percentages
+# dat <- out
+# dat[is.na(dat)] <- 0
+# get_str(dat)
+# 
+# # Convert codes to names
+# dat <- dat %>% 
+#   select(fips, order(colnames(.))) %>% 
+#   setNames(c('fips', cdl_key$class[match(names(.)[-1], cdl_key$code)]))  
+# get_str(dat)
+# 
+# 
+# ## Diversity
+# # Want diversity of just crops, so we will remove developed, forest, etc
+# pattern <- c('Developed|Forest|Shrubland|Grassland|Wetland|Barren|Missing|Water')
+# 
+# div <- dat %>% 
+#   select(!matches(pattern)) %>% 
+#   column_to_rownames('fips') %>% 
+#   diversity()
+# div
+# 
+# # Format as DF like other variables
+# div_df <- div %>% 
+#   as.data.frame() %>% 
+#   rownames_to_column() %>% 
+#   setNames(c('fips', 'cropDiversity')) %>% 
+#   mutate(year = '2023') %>% 
+#   pivot_longer(
+#     cols = cropDiversity,
+#     names_to = 'variable_name',
+#     values_to = 'value'
+#   )
+# get_str(div_df)
+# 
+# # Save to results
+# res$crop_div <- div_df
 
-# Crop cros by counties
-cros_crop <- st_crop(cros_raw, ne_counties_prj)
-
-# Save this as a layer for general use, as tif and rds
-saveRDS(cros_crop, '2_clean/spatial/map_layers/cropland_cros.rds')
 
 
-## County level data with python function
-reticulate::source_python('4_scripts/cat_zonal_stats.py')
-test <- cat_zonal_stats(
-  raster_path = '1_raw/nass/2023_30m_cdls/2023_30m_cdls.tif',
-  polygon_path = '2_clean/spatial/ne_counties_2024.gpkg'
+## Metadata ----------------------------------------------------------------
+
+
+# get_str(div_df)
+# years <- div_df$year %>% unique %>% sort
+# 
+# metas$crop_div <- data.frame(
+#   variable_name = 'cropDiversity',
+#   metric = 'Crop diversity',
+#   definition = 'Shannon diversity index of crop types based on USDA Cropland Data Layer. Forests, grasslands, developed areas and open water were removed before calculations.',
+#   axis_name = 'Crop Diversity',
+#   dimension = 'production',
+#   index = 'production diversity',
+#   indicator = 'crop diversity',
+#   units = 'index',
+#   scope = 'national',
+#   resolution = 'county',
+#   year = '2023',
+#   latest_year = '2023',
+#   updates = "annual",
+#   source = 'U.S. Department of Agriculture, National Agricultural Statistics Service, Cropland Data Layer',
+#   url = 'https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php',
+#   citation = paste(
+#     'U.S. Department of Agriculture, National Agricultural Statistics Service, Cropland Data Layer: USDA NASS, USDA NASS Marketing and Information Services Office, Washington, D.C.',
+#     'Retrieved from:', 
+#     'https://www.nass.usda.gov/Research_and_Science/Cropland/Release/index.php',
+#     'December 14th, 2024'
+#   )
+# )
+# 
+# get_str(metas$crop_div)
+
+
+
+# CDL - CSV ---------------------------------------------------------------
+
+
+# Here we can get multiple years, diversity across years?
+# https://www.nass.usda.gov/Research_and_Science/Cropland/sarsfaqs2.php#common.5
+paths <- dir(
+  '1_raw/nass/cropland_data_layer/County_Pixel_Count/',
+  pattern = 'Acres.*csv',
+  full.names = TRUE
 )
-get_str(test)
+year_name <- str_extract(paths, '[0-9]{4}')
+dat <- map(paths, read_csv) %>% 
+  setNames(c(year_name))
 
-dat <- test %>% 
-  select(fips, everything())
-get_str(dat)
-# Looks like this works, but we should test it
-mapview(cros_crop) + mapview(ne_counties, alpha.regions = 0)
+# Pull in cdl_key to rename columns. Add leading zeroes to match column names
+cdl_key <- read_csv(
+  '1_raw/nass/2023_30m_cdls/cdl_key.csv', 
+  col_select = c(1, 2)
+) %>% 
+  mutate(code = sprintf("%03d", code))
 
-dat[1,]
-# [] Get the key so we can figure this out!
+# Pull in fips key to filter to New England
+fips_key <- readRDS('5_objects/fips_key.rds')
+
+# Rename and clean
+cdl_clean <- map(dat, ~ {
+  df <- .x %>% 
+    select(fips = Fips, starts_with('Category')) %>% 
+    mutate(fips = ifelse(str_length(fips) == 4, paste0('0', fips), fips)) %>% 
+    filter(fips %in% fips_key$fips) %>% 
+    setNames(c('fips', str_split_i(names(.)[-1], '_', 2))) %>% 
+    setNames(c('fips', cdl_key$class[match(names(.)[-1], cdl_key$code)]))
+  na_indices <- which(is.na(colnames(df)))
+  colnames(df)[na_indices] <- letters[seq_along(na_indices)]
+  return(df)
+}) %>% 
+  keep(~ nrow(.x) > 1)
+
+# Now get diversity for each fips for each year
+# First have to remove non-crop classes
+pattern <- c('Developed|Forest|Shrubland|Grassland|Wetland|Barren|Missing|Water')
+cdl_div <- imap(cdl_clean, ~ {
+  .x %>% 
+    column_to_rownames('fips') %>% 
+    select(!matches(pattern)) %>% 
+    diversity() %>% 
+    as.data.frame() %>% 
+    rownames_to_column() %>% 
+    setNames(c('fips', 'cropDiversity')) %>% 
+    mutate(year = .y) %>% 
+    pivot_longer(
+      cols = cropDiversity,
+      names_to = 'variable_name',
+      values_to = 'value'
+    )
+  }) %>% 
+  bind_rows()
+get_str(cdl_div)
+
+# Save it
+results$crop_div <- cdl_div
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+get_str(cdl_div)
+years <- cdl_div$year %>% unique %>% sort %>% paste0(collapse = ', ')
+
+metas$crop_div <- data.frame(
+  variable_name = 'cropDiversity',
+  metric = 'Crop diversity',
+  definition = 'Shannon diversity index of crop types based on USDA Cropland Data Layer. Forests, grasslands, developed areas and open water were removed before calculations.',
+  axis_name = 'Crop Diversity',
+  dimension = 'production',
+  index = 'production diversity',
+  indicator = 'crop diversity',
+  units = 'index',
+  scope = 'national',
+  resolution = 'county',
+  year = years,
+  latest_year = '2023',
+  updates = "annual",
+  source = 'U.S. Department of Agriculture, National Agricultural Statistics Service, Cropland Data Layer',
+  url = 'https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php',
+  citation = paste(
+    'U.S. Department of Agriculture, National Agricultural Statistics Service, Cropland Data Layer: USDA NASS, USDA NASS Marketing and Information Services Office, Washington, D.C.',
+    'Retrieved from:', 
+    'https://www.nass.usda.gov/Research_and_Science/Cropland/Release/index.php',
+    'December 14th, 2024'
+  )
+)
+
+get_str(metas$crop_div)
 
 
 
@@ -491,7 +674,10 @@ dat[1,]
 
 get_str(results)
 result <- results %>% 
-  map(\(x) mutate(x, value = as.character(value))) %>% 
+  map(\(x) x %>% 
+        mutate(value = as.character(value)) %>% 
+        select(-any_of('metric'))
+      ) %>% 
   bind_rows()
 get_str(result)
 
