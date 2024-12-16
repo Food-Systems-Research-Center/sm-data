@@ -81,14 +81,14 @@ nat <- nat_raw %>%
 get_str(nat)
 
 # Check it out
-library(sf)
-library(mapview)
-counties <- readRDS('2_clean/spatial/ne_counties_2021.RDS')
-counties <- left_join(counties, nat)
-mapview(counties, zcol = 'healthOutcomeZ')
-mapview(counties, zcol = 'healthOutcomeGroup')
-mapview(counties, zcol = 'healthFactorZ')
-mapview(counties, zcol = 'healthFactorGroup')
+# library(sf)
+# library(mapview)
+# counties <- readRDS('2_clean/spatial/ne_counties_2021.RDS')
+# counties <- left_join(counties, nat)
+# mapview(counties, zcol = 'healthOutcomeZ')
+# mapview(counties, zcol = 'healthOutcomeGroup')
+# mapview(counties, zcol = 'healthFactorZ')
+# mapview(counties, zcol = 'healthFactorGroup')
 # Note that we recoded it so that higher z values are better. Originally, they
 # have it so low z values and low groups are better. Seems to cap just above 0
 
@@ -267,7 +267,7 @@ select_meta_meta <- select_meta %>%
   filter(str_detect(Measure, ' CI low$| CI high$', negate = TRUE)) %>% 
   mutate(
     metric = str_to_sentence(Measure),
-    variable_name = snakecase::to_lower_camel_case(metric),
+    variable_name = snakecase::to_lower_camel_case(Measure),
     axis_name = variable_name, # Could try to give better names...
     dimension = case_when(
       str_detect(metric, regex('social|disconnected|census|turnout|traffic|arrest|segregation|commute|driving|single-parent', ignore_case = TRUE)) ~ 'social',
@@ -288,6 +288,7 @@ select_meta_meta <- select_meta %>%
 
 select_meta_meta %>% select(1, 5)
 select_meta_meta
+select_meta_meta$variable_name %>% unique
 
 # Now just deal with social
 metas$select_measures_social <- select_meta_meta %>%
@@ -412,22 +413,22 @@ metas$select_measures_health <- select_meta_meta %>%
 # Remove the initial set of metadata from results list
 metas$select_measures <- NULL
 
+# Now we can also make our metric variable names formatted properly
+res$select_measures$variable_name <- res$select_measures$variable_name %>% 
+  snakecase::to_lower_camel_case()
+
 
 
 # Aggregate and Save ------------------------------------------------------
 
 
-result <- res %>% 
-  map(\(x) x %>% mutate(across(everything(), as.character))) %>% 
-  bind_rows()
-get_str(result)
-
-meta <- metas %>% 
-  bind_rows()
-get_str(meta)
+# Combine lists together, one for results, one for meta
+source('3_functions/aggregate_metrics.R')
+aggregate_metrics(res, metas)
 
 # Check record counts
 try(check_n_records(result, meta, 'County Health'))
+# This is cool - we didn't count the confidence intervals as metrics
 
 saveRDS(result, '5_objects/metrics/county_health.RDS')
 saveRDS(meta, '5_objects/metadata/county_health.RDS')

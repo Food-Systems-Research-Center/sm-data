@@ -15,6 +15,7 @@ pacman::p_load(
   readxl
 )
 
+source('3_functions/aggregate_metrics.R')
 source('3_functions/add_citation.R')
 source('3_functions/check_n_records.R')
 source('3_functions/filter_fips.R')
@@ -487,7 +488,7 @@ results$fsa_pres <- pres_county
 
 
 
-# Metadata ----------------------------------------------------------------
+## Metadata ----------------------------------------------------------------
 
 names(results)
 results$fsa_pres$variable_name %>% unique
@@ -497,6 +498,10 @@ metas$fsa <- data.frame(
   variable_name = c(
     'nFsaPresDisasters',
     'nFsaSecDisasters'
+  ),
+  metric = c(
+    'Number of FSA presidential disaster declarations',
+    'Number of FSA Agriculture Secretary disaster declarations'
   ),
   definition = c(
     'Number of unique disaster declarations made by the Secretary of Agriculture. Used to trigger eligibility for emergency loans and FSA disaster assistance programs.',
@@ -527,20 +532,202 @@ metas$fsa
 
 
 
+# ERS State Ag Data -------------------------------------------------------
+
+
+# Imports and exports by state
+# https://www.ers.usda.gov/data-products/state-agricultural-trade-data/
+
+
+
+## Imports -----------------------------------------------------------------
+
+
+imports_raw <- read_csv('1_raw/usda/ers_state_trade/top_5_ag_imports_by_state.csv') %>% 
+  setNames(c(snakecase::to_snake_case(names(.))))
+get_str(imports_raw)
+
+# Filter down to New England
+# Only keep world totals of top 5 imports, not each individual one
+# Also only keeping fiscal year total, not quarterly
+imports <- fips_key %>% 
+  select(fips, state_code) %>% 
+  inner_join(imports_raw, by = join_by(state_code == state)) %>% 
+  filter(country == 'World', fiscal_quarter == '0') %>%
+  select(
+    fips, 
+    year = fiscal_year, 
+    variable_name = commodity_name, 
+    value = dollar_value
+  )
+get_str(imports)
+# Note that this is pretty interesting, but not sure what we can really do with
+# the product-specific data. It would be hard to organize into 5 metrics because
+# they are not the same across each state. For now I guess we're just taking the
+# world total?
+
+# Group by state and year to get total world imports for top 5 products
+# Also pivot to fit format 
+imports <- imports %>% 
+  group_by(fips, year) %>% 
+  summarize(importsTopFive = sum(value)) %>% 
+  pivot_longer(
+    cols = importsTopFive,
+    values_to = 'value',
+    names_to = 'variable_name'
+  ) %>% 
+  mutate(value = value / 1e6)
+get_str(imports)
+
+# Save it
+results$imports <- imports
+
+
+
+## Exports -----------------------------------------------------------------
+
+
+exports_raw <- read_csv('1_raw/usda/ers_state_trade/state_exports.csv') %>% 
+  setNames(c(snakecase::to_snake_case(names(.))))
+get_str(exports_raw)
+
+# Filter to New England and clean
+exports <- fips_key %>% 
+  select(fips, state_name) %>% 
+  filter(str_length(fips) == 2) %>% 
+  inner_join(exports_raw, by = join_by(state_name == state)) %>% 
+  select(-state_name, -units) %>% 
+  mutate(
+    variable_name = paste0('exports', snakecase::to_upper_camel_case(commodity)) %>% 
+      str_remove('Exports$'),
+    .keep = 'unused'
+  )
+get_str(exports)  
+
+# Save 
+results$exports <- exports
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+# Check vars for exports. do imports separately
+vars <- results$exports$variable_name %>% 
+  unique %>% 
+  sort
+vars
+
+# Plain text versions of vars to use in definition
+plain_vars <- vars %>% 
+  str_remove('exports') %>% 
+  snakecase::to_sentence_case() %>% 
+  str_to_lower() %>% 
+  case_when(
+    . == 'total' ~ 'total exports',
+    .default = .
+  )
+plain_vars
+
+metas$import_export <- data.frame(
+  variable_name = c(vars, 'importsTopFive'),
+  definition = c(
+    paste(
+      'Value (in millions) of',
+      plain_vars,
+      'exports'
+    ),
+    'Value (in millions) of imports for top five agricultural commodity groups from outside of the United States. Note that this is not total imports, nor does it include imports from other states.'
+  ),
+  axis_name = c(
+    paste(
+      c(
+        'Beef',
+        'Broiler Meat', 
+        'Corn',
+        'Cotton',
+        'Dairy',
+        'Feed',
+        'Fresh Fruit',
+        'Processed Fruit',
+        'Grain',
+        'Hide and Skin',
+        'Other Livestock',
+        'Other Oilseed',
+        'Other Plant',
+        'Other Poultry',
+        'Pork',
+        'Rice',
+        'Soybean Mean',
+        'Soybean',
+        'Tobacco',
+        'Total Agricultural',
+        'Total Animal',
+        'Total Plant',
+        'Tree Nut',
+        'Vegetable Oil',
+        'Fresh Vegetable',
+        'Processed Vegetable',
+        'Wheat'
+      ),
+      'Exports (million usd)'
+    ),
+    'Top Five Imports (million usd)'
+  ),
+  dimension = "production",
+  index = 'imports vs exports',
+  indicator = c(
+    rep('total quantity exported', length(plain_vars)),
+    'total quantity imported'
+  ),
+  units = 'million usd',
+  scope = 'national',
+  resolution = 'state',
+  year = c(
+    rep(paste0(results$exports$year %>% unique %>% sort, collapse = ', '), length(plain_vars)),
+    paste0(results$imports$year %>% unique %>% sort, collapse = ', ')
+  ),
+  latest_year = c(
+    rep(results$exports$year %>% max(), length(plain_vars)),
+    results$imports$year %>% max
+  ),
+  updates = "annual",
+  source = c(
+    rep('US Department of Agriculture, Economic Research Service, State Agricultural Trade Data, State Exports', length(plain_vars)),
+    'US Department of Agriculture, Economic Research Service, State Agricultural Trade Data, State Trade by Country of Origin and Destination'
+  ),
+  url = 'https://www.ers.usda.gov/data-products/state-agricultural-trade-data/',
+  citation = paste0(
+    'USDA ERS (2023). State Agricultural Trade Data. Accessed from ',
+    'https://www.ers.usda.gov/data-products/state-agricultural-trade-data/, ',
+    'December 16th, 2024.'
+  )
+) %>% 
+  mutate(
+    metric = variable_name %>% 
+      str_remove('^exports|^imports') %>% 
+      snakecase::to_sentence_case() %>% 
+      str_to_lower(),
+    metric = case_when(
+      metric == 'top five' ~ 'value of top five imports',
+      .default = paste(
+        'Value of', metric, 'exports'
+      )
+    )
+  )
+
+metas$import_export
+
+
+
 # Aggregate and Save ------------------------------------------------------
 
 
-result <- results %>% 
-  map(\(x) mutate(x, value = as.character(value))) %>% 
-  bind_rows()
-get_str(result)
-
-meta <- metas %>% 
-  bind_rows()
-get_str(meta)
+# Put metrics and metadata together into two single DFs
+aggregate_metrics(results, metas)
 
 # Check record counts
-check_n_records(result, meta, 'GHG')
+check_n_records(result, meta, 'other')
 
 saveRDS(result, '5_objects/metrics/other.RDS')
 saveRDS(meta, '5_objects/metadata/other_meta.RDS')

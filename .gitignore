@@ -1,3 +1,4 @@
+# R project files
 .Rproj.user
 .Rhistory
 .RData
@@ -12,6 +13,10 @@
 1_raw/bls
 1_raw/county_health_rankings
 
+# More large files
 5_objects/spatial/
 2_clean/spatial/
 5_objects/spatial/rasters/
+
+# Temp scripts that are not worth saving
+4_scripts/explore.R
