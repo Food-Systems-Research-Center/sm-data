@@ -37,7 +37,7 @@ out$spatial <- read_all_rds('2_clean/spatial/map_layers/', pattern = '.rds$')
 # Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")
 
-get_str(out)
+# get_str(out)
 
 
 
@@ -45,8 +45,11 @@ get_str(out)
 
 
 # Paths to SMquarto and SMexplorer
-saveRDS(out, '../sm-docs/data/sm_data.rds')
-saveRDS(out, '../sm-explorer/dev/data/sm_data.rds')
-
+paths <- c(
+  '../sm-docs/data/sm_data.rds',
+  '../sm-explorer/dev/data/sm_data.rds'
+)
+walk(paths, ~ saveRDS(out, .x))
+cat('\nExported data to:\n', paths[1], '\n', paths[2], sep = '')
 
 clear_data()

@@ -30,6 +30,9 @@ source('4_scripts/census.R')
 # BLS QCEW
 source('4_scripts/bls_api.R')
 
+# FDA API for recalls, USDM api for droughts
+source('4_scripts/fda_usdm_apis.R')
+
 # County health rankings
 source('4_scripts/county_health_rankings.R')
 

@@ -3,7 +3,7 @@
 
 
 
-# Houskeeping -------------------------------------------------------------
+# Housekeeping -------------------------------------------------------------
 
 
 pacman::p_load(
@@ -52,7 +52,7 @@ inv <- map(inv_paths, ~ {
       metric = paste(
         str_replace(str_split_i(var_name, ', ', 2), '\\.', ','),
         str_split_i(var_name, ',', 1),
-        '(Economic Sectors)'
+        '(Inventory Sectors)'
       ),
       variable_name = paste0(
         'mmtCo2',
@@ -137,7 +137,7 @@ metas$ghgs <- results$ghgs %>%
     indicator = 'greenhouse gas emissions',
     definition = paste(
       'Greenhouse gas emissions by state in millions of metric tons.',
-      'Divided by economic sector or inventory sectory, which is consistent with international standards.'
+      'Categorized as either economic sector or inventory sector, the latter of which is consistent with international standards.'
     ),
     units = 'mmt CO2 equivalent',
     axis_name = variable_name,
