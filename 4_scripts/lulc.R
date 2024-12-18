@@ -25,9 +25,8 @@ pacman::p_load(
   tidyr
 )
 
-source('3_functions/read_all_rds.R')
-source('3_functions/add_citation.R')
-source('3_functions/check_n_records.R')
+source('3_functions/pipeline_utilities.R')
+source('3_functions/metadata_utilities.R')
 
 fips_key <- readRDS('5_objects/fips_key.rds')
 ne_counties <- readRDS('2_clean/spatial/ne_counties_2024.RDS')
@@ -330,7 +329,7 @@ df_names <- path_list %>%
   str_to_lower()
 
 # Map over path list to run function on each one
-reticulate::source_python('3_functions/raster_mean_by_polygon.py')
+reticulate::source_python('3_functions/spatial/raster_mean_by_polygon.py')
 py_out <- map2(path_list, df_names, ~ raster_mean_by_polygon(county_path, .x, .y))
 get_str(py_out)
 

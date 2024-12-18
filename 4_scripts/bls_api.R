@@ -24,8 +24,7 @@ pacman::p_load(
   purrr
 )
 
-source('3_functions/add_citation.R')
-source('3_functions/check_n_records.R')
+source('3_functions/metadata_utilities.R')
 fips_key <- readRDS('5_objects/fips_key.rds')
 naics_key <- readRDS('5_objects/naics_key.rds')
 

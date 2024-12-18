@@ -13,9 +13,8 @@ pacman::p_load(
   readr
 )
 
-source('3_functions/read_all_rds.R')
-source('3_functions/data_pipeline_functions.R')
-source('3_functions/check_n_records.R')
+source('3_functions/pipeline_utilities.R')
+source('3_functions/metadata_utilities.R')
 
 # Load datasets
 dat <- read_all_rds('5_objects/metrics/')  

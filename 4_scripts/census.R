@@ -25,10 +25,9 @@ pacman::p_load(
 # census_key <- Sys.getenv('ARMS_API_KEY')
 
 # Function to pull from Census API, and filter by fips
-source('3_functions/get_census_data.R')
-source('3_functions/filter_fips.R')
-source('3_functions/add_citation.R')
-source('3_functions/check_n_records.R')
+source('3_functions/api/get_census_data.R')
+source('3_functions/pipeline_utilities.R')
+source('3_functions/metadata_utilities.R')
 
 # county fips for New England (differences for CT restructuring)
 fips_key <- readRDS('5_objects/fips_key.rds')
@@ -385,109 +384,6 @@ metas$gini <- tibble(
   add_citation()
 
 get_str(metas$gini)
-
-
-
-# # Wage From Bulk ----------------------------------------------------------
-# 
-# 
-# acs <- read_csv('1_raw/census/ACSST1Y2023.S2411_2024-10-03T114322/ACSST1Y2023.S2411-Data.csv')
-# get_str(acs)
-# 
-# variables <- c(
-#   'S2411_C02_023E',
-#   'S2411_C02_030E',
-#   'S2411_C03_023E',
-#   'S2411_C03_030E',
-#   'S2411_C04_023E',
-#   'S2411_C04_030E'
-# )
-# 
-# results$wage_rate <- acs %>% 
-#   select(
-#     GEO_ID,
-#     NAME,
-#     all_of(variables)
-#   ) %>% 
-#   rename(
-#     "median_earnings_male_food_prep_and_serving" = 'S2411_C02_023E',
-#     "median_earnings_male_farming_fishing_forestry" = 'S2411_C02_030E',
-#     "median_earnings_female_food_prep_and_serving" = 'S2411_C03_023E',
-#     "median_earnings_female_farming_fishing_and_forestry" = 'S2411_C03_030E',
-#     "womens_earnings_as_perc_of_men_food_prep_and_serving" = 'S2411_C04_023E',
-#     "womens_earnings_as_perc_of_men_farming_fishing_forestry" = 'S2411_C04_030E'
-#   ) %>% 
-#   slice(-1) %>% 
-#   filter(str_detect(GEO_ID, 'US$', negate = TRUE)) %>% 
-#   mutate(
-#     fips = str_split_i(GEO_ID, 'US', 2),
-#     year = 2023,
-#     across(everything(), ~ str_replace(., '-', NA_character_))
-#   ) %>% 
-#   filter(fips %in% fips_all) %>%
-#   select(-c(GEO_ID, NAME)) %>% 
-#   pivot_longer(
-#     cols = !c(fips, year),
-#     names_to = 'variable_name',
-#     values_to = 'value'
-#   )
-# 
-# get_str(results$wage_rate)
-
-
-## Metadata ----------------------------------------------------------------
-
-# 
-# # Reminder of names and order
-# vars <- results$wage_rate$variable_name %>% unique %>% sort
-# 
-# # Save metadata
-# metas$wage_rate <- tibble(
-#   dimension = "economics",
-#   index = 'community economy',
-#   indicator = 'wage rate',
-#   metric = c(
-#     'Median wage, female, farming fishing and forestry',
-#     'Median wage, female, food service',
-#     'Median wage, male, farming fishing and forestry',
-#     'Median wage, male, food service',
-#     'Female earnings as percentage of male, farming fishing forestry',
-#     'Female earnings as percentage of male, food service'
-#   ),
-#   definition = c(
-#     'Median earnings for female, Civilian employed population 16 years and over with earnings, Farming, fishing, and forestry occupations',
-#     'Median earnings for female, Civilian employed population 16 years and over with earnings, Food preparation and serving related occupations',
-#     'Median earnings for male, Civilian employed population 16 years and over with earnings, Farming, fishing, and forestry occupations',
-#     'Median earnings for male, Civilian employed population 16 years and over with earnings, Food preparation and serving related occupations',
-#     'Female earnings as a percentage of male earnings, Civilian employed population 16 years and over with earnings, Farming, fishing, and forestry occupations',
-#     'Female earnings as a percentage of male earnings, Civilian employed population 16 years and over with earnings, Food preparation and serving related occupations'
-#   ),
-#   variable_name = c(
-#     vars
-#   ),
-#   units = c(
-#     rep('dollars', 4),
-#     rep('percentage', 2)
-#   ),
-#   scope = 'national',
-#   resolution = 'county',
-#   latest_year = '2023',
-#   all_years = paste0(2015:2023, collapse = ','),
-#   updates = "annual",
-#   quality = '2',
-#   source = "Source: U.S. Census Bureau, 2023 American Community Survey 1-Year Estimates",
-#   url = 'https://data.census.gov/table?q=S2411&g=010XX00US$0500000&y=2023',
-#   citation = 
-#   '@misc{Census2023ACSST1Y2023.S2411,
-#     author={U.S. Census Bureau, U.S. Department of Commerce},
-#     title={Occupation by Sex and Median Earnings in the Past 12 Months (in 2023 Inflation-Adjusted Dollars) for the Civilian Employed Population 16 Years and Over},
-#     vintage=2023,
-#     howpublished={U.S. Census Bureau},
-#     url={https://data.census.gov/table/ACSST1Y2023.S2411?q=S2411: OCCUPATION BY SEX AND MEDIAN EARNINGS IN THE PAST 12 MONTHS (IN 2019 INFLATION-ADJUSTED DOLLARS) FOR THE CIVILIAN EMPLOYED POPULATION 16 YEARS AND OVER&g=010XX00US,$0500000&y=2023},
-#     note={Accessed on 3 October 2024}
-#   }',
-#   warehouse = FALSE
-# )
 
 
 

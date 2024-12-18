@@ -23,26 +23,11 @@ pacman::p_load(
 results <- list()
 metas <- list()
 
-# NE state names
-# ne_state_names <- c(
-#   'Vermont',
-#   'New Hampshire',
-#   'Maine',
-#   'Massachusetts',
-#   'Rhode Island',
-#   'Connecticut'
-# )
-
-# fips for before and after CT changes
-# fips_2021 <- readRDS('5_objects/fips_2021.rds')
-# fips_2024 <- readRDS('5_objects/fips_2024.rds')
 fips_key <- readRDS('5_objects/fips_key.rds')
 
-# Helper function
-source('3_functions/warehouse_utilities.R')
-source('3_functions/data_pipeline_functions.R')
-source('3_functions/filter_fips.R')
-source('3_functions/check_n_records.R')
+# Load functions
+source('3_functions/wrangling/warehouse_utilities.R')
+source('3_functions/pipeline_utilities.R')
 
 
 

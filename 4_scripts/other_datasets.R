@@ -15,10 +15,8 @@ pacman::p_load(
   readxl
 )
 
-source('3_functions/aggregate_metrics.R')
-source('3_functions/add_citation.R')
-source('3_functions/check_n_records.R')
-source('3_functions/filter_fips.R')
+source('3_functions/metadata_utilities.R')
+source('3_functions/pipeline_utilities.R')
 fips_key <- readRDS('5_objects/fips_key.rds')
 
 results <- list()
@@ -26,132 +24,305 @@ metas <- list()
 
 
 
-# EPA GHGs from Ag --------------------------------------------------------
+# # EPA GHGs from Ag --------------------------------------------------------
+# 
+# 
+# # https://cfpub.epa.gov/ghgdata/inventoryexplorer/
+# # Read in files from inventory, add _inv to variable name to keep them straight
+# inv_paths <- list.files(
+#   '1_raw/epa/ghg_ide_agriculture_inventory/',
+#   full.names = TRUE
+# )
+# names <- map(inv_paths, ~ names(read_csv(.x))[1])
+# 
+# inv <- map(inv_paths, ~ {
+#   df <- read_csv(.x)
+#   var_name <- names(df)[1]
+#   df %>% 
+#     rename('state' = 1) %>% 
+#     filter(state %in% fips_key$state_name) %>% 
+#     pivot_longer(
+#       cols = !state,
+#       names_to = 'year',
+#       values_to = 'value'
+#     ) %>% 
+#     mutate(
+#       metric = paste(
+#         str_replace(str_split_i(var_name, ', ', 2), '\\.', ','),
+#         str_split_i(var_name, ',', 1),
+#         '(Inventory Sectors)'
+#       ),
+#       variable_name = paste0(
+#         'mmtCo2',
+#         var_name %>%
+#           str_split_i(',', 1) %>%
+#           to_lower_camel_case(),
+#         'Inv'
+#       )
+#     )
+# })
+# get_str(inv[[1]])
+# get_str(inv)
+# 
+# # Same for economic sectors
+# econ_paths <- list.files(
+#   '1_raw/epa/ghg_ide_agriculture_economic/',
+#   full.names = TRUE
+# )
+# econ <- map(econ_paths, ~ {
+#   df <- read_csv(.x)
+#   var_name <- names(df)[1]
+#   df %>% 
+#     rename('state' = 1) %>% 
+#     filter(state %in% fips_key$state_name) %>% 
+#     pivot_longer(
+#       cols = !state,
+#       names_to = 'year',
+#       values_to = 'value'
+#     ) %>% 
+#     mutate(
+#       metric = paste(
+#         str_replace(str_split_i(var_name, ', ', 2), '\\.', ','),
+#         str_split_i(var_name, ',', 1),
+#         '(Economic Sectors)'
+#       ),
+#       variable_name = paste0(
+#         'mmtCo2',
+#         var_name %>%
+#           str_split_i(',', 1) %>%
+#           to_lower_camel_case(),
+#         'Econ'
+#       )
+#     )
+# })
+# get_str(econ)
+# econ[[1]]
+# 
+# # Combine and bring fips
+# state_key <- fips_key %>% 
+#   select(fips, state_name) %>% 
+#   filter(str_length(fips) == 2, state_name != 'US')
+# dat <- c(econ, inv) %>% 
+#   bind_rows() %>% 
+#   left_join(state_key, by = join_by(state == state_name)) %>% 
+#   select(-state)
+# get_str(dat)
+# 
+# # Check vars
+# vars <- dat$variable_name %>% 
+#   unique %>% 
+#   sort
+# vars
+# 
+# # Add to results
+# results$ghgs <- dat
+# 
+# 
+# 
+# ## Metadata ----------------------------------------------------------------
+# 
+# 
+# # Check vars
+# vars
+# get_str(results$ghgs)
+# 
+# metas$ghgs <- results$ghgs %>% 
+#   select(metric, variable_name) %>% 
+#   unique() %>% 
+#   mutate(
+#     dimension = "environment",
+#     index = 'air quality',
+#     indicator = 'greenhouse gas emissions',
+#     definition = paste(
+#       'Greenhouse gas emissions by state in millions of metric tons.',
+#       'Categorized as either economic sector or inventory sector, the latter of which is consistent with international standards.'
+#     ),
+#     units = 'mmt CO2 equivalent',
+#     axis_name = variable_name,
+#     scope = 'national',
+#     resolution = 'state',
+#     year = paste(sort(unique(results$ghgs$year)), collapse = ', '),
+#     latest_year = max(unique(results$ghgs$year)),
+#     updates = "annual",
+#     source = paste0(
+#       'U.S. Environmental Protection Agency, Greenhouse Gas Inventory Explorer, 2023'
+#     ),
+#     url = 'https://cfpub.epa.gov/ghgdata/inventoryexplorer/'
+#   ) %>% 
+#   add_citation()
+# metas$ghgs
 
 
-# https://cfpub.epa.gov/ghgdata/inventoryexplorer/
-# Read in files from inventory, add _inv to variable name to keep them straight
-inv_paths <- list.files(
-  '1_raw/epa/ghg_ide_agriculture_inventory/',
-  full.names = TRUE
+
+# EPA GHGs ----------------------------------------------------------------
+
+
+# https://www.epa.gov/ghgemissions/state-ghg-emissions-and-removals
+# Go to 'download consolidated data for all states (zip)'
+
+# First UN sectors
+un_raw <- read_xlsx(
+  '1_raw/epa/state_ghgs_1990_2022/AllStateGHGData90-22_v082924.xlsx',
+  sheet = 2
 )
-names <- map(inv_paths, ~ names(read_csv(.x))[1])
+get_str(un_raw)
 
-inv <- map(inv_paths, ~ {
-  df <- read_csv(.x)
-  var_name <- names(df)[1]
-  df %>% 
-    rename('state' = 1) %>% 
-    filter(state %in% fips_key$state_name) %>% 
-    pivot_longer(
-      cols = !state,
-      names_to = 'year',
-      values_to = 'value'
-    ) %>% 
-    mutate(
-      metric = paste(
-        str_replace(str_split_i(var_name, ', ', 2), '\\.', ','),
-        str_split_i(var_name, ',', 1),
-        '(Inventory Sectors)'
+# Narrow down to New England, Agriculture, relevant columns
+un <- un_raw %>% 
+  select(
+    sector:sub_category_1, 
+    state = geo_ref,
+    ghg_category,
+    starts_with('Y')
+  ) %>% 
+  filter(sector == 'Agriculture') %>% 
+  inner_join(
+    select(fips_key, fips, state_code), 
+    by = join_by(state == state_code)
+  ) %>% 
+  mutate(sub_category_1 = ifelse(is.na(sub_category_1), '', sub_category_1)) %>% 
+  select(-state, -sector) # Don't need sector anymore - all agriculture
+get_str(un)
+
+# Combine categories so we can use them as definition later. It will also become
+# variable name I guess. Leaving it as definition for now.
+un <- un %>% 
+  mutate(
+    definition = str_c(subsector, category, sub_category_1, sep = ' > '),
+    definition = case_when(
+      str_detect(definition, '^CO2') ~ paste0(
+        str_sub(definition, end = 4),
+        str_to_lower(str_sub(definition, start = 5))
       ),
-      variable_name = paste0(
-        'mmtCo2',
-        var_name %>%
-          str_split_i(',', 1) %>%
-          to_lower_camel_case(),
-        'Inv'
-      )
-    )
-})
-get_str(inv[[1]])
-get_str(inv)
-
-# Same for economic sectors
-econ_paths <- list.files(
-  '1_raw/epa/ghg_ide_agriculture_economic/',
-  full.names = TRUE
-)
-econ <- map(econ_paths, ~ {
-  df <- read_csv(.x)
-  var_name <- names(df)[1]
-  df %>% 
-    rename('state' = 1) %>% 
-    filter(state %in% fips_key$state_name) %>% 
-    pivot_longer(
-      cols = !state,
-      names_to = 'year',
-      values_to = 'value'
-    ) %>% 
-    mutate(
-      metric = paste(
-        str_replace(str_split_i(var_name, ', ', 2), '\\.', ','),
-        str_split_i(var_name, ',', 1),
-        '(Economic Sectors)'
+      str_detect(definition, '^CO2', negate = TRUE) ~ paste(
+        ghg_category, 
+        'emissions from',
+        str_to_lower(definition)
       ),
-      variable_name = paste0(
-        'mmtCo2',
-        var_name %>%
-          str_split_i(',', 1) %>%
-          to_lower_camel_case(),
-        'Econ'
-      )
+      .default = NA
     )
-})
-get_str(econ)
-econ[[1]]
+  )
+get_str(un)
 
-# Combine and bring fips
-state_key <- fips_key %>% 
-  select(fips, state_name) %>% 
-  filter(str_length(fips) == 2, state_name != 'US')
-dat <- c(econ, inv) %>% 
-  bind_rows() %>% 
-  left_join(state_key, by = join_by(state == state_name)) %>% 
-  select(-state)
-get_str(dat)
+# Calculate aggregates by category in separate df
+subsector_totals <- un %>%
+  pivot_longer(
+    cols = starts_with("Y"),
+    names_to = "year",
+    names_prefix = "Y",
+    values_to = "value"
+  ) %>%
+  group_by(fips, year, subsector, ghg_category) %>%
+  summarize(value = sum(value, na.rm = TRUE), .groups = "drop") %>%
+  mutate(definition = paste0(
+    'Subsector total of ', 
+    ghg_category, 
+    ' emissions from agriculture: ', 
+    str_to_lower(subsector)
+  )) %>%
+  select(-subsector)
+get_str(subsector_totals)
 
-# Check vars
-vars <- dat$variable_name %>% 
-  unique %>% 
-  sort
-vars
+# Another set where we get CO2, CH4, and N2O totals per fips and year
+ghg_totals <- subsector_totals %>% 
+  group_by(fips, year, ghg_category) %>% 
+  summarize(value = sum(value, na.rm = TRUE), .groups = 'drop') %>% 
+  mutate(definition = paste0('Total ', ghg_category, ' emissions from agriculture')) %>% 
+  select(-ghg_category)
+get_str(ghg_totals)
 
-# Add to results
-results$ghgs <- dat
+# Put main data in long format
+un <- un %>%
+  select(-c(subsector:ghg_category)) %>% 
+  pivot_longer(
+    cols = starts_with('Y'),
+    names_to = 'year',
+    values_to = 'value'
+  ) %>%
+  mutate(year = str_remove(year, 'Y'))
+get_str(un)
 
+# Now we can combine them all into one long format df
+# Also add variable names here. Save it to use in metadata
+# Also adding teragrams to end of each definition
+un_definitions <- un %>% 
+  bind_rows(select(subsector_totals, -ghg_category)) %>% 
+  bind_rows(ghg_totals) %>% 
+  mutate(
+    definition = paste(definition, '(Tg)'),
+    metric = str_remove(
+      definition, 
+      'manure management > |field burning of agricultural residues > |enteric fermentation > '
+    ) %>%
+      str_remove('total of ') %>% 
+      str_remove('agricultural ') %>% 
+      str_remove('carbon-containing ') %>% 
+      str_replace_all(' > ', ' '),
+    variable_name = metric %>% 
+      str_remove('Subsector ') %>% 
+      str_remove('Total ') %>% 
+      str_remove('emissions ') %>% 
+      str_remove(':') %>% 
+      str_remove_all(',') %>% 
+      str_remove('from ') %>% 
+      str_remove('management ') %>% 
+      str_remove('burning ') %>% 
+      str_remove('of ') %>% 
+      str_remove('and ') %>% 
+      str_replace('agriculture', 'ag') %>% 
+      str_replace('enteric fermentation ', 'ferment ') %>% 
+      str_remove('application other fertilizers ') %>% 
+      str_remove('liming ') %>% 
+      str_remove('direct indirect n2o emissions from soils agricultural ') %>% 
+      str_remove('rice cultivation ') %>% 
+      str_remove('american ') %>% 
+      str_remove(' \\(Tg\\)'),
+    variable_name = paste0(
+      str_sub(variable_name, end = 3),
+      snakecase::to_upper_camel_case(str_sub(variable_name, start = 4))
+    )
+  )
+get_str(un_definitions)
+
+# Pull out just the metric values for results list
+un_metrics <- un_definitions %>% 
+  select(fips, variable_name, value, year)
+get_str(un_metrics)
+
+# Save it
+results$ghgs <- un_metrics
 
 
 ## Metadata ----------------------------------------------------------------
 
 
 # Check vars
-vars
-get_str(results$ghgs)
+(vars <- get_vars(un_metrics))
 
-metas$ghgs <- results$ghgs %>% 
-  select(metric, variable_name) %>% 
-  unique() %>% 
+# Reformat the definitions and metrics into wide for metadata
+get_str(un_definitions)
+metas$ghgs <- un_definitions %>% 
+  select(variable_name, metric, definition, year) %>% 
+  group_by(variable_name, metric, definition) %>% 
+  summarize(
+    latest_year = max(unique(year)),
+    year = paste0(year, collapse = ', ')
+  ) %>% 
   mutate(
-    dimension = "environment",
-    index = 'air quality',
-    indicator = 'greenhouse gas emissions',
-    definition = paste(
-      'Greenhouse gas emissions by state in millions of metric tons.',
-      'Categorized as either economic sector or inventory sector, the latter of which is consistent with international standards.'
-    ),
-    units = 'mmt CO2 equivalent',
     axis_name = variable_name,
+    dimension = 'environment',
+    index = 'air quality',
+    indicator = 'carbon, ghg, nutrients',
+    units = 'Tg',
     scope = 'national',
     resolution = 'state',
-    year = paste(sort(unique(results$ghgs$year)), collapse = ', '),
-    latest_year = max(unique(results$ghgs$year)),
     updates = "annual",
-    source = paste0(
-      'U.S. Environmental Protection Agency, Greenhouse Gas Inventory Explorer, 2023'
-    ),
-    url = 'https://cfpub.epa.gov/ghgdata/inventoryexplorer/'
+    source = 'U.S. Environmental Protection Agency State GHG Data (2024).',
+    url = 'https://www.epa.gov/ghgemissions/state-ghg-emissions-and-removals',
+    warehouse = FALSE
   ) %>% 
-  add_citation()
+  add_citation(access_date = '2024-12-18')
+
 metas$ghgs
 
 
@@ -717,6 +888,113 @@ metas$import_export <- data.frame(
   )
 
 metas$import_export
+
+
+
+# USDA F2S Census ---------------------------------------------------------
+
+
+# USDA Farm to School Census
+# https://farmtoschoolcensus.fns.usda.gov/census-results/census-data-explorer
+
+# Load national summary data. Need specific pages for the data we want
+# Have to do these manually to get right cells. Unfortunate
+path <- '1_raw/usda/f2s_census/ops-f2s-2023NationalStateDataWorkbook-120924.xlsx'
+census <- list()
+census$sfa_participation <- read_xlsx(
+  path, 
+  sheet = '2. Number of SFAs',
+  range = 'A4:F61'
+) %>% 
+  select(state = 1, sfaFarmToSchool = 4)
+census$culture <- read_xlsx(
+  path, 
+  sheet = '6. F2S Activities',
+  range = 'A5:T62'
+) %>% 
+  select(state = 1, sfaCulturallyRelevant = 20)
+census$activities <- read_xlsx(
+  path, 
+  sheet = '7. F2S Activity Categories',
+  range = 'A4:D61'
+) %>% 
+  select(state = 1, sfaServeLocal = 4)
+census$local_spending <- read_xlsx(
+  path, 
+  sheet = '20. Local Foods Spending',
+  range = 'A4:D61'
+) %>% 
+  select(state = 1, sfaLocalFoodCosts = 4)
+get_str(census)
+
+# Now we can put them together
+all_states <- fips_key$state_code[!is.na(fips_key$state_code)]
+census <- map(census, ~ {
+  .x %>% 
+    mutate(state = ifelse(state == 'National', 'US', state)) %>% 
+    filter(state %in% all_states) %>% 
+    left_join(select(fips_key, fips, state_code), by = join_by(state == state_code)) %>% 
+    select(-state)
+}) %>% 
+  reduce(inner_join) %>% 
+  mutate(sfaLocalFoodCosts = as.numeric(sfaLocalFoodCosts)) %>% 
+  mutate(across(is.numeric, ~ format(round(.x, 2), nsmall = 2)))
+get_str(census)
+
+# Pivot longer, add year, format like all other variables
+census <- census %>%
+  pivot_longer(
+    cols = !fips,
+    values_to = 'value',
+    names_to = 'variable_name'
+  ) %>% 
+  mutate(year = '2023')
+get_str(census)  
+
+# Save to results
+results$census <- census
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+(vars <- get_vars(census))
+
+metas$census <- data.frame(
+  variable_name = get_vars(census),
+  definition = c(
+    'Percentage of all School Food Authorities growing or serving culturally relevant foods.',
+    'Percentage of all School Food Authorities participating in a Farm to School program.',
+    'Percentage of total food costs spent on local foods among School Food Authorities which participate in a Farm to School program.',
+    'Percentage of all School Food Authorities serving local foods. Note that the definition of "local" can very by SFA.'
+  ),
+  axis_name = c(
+    'SFA Culturally Relevant Food (%)',
+    'SFA with Farm to School (%)',
+    'SFA Local Food Costs (%)',
+    'SFA Serving Local Food (%)'
+  ),
+  dimension = 'health',
+  index = 'food security',
+  indicator = c(
+    'access to culturally appropriate food',
+    'dietary quality',
+    'dietary quality',
+    'dietary quality'
+  ),
+  units = 'percentage',
+  scope = 'national',
+  resolution = 'state',
+  year = get_all_years(census),
+  latest_year = get_max_year(census),
+  updates = "~ 4 years",
+  source = 'U.S. Department of Agriculture Food and Nutrition Service Farm to School Program Census (2023).',
+  url = 'https://farmtoschoolcensus.fns.usda.gov/census-results/census-data-explorer'
+) %>% 
+  add_citation(access_date = '2024-12-18')
+  
+metas$census
 
 
 

@@ -16,9 +16,7 @@ pacman::p_load(
   stringr
 )
 
-source('3_functions/aggregate_metrics.R')
-source('3_functions/check_n_records.R')
-source('3_functions/add_citation.R')
+source('3_functions/metadata_utilities.R')
 
 fips_key <- readRDS('5_objects/fips_key.rds')
 results <- list()

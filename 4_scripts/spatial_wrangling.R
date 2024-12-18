@@ -51,11 +51,13 @@ state <- tidycensus::fips_codes %>%
   `rownames<-`(NULL)
 
 # Merge so we have county and state data in one data frame
+# This will be our fips key
 county_state <- bind_rows(county, state) %>%
   add_row(
     fips = "00",
     county_name = NA,
-    state_name = "US"
+    state_name = "US",
+    state_code = 'US'
   )
 
 # Import county spatial data frame
@@ -96,6 +98,7 @@ states_2024 <- tigris::states(
 states_2024
 
 
+saveRDS(county_state, '5_objects/fips_key.rds')
 saveRDS(counties_2021, '2_clean/spatial/ne_counties_2021.RDS')
 saveRDS(counties_2024, '2_clean/spatial/ne_counties_2024.RDS')
 saveRDS(states_2024, '2_clean/spatial/ne_states_2024.RDS')

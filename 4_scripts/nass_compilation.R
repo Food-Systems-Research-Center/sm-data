@@ -16,9 +16,8 @@ pacman::p_load(
 )
 
 # Source functions
-source('3_functions/pull_variable.R')
-source('3_functions/add_citation.R')
-source('3_functions/check_n_records.R')
+source('3_functions/wrangling/pull_variable.R')
+source('3_functions/metadata_utilities.R')
 
 # Pull Census of Ag data filtered to New England
 coa_ne <- readRDS('5_objects/coa_ne.rds')
