@@ -126,7 +126,9 @@ check_n_records <- function(metric_vars,
 # Comebine results and metas into result and meta
 aggregate_metrics <- function(metrics = results,
                               metadata = metas) {
-  result <<- map(metrics, ~ {
+  out <- list()
+
+  out$result <- map(metrics, ~ {
     .x %>%
       mutate(
         value = as.character(value), 
@@ -135,9 +137,11 @@ aggregate_metrics <- function(metrics = results,
   }) %>% 
     bind_rows()
   
-  meta <<- map(metas, ~ {
+  out$meta <- map(metas, ~ {
     .x %>% 
       mutate(latest_year = as.character(latest_year))
   }) %>%  
     bind_rows()
+  
+  return(out)
 }

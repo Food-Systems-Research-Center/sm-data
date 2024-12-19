@@ -107,26 +107,11 @@ dat <- out %>%
   bind_rows()
 get_str(dat)
 
-# Check for issues with 25009
-# dat %>%
-#   filter(
-#     # area_fips == '25009',
-#     variable_name == 'annual_avg_estabs_111'
-#   ) %>% 
-#   group_by(area_fips) %>% 
-#   filter(n() == 1) %>% 
-#   ungroup()
-
 # Remove irrelevant columns
 results$qcew <- dat %>% 
   select(-c(
     own_code, agglvl_code, size_code, qtr
   )) %>% 
-  # unite(
-  #   col = 'disclosure',
-  #   matches('disclosure'),
-  #   sep = ''
-  # ) %>% 
   mutate(
     # disclosure = ifelse(disclosure == '', NA, 'N'),
     variable_name = paste0(
@@ -192,41 +177,11 @@ metas$qcew <- metas$qcew %>%
     ),
     axis_name = variable_name, # fix this eventually...
     metric = variable_name,
-    # metric = c(
-    #   'Average Employment Level',
-    #   'Average Number of Establishments',
-    #   'Average Weekly Wage',
-    #   'Annual Contributions',
-    #   'Average Annual Pay',
-    #   'LQ: Employment to US',
-    #   'LQ: Establishments to US',
-    #   'LQ: Average Weekly Wage to US',
-    #   'LQ: Contributions to US',
-    #   'LQ: Average Annual Pay to US',
-    #   'LQ: Taxable Annual Wages to US',
-    #   'LQ: Total Annual Wages to US',
-    #   'OTY Change in Employment',
-    #   'OTY Percent Change in Employment',
-    #   'OTY Change in Establishments',
-    #   'OTY Percent Change in Establishments',
-    #   'OTY Change in Weekly Wage',
-    #   'OTY Percent Change in Weekly Wages',
-    #   'OTY Change in Contributions',
-    #   'OTY Percent Change in Contributions',
-    #   'OTY Change in Annual Pay',
-    #   'OTY Percent change in Annual Pay',
-    #   'OTY Change in Annual Wages',
-    #   'OTY Percent Change in Annual Wages',
-    #   'OTY Change in Taxable Wages',
-    #   'OTY Percent Change in Taxable Wages',
-    #   'Taxable Annual Wages',
-    #   'Total Annual Wages'
-    # ),
     units = case_when(
       str_detect(variable_name, 'Estabs') ~ 'ratio',
       str_detect(variable_name, 'Emplvl') ~ 'count',
       str_detect(variable_name, 'Wage|AnnualPay|Contribut') ~ 'usd',
-      str_detect(variable_name, '^lq') ~ 'ratio',
+       str_detect(variable_name, '^lq') ~ 'ratio',
       str_detect(variable_name, '^oty.*PctChg') ~ 'percentage',
     ),
     annotation = 'disclosure',
@@ -238,7 +193,7 @@ metas$qcew <- metas$qcew %>%
     source = 'U.S. Bureau of Labor Statistics, Quarterly Census of Employment and Wages (2023)',
     url = 'https://www.bls.gov/cew/'
   ) %>% 
-  add_citation() %>% 
+  add_citation(access_date = '2024-11-05') %>%
   select(-og_variable_name)
   
 get_str(metas$qcew)
@@ -247,6 +202,9 @@ try(check_n_records(results$qcew, metas$qcew, 'QCEW'))
 
 
 # BLS API -----------------------------------------------------------------
+
+
+## Comment this out only to run it - no accidental queries
 
 
 # seriesid='BDS0000000000300115110001LQ5'
@@ -321,21 +279,28 @@ get_str(results$unemp)
 
 
 # Unique variable names
-vars <- results$unemp$variable_name %>% 
-  unique %>% 
-  sort
-vars
+(vars <- get_vars(results$unemp))
 # Not sure if metro, influence codes belong in an indicator, best separate?
 
 metas$unemp <- data.frame(
-  dimension = rep('economics', 9),
-  index = rep('community economy', 9),
+  dimension = c(
+    rep('economics', 4),
+    rep('utilities', 2),
+    rep('economics', 2),
+    'utilities'
+  ),
+  index = c(
+    rep('community economy', 4),
+    rep('utilities', 2),
+    rep('community economy', 2),
+    'utilities'
+  ),
   indicator = c(
     'employee numbers',
     rep('wealth/income distribution', 3),
-    rep(NA, 2),                                   # revisit this at some point
+    rep('utilities', 2),                                   # revisit this at some point
     rep('wealth/income distribution', 2),
-    NA
+    'utilities'
   ),
   axis_name = c(
     'Civ Labor Force',
@@ -399,13 +364,8 @@ metas$unemp <- data.frame(
   annotation = rep(NA, 9),
   scope = rep('national', 9),
   resolution = rep('county', 9),
-  year = c(
-    rep(paste0(c(2000:2022), collapse = '|'), 2),
-    rep('2021', 2),
-    rep('2013', 2),
-    rep(paste0(c(2000:2022), collapse = '|'), 2),
-    '2013'
-  ),
+  year = get_all_years(results$unemp),
+  latest_year = get_max_year(results$unemp),
   updates = c(
     rep('annual', 4),
     rep(NA, 2),
@@ -428,7 +388,7 @@ metas$unemp <- data.frame(
     'https://www.ers.usda.gov/topics/rural-economy-population/rural-classifications/'
   )
 ) %>% 
-  add_citation()
+  add_citation(access_date = '2024-11-05')
 
 get_str(metas$unemp)
 metas$unemp

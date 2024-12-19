@@ -606,6 +606,7 @@ metas$total_animal_and_crop_sales <- tibble(
   scope = 'national',
   resolution = 'county',
   year = '2022',
+  latest_year = '2022',
   updates = "5 years",
   source = paste0(
     "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -650,6 +651,7 @@ metas$total_forest_product_income <- tibble(
   scope = 'national',
   resolution = 'county',
   year = '2022',
+  latest_year = '2022',
   updates = "5 years",
   source = paste0(
     "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -756,67 +758,18 @@ get_str(results$social)
 
 
 
-### Race ratio --------------------------------------------------------------
-
-
-# NOTE: I don't trust these numbers enough to make a ratio of bipoc to white.
-# Some of them come out negative - not a good sign
-
-
-# Calculate ratio bipoc to white producers
-# names(diversity)
-# race <- bind_rows(
-#   diversity[
-#     str_detect(
-#       names(diversity), 
-#       'white|indian|asian|black|hispanic|native'
-#     )
-#   ]
-# ) %>% 
-#   pivot_wider(
-#     id_cols = 'fips',
-#     names_from = 'variable_name',
-#     values_from = 'value'
-#   ) %>% 
-#   mutate(
-#     bipoc_white_ratio = 1 - (n_white_producers / sum(
-#       n_american_indian_producers,
-#       n_asian_producers,
-#       n_black_producers,
-#       n_hispanic_producers,
-#       n_native_hawaiian_producers,
-#       na.rm = TRUE
-#     )),
-#     .keep = 'unused'
-#   )
-# get_str(race)
-# 
-# results$race <- diversity$mean_producer_age %>% 
-#   full_join(race, by = 'fips') %>% 
-#   mutate(
-#     value = bipoc_white_ratio,
-#     variable_name = 'bipoc_white_ratio',
-#     .keep = 'unused'
-#   )
-# get_str(results$race)
-
-
-
 ## Metadata ---------------------------------------------------------------
 
 
 get_str(results$social)
-vars <- results$social$variable_name %>% 
-  unique %>% 
-  sort
-vars
+(vars <- get_vars(results$social))
 
 metas$social <- tibble(
   dimension = "social",
   index = 'food and farmworker diversity',
   indicator = c(
-    'gender diversity',
     'age diversity',
+    'gender diversity',
     rep('racial diversity', 3),
     'gender diversity',
     'racial diversity',
@@ -847,7 +800,8 @@ metas$social <- tibble(
   ),
   scope = 'national',
   resolution = 'county',
-  year = '2022',
+  year = get_all_years(results$social),
+  latest_year = get_max_year(results$social),
   updates = "5 years",
   source = paste0(
     "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -855,7 +809,7 @@ metas$social <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation()
+  add_citation(access_date = '2024-11-13')
 
 
 
@@ -1177,6 +1131,7 @@ vars <- env$variable_name %>%
   sort
 vars
 
+
 starter <- env %>% 
   group_by(variable_name) %>% 
   # summarize(units = paste0(str_to_lower(unique(unit_desc)), collapse = ', ')) %>% 
@@ -1243,7 +1198,7 @@ metas$env <- starter %>%
       'Operations with expenses from water for irrigation sourced off-farm',
       'Depth of irrigation wells',
       'Number of irrigation wells',
-      'Operations wiih irrigation wells',
+      'Operations with irrigation wells',
       'Operations with wind turbines rented to others',
       
       'Operations with methane digesters',
@@ -1296,28 +1251,13 @@ metas$env
 # Aggregate ---------------------------------------------------------------
 
 
-get_str(results)
-map(results, get_str)
-result <- results %>% 
-  map(~ mutate(.x, value = as.character(value))) %>% 
-  bind_rows() %>% 
-  select(fips, year, variable_name, value, value_codes, cv_percent)
-get_str(result)
+# Put metrics and metadata together into two single DFs
+out <- aggregate_metrics(results, metas)
 
-get_str(metas)
-meta <- metas %>% 
-  map(~ mutate(.x, latest_year = ifelse(
-    'latest_year' %in% names(.x), 
-    as.character(latest_year),
-    year
-    ))) %>% 
-  bind_rows()
-get_str(meta)
+# Check record counts
+check_n_records(out$result, out$meta, 'nass')
 
-# Check records to make sure they are the same, meta and metrics
-check_n_records(result, meta, 'NASS')
-
-saveRDS(result, '5_objects/metrics/nass.RDS')
-saveRDS(meta, '5_objects/metadata/nass_meta.RDS')
+saveRDS(out$result, '5_objects/metrics/nass.RDS')
+saveRDS(out$meta, '5_objects/metadata/nass_meta.RDS')
 
 clear_data()

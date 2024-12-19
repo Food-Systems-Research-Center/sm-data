@@ -342,14 +342,14 @@ metas$select_measures_economics <- select_meta_meta %>%
     index = 'community economy',
     indicator = c(
       'tbd',
-      rep('wealth / income distribution', 6),
+      rep('wealth/income distribution', 6),
       'unemployment'
     ),
     units = c(
       rep('percentage', 3),
       'ratio',
       'ratio',
-      'usd / hour',
+      'usd/hour',
       'usd',
       'percentage'
     )

@@ -35,7 +35,6 @@ results <- list()
 metas <- list()
 
 
-
 # VT Biodiversity Project -------------------------------------------------
 
 
@@ -75,47 +74,18 @@ crop <- st_crop(lulc, ne_counties_prj)
 saveRDS(crop, '2_clean/spatial/map_layers/mrlc_lulc_ne.rds')
 
 
-# Get table of values in each county
-lulc_by_county = function(x) {
-  table(x, useNA = 'always')
-}
+## Get cell counts of each category for each county
+county_path <- '2_clean/spatial/ne_counties_2024.gpkg'
+state_path <- '2_clean/spatial/ne_states.gpkg'
+raster_path <- '1_raw/spatial/mrlc_lulc/Annual_NLCD_LndCov_2023_CU_C1V0.tif'
 
+# Load python function, get cell counts for county and state
+reticulate::source_python('3_functions/spatial/cat_zonal_stats.py')
+out <- map(list(county_path, state_path), ~ cat_zonal_stats(raster_path, .x))
+get_str(out)
 
-
-
-# NOTE: Copy code processing counties here. For now just loading []
-county_tables <- read_all_rds('1_raw/spatial/mrlc_lulc/counties/')
-get_str(county_tables)
-
-
-
-
-
-# Remove geometry and combine counties into one file with lulc diversity
-# Also, use title as identifier. It is the only identifier of fips
-
-# Get unique levels in case they are missing from one
-all_levels <- map(county_tables, \(x) x$FUN) %>% 
-  unlist() %>% 
-  unique()
-
-county_tables <- imap(county_tables, \(county, name) {
-  county_fips <- str_split_i(name, '_', 2)
-  out <- county %>% 
-    select(
-      lulc_code = FUN,
-      cell_count = 3
-    ) %>% 
-    mutate(
-      fips = county_fips
-      # lulc_code = ifelse(is.na(lulc_code), 250, lulc_code)
-    )
-  levels(out$lulc_code) <- all_levels
-  return(out)
-})
-
-get_str(county_tables)
-# Will save this layer specifically below before processing diversity
+# Get unique levels. Use later to make sure we are not missing any
+all_levels <- names(out[[1]])[-which(names(out[[1]]) == 'fips')]
 
 # Descriptions of LULC codes. Removing perennial ice/snow (12) - none here
 codes <- data.frame(
@@ -136,8 +106,8 @@ codes <- data.frame(
     'LULC, proportion, pasture/hay',
     'LULC, proportion, cultivated crops',
     'LULC, proportion, woody wetlands',
-    'LULC, proportion, emergent herbaceous wetlands',
-    'LULC, proportion, no data'
+    'LULC, proportion, emergent herbaceous wetlands'
+    # 'LULC, proportion, no data'
   ),
   definition = c(
     'Areas of open water, generally with less than 25% cover of vegetation or soil',
@@ -155,56 +125,76 @@ codes <- data.frame(
     'Areas of grasses, legumes, or grass-legume mixtures planted for livestock grazing or the production of seed or hay crops, typically on a perennial cycle. Pasture/hay vegetation accounts for greater than 20% of total vegetation.',
     'Areas used to produce annual crops, such as corn, soybeans, vegetables, tobacco, and cotton, and perennial woody crops such as orchards and vineyards. Crop vegetation accounts for greater than 20% of total vegetation. This class also includes all land being actively tilled.',
     'Areas where forest or shrubland vegetation accounts for greater than 20% of vegetative cover and the soil or substrate is periodically saturated with or covered with water.',
-    'Areas where perennial herbaceous vegetation accounts for greater than 80% of vegetative cover and the soil or substrate is periodically saturated with or covered with water.',
-    'No data.'
+    'Areas where perennial herbaceous vegetation accounts for greater than 80% of vegetative cover and the soil or substrate is periodically saturated with or covered with water.'
+    # 'No data.'
   )
 )
-codes
 
-# Turn into proportions
-prop <- map(county_tables, \(x) {
-  x %>% 
-    mutate(prop = round(cell_count / sum(x$cell_count), 3))
+# Make variable names based on metrics
+removals <- c(',', 'ortion', 'eloped', 'ensity', '/scrub', 'aceous', 'emergent', '/hay', 'ium', 'iduous', 'ivated')
+codes$variable_name <- reduce(removals, ~ str_remove_all(.x, .y), .init = codes$metric) %>% 
+  str_replace_all('/', ' ') %>% 
+  snakecase::to_lower_camel_case()
+get_str(codes)
+
+# rowSums to get proportions of each LULC type. Each will be a different metric
+# Also turn NAs into 0s - there is only one, no cropland in that cell
+all_lulc <- map(out, ~ {
+  .x %>% 
+    mutate(
+      across(everything(), ~ ifelse(is.na(.x), 0, .x)),
+      total_cells = rowSums(select(., -fips), na.rm = TRUE),
+      across(c('11':'95'), ~ round(.x / total_cells, 3))
+    ) %>% 
+    select(-total_cells) %>% 
+    
+    # Rename columns based on codes df
+    setNames(c(
+      codes$variable_name[match(names(.)[-length(names(.))], codes$lulc_code)],
+      names(.)[length(names(.))]
+    ))
+})
+get_str(all_lulc)
+# Saving this here because we will use it for LULC Diversity
+
+# Continue getting our metrics in long format
+all_lulc_metrics <- map(all_lulc, ~ {
+  .x %>% 
+    pivot_longer(
+      cols = !fips,
+      names_to = 'variable_name',
+      values_to = 'value'
+    )
 }) %>% 
   bind_rows() %>% 
-  left_join(codes) %>% 
-  select(
-    fips,
-    value = prop,
-    metric
-  ) %>% 
-  mutate(
-    year = '2023',
-    variable_name = metric %>%
-      str_remove_all(',|ortion|intensity|aceous|eloped|cultivated|emergent') %>%
-      snakecase::to_lower_camel_case()
-  )
-get_str(prop)
-prop
+  mutate(year = '2023')
+get_str(all_lulc_metrics)
 
 # Save this to results
-results$lulc_prop <- prop
-
-# Save metric/variable crosswalk
-crosswalk <- prop %>% 
-  select(metric, variable_name) %>% 
-  unique
+results$lulc <- all_lulc_metrics
 
 
-## Props metadata ----------------------------------------------------------
 
+## Metadata ----------------------------------------------------------
+
+
+(vars <- get_vars(results$lulc))
 
 metas$lulc_prop <- codes %>% 
-  inner_join(crosswalk) %>% 
-  select(-lulc_code) %>% 
   mutate(
-    axis_name = metric,
+    definition = paste0(
+      'LULC ',
+      lulc_code,
+      ': ',
+      definition
+    ),
+    axis_name = variable_name,
     dimension = "environment",
     index = 'biodiversity',
     indicator = 'land use diversity',
     units = 'proportion',
     scope = 'national',
-    resolution = 'county',
+    resolution = 'county, state',
     year = '2023',
     latest_year = '2023',
     updates = "annual",
@@ -214,45 +204,39 @@ metas$lulc_prop <- codes %>%
     ),
     url = 'https://www.mrlc.gov/data/type/land-cover'
   ) %>% 
-  add_citation(access_date = '2024-11-15')
+  add_citation(access_date = '2024-11-15') %>% 
+  select(-lulc_code)
 
 get_str(metas$lulc_prop)
 
 
 
-## Diversity ---------------------------------------------------------------
+# LULC Diversity ---------------------------------------------------------------
 
 
 # Shannon diversity of LULC by group
-get_str(county_tables)
-div <- map_dbl(county_tables, \(x) {
-  df <- x %>% 
-    mutate(
-      lulc_code = case_when(
-        lulc_code %in% c(11, 12) ~ 'water',
-        str_detect(lulc_code, '^2') ~ 'developed',
-        lulc_code == 31 ~ 'barren',
-        str_detect(lulc_code, '^4') ~ 'forest',
-        lulc_code == 52 ~ 'shrub',
-        lulc_code == 71 ~ 'grass',
-        str_detect(lulc_code, '^8') ~ 'forest',
-        str_detect(lulc_code, '^9') ~ 'wetlands'
-      )
-    )
-  out <- diversity(df$cell_count, index = 'shannon')
-  return(out)
+get_str(all_lulc)
+div <- map(all_lulc, ~ {
+  .x %>% 
+    column_to_rownames('fips') %>% 
+    select(-c(matches('Dev|Barren'))) %>% 
+    diversity() %>%
+    round(3) %>% 
+    format(nsmall = 3) %>% 
+    as.data.frame() %>% 
+    rownames_to_column() %>% 
+    setNames(c('fips', 'lulcDiversity')) %>% 
+    pivot_longer(
+      cols = !fips,
+      names_to = 'variable_name',
+      values_to = 'value'
+    ) %>% 
+    mutate(year = '2023')
 }) %>% 
-  as.data.frame() %>% 
-  rownames_to_column() %>% 
-  setNames(c('fips', 'value')) %>% 
-  mutate(
-    fips = str_split_i(fips, '_', 2),
-    year = '2023',
-    variable_name = 'lulcDiversity'
-  )
+  bind_rows()
 div
 
-# save to results list
+# Save
 results$lulc_div <- div
 
 
@@ -270,6 +254,7 @@ ne_counties %>%
 
 metas$lulc_div <- data.frame(
   variable_name = 'lulcDiversity',
+  metric = 'Land Use Diversity',
   definition = paste(
     'Shannon diversity of LULC codes from MRLC Land Use Land Cover 30m layer by county.',
     'LULC Codes grouped by category: developed, barren, forest, shrubland, herbaceous, cultivated, and wetlands.',
@@ -281,7 +266,7 @@ metas$lulc_div <- data.frame(
   indicator = 'land use diversity',
   units = 'index',
   scope = 'national',
-  resolution = 'county',
+  resolution = 'county, state',
   year = '2023',
   latest_year = '2023',
   updates = "annual",
@@ -455,119 +440,10 @@ rm(bio_layers)
 # USFS IDS ------------------------------------------------------------
 
 
-# Plan 
 # Insect and Disease Dataset (IDS)
 # raw <- st_read('1_raw/spatial/usfs/CONUS_Region9_2023.gdb/CONUS_Region9_2023.gdb/')
-# What are we doing here. I don't remember.
 
-
-
-# Cropland Data Layer -----------------------------------------------------
-
-
-## Note that we are using csvs below instead of this tif after all.
-
-# # Pulling the 2023 raster. Next section we use more convenient csv data
-# cros_raw <- read_stars('1_raw/nass/2023_30m_cdls/2023_30m_cdls.tif')
-# st_crs(cros_raw) # 4269
-# 
-# # crop by NE counties. First reproject counties
-# ne_counties_prj <- st_transform(ne_counties, st_crs(cros_raw))
-# st_crs(cros_raw) == st_crs(ne_counties_prj)
-# 
-# # Crop cros by counties
-# cros_crop <- st_crop(cros_raw, ne_counties_prj)
-# 
-# # Save this as a layer for general use, as tif and rds
-# saveRDS(cros_crop, '2_clean/spatial/map_layers/cropland_cros.rds')
-# 
-# 
-# ## Pull the CDL key for crops
-# cdl_key <- read_csv(
-#   '1_raw/nass/2023_30m_cdls/cdl_key.csv', 
-#   col_select = c(1, 2)
-# )
-# 
-# 
-# ## County level data with python function
-# reticulate::source_python('3_functions/cat_zonal_stats.py')
-# out <- cat_zonal_stats(
-#   raster_path = '1_raw/nass/2023_30m_cdls/2023_30m_cdls.tif',
-#   polygon_path = '2_clean/spatial/ne_counties_2024.gpkg'
-# )
-# get_str(out)
-# 
-# # Clean and get percentages
-# dat <- out
-# dat[is.na(dat)] <- 0
-# get_str(dat)
-# 
-# # Convert codes to names
-# dat <- dat %>% 
-#   select(fips, order(colnames(.))) %>% 
-#   setNames(c('fips', cdl_key$class[match(names(.)[-1], cdl_key$code)]))  
-# get_str(dat)
-# 
-# 
-# ## Diversity
-# # Want diversity of just crops, so we will remove developed, forest, etc
-# pattern <- c('Developed|Forest|Shrubland|Grassland|Wetland|Barren|Missing|Water')
-# 
-# div <- dat %>% 
-#   select(!matches(pattern)) %>% 
-#   column_to_rownames('fips') %>% 
-#   diversity()
-# div
-# 
-# # Format as DF like other variables
-# div_df <- div %>% 
-#   as.data.frame() %>% 
-#   rownames_to_column() %>% 
-#   setNames(c('fips', 'cropDiversity')) %>% 
-#   mutate(year = '2023') %>% 
-#   pivot_longer(
-#     cols = cropDiversity,
-#     names_to = 'variable_name',
-#     values_to = 'value'
-#   )
-# get_str(div_df)
-# 
-# # Save to results
-# res$crop_div <- div_df
-
-
-
-## Metadata ----------------------------------------------------------------
-
-
-# get_str(div_df)
-# years <- div_df$year %>% unique %>% sort
-# 
-# metas$crop_div <- data.frame(
-#   variable_name = 'cropDiversity',
-#   metric = 'Crop diversity',
-#   definition = 'Shannon diversity index of crop types based on USDA Cropland Data Layer. Forests, grasslands, developed areas and open water were removed before calculations.',
-#   axis_name = 'Crop Diversity',
-#   dimension = 'production',
-#   index = 'production diversity',
-#   indicator = 'crop diversity',
-#   units = 'index',
-#   scope = 'national',
-#   resolution = 'county',
-#   year = '2023',
-#   latest_year = '2023',
-#   updates = "annual",
-#   source = 'U.S. Department of Agriculture, National Agricultural Statistics Service, Cropland Data Layer',
-#   url = 'https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php',
-#   citation = paste(
-#     'U.S. Department of Agriculture, National Agricultural Statistics Service, Cropland Data Layer: USDA NASS, USDA NASS Marketing and Information Services Office, Washington, D.C.',
-#     'Retrieved from:', 
-#     'https://www.nass.usda.gov/Research_and_Science/Cropland/Release/index.php',
-#     'December 14th, 2024'
-#   )
-# )
-# 
-# get_str(metas$crop_div)
+# What are we doing here. I don't remember. We didn't like this dataset
 
 
 
@@ -671,29 +547,19 @@ get_str(metas$crop_div)
 
 # Save and Clear ----------------------------------------------------------
 
-get_str(results)
-result <- results %>% 
-  map(\(x) x %>% 
-        mutate(value = as.character(value)) %>% 
-        select(-any_of('metric'))
-      ) %>% 
-  bind_rows()
-get_str(result)
 
-meta <- metas %>% 
-  bind_rows()
-get_str(meta)
+# Put metrics and metadata together into two single DFs
+out <- aggregate_metrics(results, metas)
 
 # Check record counts
-check_n_records(result, meta, 'lulc')
+check_n_records(out$result, out$meta, 'lulc')
 
-saveRDS(result, '5_objects/metrics/lulc.RDS')
-saveRDS(meta, '5_objects/metadata/lulc_meta.RDS')
+saveRDS(out$result, '5_objects/metrics/lulc.RDS')
+saveRDS(out$meta, '5_objects/metadata/lulc_meta.RDS')
 
 # Also save spatial files as is
 saveRDS(div, '5_objects/spatial/county_lulc_tables.rds')
 saveRDS(hotspots, '2_clean/spatial/map_layers/hotspots.rds')
 saveRDS(atlas, '2_clean/spatial/map_layers/atlas.rds')
-# write_stars(core, '5_objects/spatial/rasters/core_habitat.tif')
 
 clear_data()

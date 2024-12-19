@@ -773,7 +773,9 @@ exports <- fips_key %>%
       str_remove('Exports$'),
     .keep = 'unused'
   )
-get_str(exports)  
+get_str(exports)
+
+# Add a sum of all exports for a total
 
 # Save 
 results$exports <- exports
@@ -784,10 +786,7 @@ results$exports <- exports
 
 
 # Check vars for exports. do imports separately
-vars <- results$exports$variable_name %>% 
-  unique %>% 
-  sort
-vars
+(vars <- get_vars(results$exports))
 
 # Plain text versions of vars to use in definition
 plain_vars <- vars %>% 
@@ -855,12 +854,12 @@ metas$import_export <- data.frame(
   scope = 'national',
   resolution = 'state',
   year = c(
-    rep(paste0(results$exports$year %>% unique %>% sort, collapse = ', '), length(plain_vars)),
-    paste0(results$imports$year %>% unique %>% sort, collapse = ', ')
+    get_all_years(results$exports),
+    get_all_years(results$imports)
   ),
   latest_year = c(
-    rep(results$exports$year %>% max(), length(plain_vars)),
-    results$imports$year %>% max
+    get_max_year(results$exports),
+    get_max_year(results$imports)
   ),
   updates = "annual",
   source = c(
@@ -874,6 +873,9 @@ metas$import_export <- data.frame(
     'December 16th, 2024.'
   )
 ) %>% 
+  
+  # Build metrics out of variable_names 
+  # Second step because we need to finish data frame first
   mutate(
     metric = variable_name %>% 
       str_remove('^exports|^imports') %>% 
@@ -963,6 +965,12 @@ results$census <- census
 
 metas$census <- data.frame(
   variable_name = get_vars(census),
+  metric = c(
+    'SFAs serving culturally relevant food',
+    'SFAs with Farm to School program',
+    'SFAs percentage of spending on local food',
+    'SFAs serving local food'
+  ),
   definition = c(
     'Percentage of all School Food Authorities growing or serving culturally relevant foods.',
     'Percentage of all School Food Authorities participating in a Farm to School program.',

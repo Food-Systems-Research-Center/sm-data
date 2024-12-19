@@ -1,8 +1,21 @@
 import pandas as pd
 import geopandas as gpd
 import rasterstats
+import rasterio
 
 def cat_zonal_stats(raster_path, polygon_path):
+  '''
+  Get a DataFrame of LULC category cell counts for each polygon. If the CRS of 
+  each file do not match, the polygons will be projected into the CRS of the 
+  raster.
+  
+  Args:
+    raster_path (str): File path to a raster file (.tif)
+    polygon_path (str): File path to a polygon (.gpkg, .shp)
+  
+  Returns:
+    DataFrame
+  '''
   
   # Load polygon file
   polygons = gpd.read_file(polygon_path)
