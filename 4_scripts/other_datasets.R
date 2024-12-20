@@ -1010,12 +1010,13 @@ metas$census
 
 
 # Put metrics and metadata together into two single DFs
-aggregate_metrics(results, metas)
+out <- aggregate_metrics(results, metas)
 
 # Check record counts
-check_n_records(result, meta, 'other')
+check_n_records(out$result, out$meta, 'other')
 
-saveRDS(result, '5_objects/metrics/other.RDS')
-saveRDS(meta, '5_objects/metadata/other_meta.RDS')
+saveRDS(out$result, '5_objects/metrics/other.RDS')
+saveRDS(out$meta, '5_objects/metadata/other_meta.RDS')
 
 clear_data()
+gc()

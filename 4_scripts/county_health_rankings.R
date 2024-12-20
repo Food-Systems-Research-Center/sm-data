@@ -422,16 +422,15 @@ res$select_measures$variable_name <- res$select_measures$variable_name %>%
 
 
 # Combine lists together, one for results, one for meta
-source('3_functions/aggregate_metrics.R')
-aggregate_metrics(res, metas)
+out <- aggregate_metrics(res, metas)
 
 # Check record counts
-try(check_n_records(result, meta, 'County Health'))
+try(check_n_records(out$result, out$meta, 'County Health'))
 # This is cool - we didn't count the confidence intervals as metrics
 
-saveRDS(result, '5_objects/metrics/county_health.RDS')
-saveRDS(meta, '5_objects/metadata/county_health.RDS')
+saveRDS(out$result, '5_objects/metrics/county_health.RDS')
+saveRDS(out$meta, '5_objects/metadata/county_health.RDS')
 
 clear_data()
-
+gc()
 

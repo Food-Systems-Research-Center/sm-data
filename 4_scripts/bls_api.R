@@ -498,3 +498,4 @@ saveRDS(result, '5_objects/metrics/bls.RDS')
 saveRDS(meta, '5_objects/metadata/bls_meta.RDS')
 
 clear_data()
+gc()

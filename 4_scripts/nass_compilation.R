@@ -268,7 +268,7 @@ metas$total_income <- tibble(
   index = 'food business profitability',
   indicator = 'total sales',
   metric = c(
-    "mean farm related income per operation"
+    "Mean farm related income per operation"
   ), 
   variable_name = c(
     "farmIncomePF"
@@ -1261,3 +1261,4 @@ saveRDS(out$result, '5_objects/metrics/nass.RDS')
 saveRDS(out$meta, '5_objects/metadata/nass_meta.RDS')
 
 clear_data()
+gc()

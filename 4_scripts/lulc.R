@@ -563,3 +563,4 @@ saveRDS(hotspots, '2_clean/spatial/map_layers/hotspots.rds')
 saveRDS(atlas, '2_clean/spatial/map_layers/atlas.rds')
 
 clear_data()
+gc()

@@ -337,3 +337,6 @@ check_n_records(result, meta, 'Warehouse')
 
 saveRDS(result, '5_objects/metrics/data_warehouse.RDS')
 saveRDS(meta, '5_objects/metadata/data_warehouse.RDS')
+
+clear_data()
+gc()

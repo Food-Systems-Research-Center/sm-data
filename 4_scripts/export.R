@@ -34,6 +34,9 @@ out$counties <- read_all_rds('2_clean/spatial/', pattern = '(?i)^ne_.*.rds')
 # Map layers
 out$spatial <- read_all_rds('2_clean/spatial/map_layers/', pattern = '.rds$')
 
+# Refined tree structure for new framework
+out$refined_tree <- read.csv('2_clean/trees/refined_secondary_tree.csv')
+
 # Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")
 

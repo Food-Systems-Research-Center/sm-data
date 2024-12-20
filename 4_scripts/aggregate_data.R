@@ -90,3 +90,4 @@ saveRDS(meta_agg, '2_clean/metadata.rds')
 write_csv(meta_agg, '6_outputs/metadata.csv')
 
 clear_data()
+gc()

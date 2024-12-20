@@ -353,13 +353,14 @@ get_str(metas$usdm)
 
 
 # Put metrics and metadata together into two single DFs
-aggregate_metrics(results, metas)
+out <- aggregate_metrics(results, metas)
 
 # Check record counts to see if they match
-check_n_records(result, meta, 'FSA, USDM')
+check_n_records(out$result, out$meta, 'FSA, USDM')
 
 # Save 
-saveRDS(result, '5_objects/metrics/other.RDS')
-saveRDS(meta, '5_objects/metadata/other_meta.RDS')
+saveRDS(out$result, '5_objects/metrics/fsa_usdm.RDS')
+saveRDS(out$meta, '5_objects/metadata/fsa_usdm_meta.RDS')
 
 clear_data()
+gc()

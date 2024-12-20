@@ -419,3 +419,5 @@ check_n_records(result, meta, 'Census')
 saveRDS(result, '5_objects/metrics/census.RDS')
 saveRDS(meta, '5_objects/metadata/census_meta.RDS')
 
+clear_data()
+gc()
