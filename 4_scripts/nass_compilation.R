@@ -19,12 +19,27 @@ pacman::p_load(
 source('3_functions/wrangling/pull_variable.R')
 source('3_functions/metadata_utilities.R')
 
-# Pull Census of Ag data filtered to New England
-coa_ne <- readRDS('5_objects/coa_ne.rds')
+# Pull Census of Ag data filtered to New England counties (and all states)
+# coa_ne <- readRDS('5_objects/coa_ne.rds')
+# coa_ne <- readRDS('1_raw/nass/nass_census_counties_2007-2022.rds')
+coa_ne <- readRDS('1_raw/nass/ne_counties_all_states_2007-2022.rds') %>% 
+  mutate(fips = paste0(state_fips_code, county_code)) %>% 
+  setNames(c(names(.) %>% snakecase::to_snake_case())) %>% 
+  mutate(value = as.numeric(str_remove_all(value, ',')))
+get_str(coa_ne)
+coa_ne$fips %>% unique
+
+# Fips keys
+fips_key <- readRDS('5_objects/fips_key.rds')
+state_key <- readRDS('5_objects/state_key.rds')
+all_fips <- readRDS('5_objects/all_fips.rds')
 
 # Initialize results lists
 results <- list()
 metas <- list()
+
+# Last time API was called
+access_date <- '2025-01-07'
 
 
 
@@ -73,8 +88,8 @@ results$labor_costs <- coa_ne %>%
     state_name,
     year,
     variable_name,
-    value,
-    value_codes
+    value
+    # value_codes
     # cv_percent
   ) %>% 
   filter(!is.na(variable_name)) %>% 
@@ -86,7 +101,7 @@ results$labor_costs <- coa_ne %>%
   ) %>% 
   mutate(expHiredLaborPF = expHiredLabor / nOpsHiredLabor) %>% 
   pivot_longer(
-    cols = !c(fips, county_name, state_name, year, value_codes),
+    cols = !c(fips, county_name, state_name, year),
     names_to = 'variable_name',
     values_to = 'value'
   ) %>% 
@@ -96,8 +111,8 @@ results$labor_costs <- coa_ne %>%
     state_name,
     year,
     variable_name,
-    value,
-    value_codes
+    value
+    # value_codes
     # cv_percent
   )
 get_str(results$labor_costs)
@@ -176,7 +191,7 @@ metas$labor_costs <- data.frame(
     rep('count', 11)
   ),
   scope = 'national',
-  resolution = 'county',
+  resolution = 'county, state',
   year = '2022',
   latest_year = '2022',
   updates = "5 years",
@@ -186,7 +201,7 @@ metas$labor_costs <- data.frame(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation()
+  add_citation(access_date = access_date)
 
 metas$labor_costs
 
@@ -215,9 +230,9 @@ results$total_costs <- coa_ne %>%
     state_name,
     year,
     variable_name,
-    value,
-    value_codes,
-    cv_percent
+    value
+    # value_codes,
+    # cv_percent
   ) %>% 
   filter(!is.na(variable_name))
   
@@ -236,7 +251,7 @@ metas$total_costs <- tibble(
   axis_name = 'Expenses per operation ($)',
   units = 'usd',
   scope = 'national',
-  resolution = 'county',
+  resolution = 'county, state',
   year = '2022',
   latest_year = '2022',
   updates = "5 years",
@@ -246,7 +261,7 @@ metas$total_costs <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation()
+  add_citation(access_date = access_date)
 
 
 
@@ -277,7 +292,7 @@ metas$total_income <- tibble(
   definition = 'Income, farm-related - receipts, measured in $ / operation',
   units = 'usd',
   scope = 'national',
-  resolution = 'county',
+  resolution = 'county, state',
   year = '2022',
   latest_year = '2022',
   updates = "5 years",
@@ -287,7 +302,7 @@ metas$total_income <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation()
+  add_citation(access_date = access_date)
 
 
 
@@ -352,7 +367,7 @@ metas$acres_operated <- tibble(
   ),
   units = 'acres',
   scope = 'national',
-  resolution = 'county',
+  resolution = 'county, state',
   year = '2022',
   latest_year = '2022',
   updates = "5 years",
@@ -362,7 +377,7 @@ metas$acres_operated <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation()
+  add_citation(access_date = access_date)
 
 
 
@@ -413,7 +428,7 @@ metas$assets <- tibble(
   ),
   units = 'usd',
   scope = 'national',
-  resolution = 'county',
+  resolution = 'county, state',
   year = '2022',
   latest_year = '2022',
   updates = "5 years",
@@ -423,7 +438,7 @@ metas$assets <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation()
+  add_citation(access_date = '2025-01-07')
 
 
 
@@ -440,7 +455,18 @@ results$chemical_total_expenses <- pull_variable(
   short_desc = 'CHEMICAL TOTALS - EXPENSE, MEASURED IN $',
   variable_name = 'expChemical'
 )
-get_str(results$chemical_total_dollars)
+get_str(results$chemical_total_expenses)
+
+# As % of operating expenses
+results$chemical_pct_of_expenses <- pull_variable(
+  coa_ne,
+  sector_desc = 'ECONOMICS',
+  commodity_desc = 'CHEMICAL TOTALS',
+  domain_desc = 'TOTAL',
+  short_desc = 'CHEMICAL TOTALS - EXPENSE, MEASURED IN PCT OF OPERATING EXPENSES',
+  variable_name = 'expChemicalPct'
+)
+get_str(results$chemical_pct_of_expenses)
 
 # Number of operations
 results$n_chemical_operations <- pull_variable(
@@ -451,33 +477,33 @@ results$n_chemical_operations <- pull_variable(
   short_desc = 'CHEMICAL TOTALS - OPERATIONS WITH EXPENSE',
   variable_name = 'nOpsChemical'
 )
-get_str(results$chemical_operations)
+get_str(results$n_chemical_operations)
 
-# Calculate expenses per operation
-chemical_expenses_per_operation <- bind_rows(
-  results$n_chemical_operations, 
-  results$chemical_total_expenses
-) %>% 
-  pivot_wider(
-    id_cols = 'fips',
-    names_from = 'variable_name', 
-    values_from = 'value'
-  ) %>%  
-  mutate(
-    expChemPF = expChemical / nOpsChemical,
-    .keep = 'unused'
-  )
-
-# Remake the last one with it...
-results$chemical_expenses_per_operation <- results$n_chemical_operations %>% 
-  full_join(chemical_expenses_per_operation, by = 'fips') %>% 
-  mutate(
-    value = expChemPF,
-    variable_name = 'expChemPF',
-    .keep = 'unused'
-  )
-
-get_str(results$chemical_expenses_per_operation)
+# # Calculate expenses per operation
+# chemical_expenses_per_operation <- bind_rows(
+#   results$n_chemical_operations, 
+#   results$chemical_total_expenses
+# ) %>% 
+#   pivot_wider(
+#     id_cols = 'fips',
+#     names_from = 'variable_name', 
+#     values_from = 'value'
+#   ) %>%  
+#   mutate(
+#     expChemPF = expChemical / nOpsChemical,
+#     .keep = 'unused'
+#   )
+# 
+# # Remake the last one with it...
+# results$chemical_expenses_per_operation <- results$n_chemical_operations %>% 
+#   full_join(chemical_expenses_per_operation, by = 'fips') %>% 
+#   mutate(
+#     value = expChemPF,
+#     variable_name = 'expChemPF',
+#     .keep = 'unused'
+#   )
+# 
+# get_str(results$chemical_expenses_per_operation)
 
 # Metadata
 metas$production_inputs <- tibble(
@@ -510,7 +536,7 @@ metas$production_inputs <- tibble(
     'usd'
   ),
   scope = 'national',
-  resolution = 'county',
+  resolution = 'county, state',
   year = '2022',
   latest_year = '2022',
   updates = "5 years",
@@ -520,7 +546,7 @@ metas$production_inputs <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation()
+  add_citation(access_date = access_date)
 
 
 
@@ -547,31 +573,41 @@ results$total_crop_sales <- pull_variable(
 )
 get_str(results$total_crop_sales)
 
-# Get sum of animal and crop
-# Calculate expenses per operation
-total_animal_and_crop_sales <- bind_rows(
-  results$total_animal_sales, 
-  results$total_crop_sales
-) %>% 
-  pivot_wider(
-    id_cols = 'fips',
-    names_from = 'variable_name', 
-    values_from = 'value'
-  ) %>%  
-  mutate(
-    salesAnimalCrop = salesAnimal + salesCrop,
-    .keep = 'unused'
-  )
+results$animal_sales_pct <- pull_variable(
+  coa_ne,
+  sector_desc = 'ANIMALS & PRODUCTS',
+  commodity_desc = 'ANIMAL TOTALS',
+  domain_desc = 'TOTAL',
+  short_desc = 'ANIMAL TOTALS, INCL PRODUCTS - SALES, MEASURED IN PCT OF FARM SALES',
+  variable_name = 'salesAnimalPctSales'
+)
+get_str(results$animal_sales_pct)
 
-# Remake the last one with it...
-results$total_animal_and_crop_sales <- results$total_crop_sales %>% 
-  full_join(total_animal_and_crop_sales, by = 'fips') %>% 
-  mutate(
-    value = salesAnimalCrop,
-    variable_name = 'salesAnimalCrop',
-    .keep = 'unused'
-  )
-get_str(results$total_animal_and_crop_sales)
+# # Get sum of animal and crop
+# # Calculate expenses per operation
+# total_animal_and_crop_sales <- bind_rows(
+#   results$total_animal_sales, 
+#   results$total_crop_sales
+# ) %>% 
+#   pivot_wider(
+#     id_cols = 'fips',
+#     names_from = 'variable_name', 
+#     values_from = 'value'
+#   ) %>%  
+#   mutate(
+#     salesAnimalCrop = salesAnimal + salesCrop,
+#     .keep = 'unused'
+#   )
+# 
+# # Remake the last one with it...
+# results$total_animal_and_crop_sales <- results$total_crop_sales %>% 
+#   full_join(total_animal_and_crop_sales, by = 'fips') %>% 
+#   mutate(
+#     value = salesAnimalCrop,
+#     variable_name = 'salesAnimalCrop',
+#     .keep = 'unused'
+#   )
+# get_str(results$total_animal_and_crop_sales)
 
 # Metadata
 metas$total_animal_and_crop_sales <- tibble(
@@ -581,30 +617,30 @@ metas$total_animal_and_crop_sales <- tibble(
   metric = c(
     'Total animal sales',
     'Total crop sales',
-    'Total animal and crop sales'
+    'Animal sales as a percentage of farm sales'
   ),
   variable_name = c(
     'salesAnimal',
     'salesCrop',
-    'salesAnimalCrop'
+    'salesAnimalPctSales'
   ),
   definition = c(
     'Total sales from animals and animal products',
     'Total sales from crops',
-    'Sum of total sales from animals, animal products, and crops'
+    'Animal sales as a percentage of total farm sales'
   ),
   axis_name = c(
     'Animal sales ($)',
     'Crop sales ($)',
-    'Animal, crop sales ($)'
+    'Animal sales (%)'
   ),
   units = c(
     'usd',
     'usd',
-    'usd'
+    'percentage'
   ),
   scope = 'national',
-  resolution = 'county',
+  resolution = 'county, state',
   year = '2022',
   latest_year = '2022',
   updates = "5 years",
@@ -614,7 +650,7 @@ metas$total_animal_and_crop_sales <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation()
+  add_citation(access_date = '2025-01-07')
 
 
 
@@ -649,7 +685,7 @@ metas$total_forest_product_income <- tibble(
     'usd'
   ),
   scope = 'national',
-  resolution = 'county',
+  resolution = 'county, state',
   year = '2022',
   latest_year = '2022',
   updates = "5 years",
@@ -659,7 +695,7 @@ metas$total_forest_product_income <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation()
+  add_citation(access_date = access_date)
 
 
 
@@ -728,25 +764,18 @@ get_str(social)
 names(social)
 calc <- bind_rows(social$nMaleProducers, social$nFemProducers) %>% 
   pivot_wider(
-    id_cols = 'fips',
+    id_cols = c('fips', 'year'),
     names_from = 'variable_name',
     values_from = 'value'
   ) %>% 
   mutate(
     ftmProdRatio = nFemProducers / nMaleProducers,
     .keep = 'unused'
-  )
-get_str(calc)
-
-# Doing some weird shit here. Joining it back to a random table to get the 
-# geographic variables back only. This is an awkward section. Worth updating
-# at some point.
-calc <- calc %>%
-  full_join(social$ageProducers, by = 'fips') %>%
-  mutate(
-    value = ftmProdRatio,
-    variable_name = 'ftmProdRatio',
-    .keep = 'unused'
+  ) %>% 
+  pivot_longer(
+    cols = 'ftmProdRatio',
+    values_to = 'value',
+    names_to = 'variable_name'
   )
 get_str(calc)
 
@@ -799,7 +828,7 @@ metas$social <- tibble(
     rep('count', 9)
   ),
   scope = 'national',
-  resolution = 'county',
+  resolution = 'county, state',
   year = get_all_years(results$social),
   latest_year = get_max_year(results$social),
   updates = "5 years",
@@ -847,8 +876,7 @@ env$cons <- map2(vars, names, \(var, name) {
   ) %>% 
     filter(!is.na(value))
   return(out)
-}) %>% 
-  setNames(c(names))
+})
 get_str(env$cons)
 
 
@@ -973,54 +1001,53 @@ get_str(env$fert)
 ## Renewable Energy --------------------------------------------------------
 
 
-# Do a bunch at once
 # These are all at state level
-vars <- c(
-  'ENERGY, RENEWABLE - NUMBER OF OPERATIONS',
-  'ENERGY, RENEWABLE, GEOEXCHANGE SYSTEMS - NUMBER OF OPERATIONS',
-  'ENERGY, RENEWABLE, WIND RIGHTS, RENTED TO OTHERS - NUMBER OF OPERATIONS',
-  'ENERGY, RENEWABLE, SOLAR PANELS - OPERATIONS WITH DEVICES',
-  'ENERGY, RENEWABLE, WIND TURBINES - OPERATIONS WITH DEVICES',
-  'ENERGY, RENEWABLE, METHANE DIGESTERS - OPERATIONS WITH DEVICES'
-)
+# vars <- c(
+#   'ENERGY, RENEWABLE - NUMBER OF OPERATIONS',
+#   'ENERGY, RENEWABLE, GEOEXCHANGE SYSTEMS - NUMBER OF OPERATIONS',
+#   'ENERGY, RENEWABLE, WIND RIGHTS, RENTED TO OTHERS - NUMBER OF OPERATIONS',
+#   'ENERGY, RENEWABLE, SOLAR PANELS - OPERATIONS WITH DEVICES',
+#   'ENERGY, RENEWABLE, WIND TURBINES - OPERATIONS WITH DEVICES',
+#   'ENERGY, RENEWABLE, METHANE DIGESTERS - OPERATIONS WITH DEVICES'
+# )
+
+vars <- coa_ne %>% 
+  filter(str_detect(short_desc, 'ENERGY, RENEWABLE')) %>% 
+  select(short_desc) %>% 
+  unique() %>% 
+  pull(short_desc) %>% 
+  sort
+vars
 
 names <- c(
   'renewableNOps',
+  'biodieselNOps',
+  'ethanolNOps',
   'geoexchangeNOps',
+  'biomassHarvestNOps',
+  'methaneNOps',
+  'otherRenewableNOps',
+  'smallHydroNOps',
+  'solarNOps',
   'windRentedToOthersNOps',
-  'withSolarNOps',
-  'withWindNOps',
-  'withMethaneNOps'
+  'windTurbinesNOps'
 )
 
 env$renew <- map2(vars, names, \(var, name) {
   print(paste(var, '/', name))
   out <- pull_variable(
     coa_ne,
-    sector_desc = 'DEMOGRAPHICS',
+    sector_desc = 'ECONOMICS',
     commodity_desc = 'ENERGY',
-    domain_desc = 'TENURE',
+    domain_desc = 'TOTAL',
     short_desc = var,
     variable_name = name
-  )
+  ) %>% 
+    select(fips, year, variable_name, value)
   return(out)
 }) %>% 
   setNames(c(names))
 get_str(env$renew)
-
-# Clean it up
-env$renew <- map(env$renew, ~ {
-  .x %>% 
-    filter(!is.na(value)) %>% 
-    group_by(fips) %>% 
-    summarize(
-      value = sum(value),
-      state_name = first(state_name),
-      year = first(year),
-      variable_name = first(variable_name)
-    )
-})
-env$renew
 
 
 
@@ -1064,8 +1091,10 @@ env$water <- map2(vars, names, \(var, name) {
     filter(
       !is.na(value),
       !str_detect(value, '(D)')
-    )
-})
+    ) %>% 
+    select(fips, year, variable_name, value)
+}) %>% 
+  setNames(c(names))
 get_str(env$water)
 
 
@@ -1110,7 +1139,8 @@ get_str(env$wells)
 get_str(env)
 env <- flatten(env) %>% 
   map(\(x) mutate(x, value = as.character(value))) %>% 
-  bind_rows()
+  bind_rows() %>% 
+  select(fips, year, variable_name, value, unit_desc)
 get_str(env)
 
 env$variable_name %>% 
@@ -1131,10 +1161,8 @@ vars <- env$variable_name %>%
   sort
 vars
 
-
 starter <- env %>% 
   group_by(variable_name) %>% 
-  # summarize(units = paste0(str_to_lower(unique(unit_desc)), collapse = ', ')) %>% 
   summarize(
     units = unit_desc %>% 
       unique() %>% 
@@ -1145,6 +1173,7 @@ starter <- env %>%
     year = paste0(unique(year), collapse = ', '),
     fips_length = min(str_length(fips))
   )
+get_str(starter)
 
 # Environment metadata
 metas$env <- starter %>% 
@@ -1152,11 +1181,13 @@ metas$env <- starter %>%
     dimension = "environment",
     metric = c(
       'Operations practicing alley cropping or silvapasture',
+      'Number of operations with biodiesel energy',
+      'Number of operations harvesting biomass for energy',
       'Acres under conservation easements',
       'Acres under conservation easement per operation',
+      # [] Fixing this now
       'Operations with conservation easements',
       'Operations with conservation income',
-      
       'Conservation income per operation',
       'Total conservation income',
       'Conservation tillage acres, excluding no-till',
@@ -1241,7 +1272,7 @@ metas$env <- starter %>%
     url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/',
     warehouse = FALSE
   ) %>%
-  add_citation() %>% 
+  add_citation(access_date = access_date) %>% 
   select(-fips_length)
 
 metas$env

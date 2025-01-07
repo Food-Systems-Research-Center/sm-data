@@ -98,6 +98,24 @@ states_2024 <- tigris::states(
     geometry
   )
 
+# Also just get fips codes for all states - keep these separate
+all_state_codes <- fips_codes %>% 
+  select(state, state_code, state_name) %>% 
+  unique() %>% 
+  filter(str_detect(
+    state_name, 
+    'Mariana|Guam|Rico|Islands|Samoa', 
+    negate = TRUE
+  )) %>% 
+  mutate(full_state_code = paste0(state_code, '000'))
+
+# One more vector of ALL relevant fips codes 
+# This includes all NE counties, but also 51 states (not their counties)
+all_fips <- c(
+  all_state_codes$full_state_code,
+  all_state_codes$state_code,
+  county_state$fips
+) %>% unique()
 
 
 # Save and Clear ----------------------------------------------------------
@@ -105,6 +123,8 @@ states_2024 <- tigris::states(
 
 # Save everything as RDS and as gpkg where appropriate
 saveRDS(county_state, '5_objects/fips_key.rds')
+saveRDS(all_state_codes, '5_objects/state_key.rds')
+saveRDS(all_fips, '5_objects/all_fips.rds')
 
 saveRDS(counties_2021, '2_clean/spatial/ne_counties_2021.RDS')
 st_write(counties_2021, '2_clean/spatial/ne_counties_2021.gpkg', append = FALSE)
