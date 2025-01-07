@@ -40,7 +40,7 @@ out$refined_tree <- read.csv('2_clean/trees/refined_secondary_tree.csv')
 # Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")
 
-# get_str(out)
+get_str(out)
 
 
 

@@ -20,6 +20,7 @@ source('3_functions/metadata_utilities.R')
 
 # Load fips key to filter to NE counties
 fips_key <- readRDS('5_objects/fips_key.rds')
+state_key <- readRDS('5_objects/state_key.rds')
 
 # Initiate results and metas lists
 res <- list()
@@ -76,7 +77,7 @@ nat <- nat_raw %>%
     ),
     across(ends_with('Z'), ~ -1 * .x)
   ) %>% 
-  filter(fips %in% fips_key$fips)
+  filter(fips %in% fips_key$fips | str_detect(fips, '000$'))
 get_str(nat)
 
 # Check it out
@@ -176,19 +177,18 @@ paths <- dir('1_raw/county_health_rankings/analytic/', full.names = TRUE)
 analytic <- map(paths, ~ read_csv(.x, skip = 1))
 
 # Check it
-get_str(analytic, 3, give.attr = FALSE)
-get_str(analytic[[1]], give.attr = FALSE)
+get_str(analytic, 3)
 head(analytic[[1]][, 1:4])
 
 # Clean them as individual DFs, take vars we want, then see if we can bind them
 select_measures <- map(analytic, ~ {
   .x %>% 
     select(statecode, fipscode, year, any_of(vars)) %>% 
-    filter(statecode %in% fips_key$fips | fipscode %in% fips_key$fips) %>% 
-    # mutate(across(everything()), ~ .x %>% 
-    #          str_replace_all('Households', 'House') %>% 
-    #          str_replace_all('Population', 'Pop') %>% 
-    #          str_replace_all('Children', 'Child')
+    filter(
+      statecode %in% fips_key$fips 
+       | fipscode %in% fips_key$fips
+       | fipscode %in% state_key$full_state_code
+    ) %>% 
     setNames(c(
       ifelse(
         names(.) %in% dict$`Variable Name`,
@@ -275,7 +275,7 @@ select_meta_meta <- select_meta %>%
       .default = 'health'
     ),
     scope = 'national',
-    resolution = 'county',
+    resolution = 'county, state',
     year = paste0(2020:2024, collapse = ', '),
     latest_year = '2024',
     updates = "annual",
