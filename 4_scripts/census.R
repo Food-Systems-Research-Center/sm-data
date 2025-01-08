@@ -22,7 +22,7 @@ pacman::p_load(
 )
 
 # Load Census API Key
-# census_key <- Sys.getenv('ARMS_API_KEY')
+census_key <- Sys.getenv('ARMS_API_KEY')
 
 # Function to pull from Census API, and filter by fips
 source('3_functions/api/get_census_data.R')
@@ -71,7 +71,13 @@ variables <- list(
    
   # More rent
   'rentMedian' = 'B25064_001E',
-  'rentMedianPercHH' = 'B25071_001E'
+  'rentMedianPercHH' = 'B25071_001E',
+  
+  # Wages in FFF
+  'medianFemaleEarningsFFF' = 'B24022_067E',
+  'medianMaleEarningsFFF' = 'B24022_031E',
+  'medianFemaleEarningsFPS' = 'B24022_060E',
+  'medianMaleEarningsFPS' = 'B24022_024E'
 )
 
 # B15003_001E educational attainment total
@@ -98,19 +104,19 @@ variables <- list(
 crosswalk <- setNames(names(variables), variables)
 
 
-## Pull Data ---------------------------------------------------------------
+## Pull County Data --------------------------------------------------------
 
-
-#' Note that only 2017 and 2022 are working for some reason. Should go back 
-#' further. Maybe those variables weren't in use before then? 
 
 # Set parameters
-years <- as.list(2010:2022)
+years <- c(2012:2022)
 vars <- paste0(variables, collapse = ',')
-states <- paste0(state_codes$fips, collapse = ',')
+states <- fips_key %>% 
+  filter(str_length(fips) == 2 & fips != '00') %>% 
+  pull(fips) %>% 
+  paste0(collapse = ',')
 
 # Map over list of years to gather data for each
-out <- map(years, \(year){
+counties_out <- map(years, \(year){
   get_census_data(
     survey_year = year,
     survey = 'acs/acs5',
@@ -121,21 +127,50 @@ out <- map(years, \(year){
 })
 # Note that the first five years didn't come through. Only have 2015 to 2022
 # So we only have 9?
-get_str(out)
+get_str(counties_out)
+
+
+
+## Pull State Data ---------------------------------------------------------
+
+
+# Now all state data, but not counties.
+# Set parameters
+years <- seq(2015, 2022)
+vars <- paste0(variables, collapse = ',')
+states <- state_codes$state_code %>% 
+  paste0(collapse = ',')
+
+# Map over list of years to gather data for each
+states_out <- map(years, \(year){
+  get_census_data(
+    survey_year = year,
+    survey = 'acs/acs5',
+    vars = vars,
+    county = NULL,
+    state = states
+  )
+})
+# Note that the first five years didn't come through. Only have 2015 to 2022
+# So we only have 9?
+get_str(states_out)
 
 
 
 ## Wrangle -----------------------------------------------------------------
 
 
+# Combine county and state data
+dat <- reduce(c(counties_out, states_out), bind_rows) %>% 
+  filter(is.na(status)) %>% 
+  select(-c(status, query, GEO_ID, NAME))
+get_str(dat)
+
 # Combine years, convert to numeric, swap census names for our names
-dat <- out %>% 
-  keep(is.data.frame) %>% 
-  bind_rows() %>% 
+dat <- dat %>% 
   mutate(across(matches('^[A-Z][0-9]{5}_[0-9]{3}[A-Z]{1}$'), as.numeric)) %>% 
   setNames(c(recode(names(.), !!!crosswalk)))
 get_str(dat)
-
 
 # Calculations to get proportions for education, housing
 dat <- dat %>% 
@@ -146,8 +181,6 @@ dat <- dat %>%
   ) %>% 
   select(-c(
     matches('edTotal'),
-    GEO_ID,
-    NAME,
     state,
     county
    ))
@@ -159,7 +192,8 @@ dat <- dat %>%
     cols = !c(fips, year),
     names_to = 'variable_name',
     values_to = 'value'
-  )
+  ) %>% 
+  mutate(value = as.character(value))
 get_str(dat)
 
 # Save it
@@ -238,20 +272,18 @@ metas$acs5 <- tibble(
     'percentage'
   ),
   scope = 'national',
-  resolution = 'county',
-  year = paste0(unique(results$acs5$year), collapse = '|'),
+  resolution = 'county, state',
+  year = get_all_years(results$acs5),
+  latest_year = get_max_year(results$acs5),
   updates = "5 years",
   source = 'U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022',
   url = 'https://www.census.gov/data/developers/data-sets/acs-5year.html',
   warehouse = FALSE
 ) %>% 
-  add_citation()
+  add_citation(access_date = '2025-01-08')
 
-# [] consider fixing up citation function
-
+  
 get_str(metas$acs5)
-metas$acs5
-metas$acs5$citation[1]
 
 
 
@@ -263,10 +295,13 @@ gini_vars <- c('B19083_001E', "B19083_001M")
 # Set parameters
 years <- as.list(seq(2010, 2022, 1))
 vars <- paste0(gini_vars, collapse = ',')
-states <- paste0(state_codes$fips, collapse = ',')
+states <- fips_key %>% 
+  filter(str_length(fips) == 2 & fips != '00') %>% 
+  pull(fips) %>% 
+  paste0(collapse = ',')
 
 # Map over list of years to gather data for each
-out <- map(years, \(year){
+counties_out <- map(years, \(year){
   get_census_data(
     survey_year = year,
     survey = 'acs/acs5',
@@ -275,92 +310,36 @@ out <- map(years, \(year){
     state = states
   )
 })
-get_str(out)
+get_str(counties_out)
 
 
-# Clean each set individually, then combine
-results$gini <- out %>% 
-  keep(is.data.frame) %>% 
-  map(\(df) {
-    df %>% 
-      rename(
-        value = B19083_001E,
-        margin = B19083_001M
-      ) %>%
-      mutate(
-        variable_name = 'gini'
-      ) %>% 
-      select(-c(
-        GEO_ID, NAME, state, county
-      ))
-  }) %>% 
-  bind_rows()
-get_str(results$gini)
-
-
-metas$gini <- tibble(
-  dimension = 'economics',
-  index = 'community economy',
-  indicator = 'wealth/income distribution',
-  metric = 'Gini Index',
-  variable_name = 'gini',
-  definition = 'Gini Index of income inequality. 0 is perfect inequality, while 1 is perfect inequality',
-  axis_name = 'Gini index',
-  units = 'index',
-  scope = 'national',
-  resolution = 'county',
-  year = paste0(unique(results$gini$year), collapse = '|'),
-  updates = "5 years",
-  source = 'U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022.',
-  url = 'https://www.census.gov/data/developers/data-sets/acs-5year.html',
-  warehouse = FALSE
-) %>% 
-  add_citation()
-
-get_str(metas$gini)
-
-
-
-# Unemployment ------------------------------------------------------------
-
-
-gini_vars <- c('B19083_001E', "B19083_001M")
-
-# Set parameters
+# Set parameters for state data
 years <- as.list(seq(2010, 2022, 1))
 vars <- paste0(gini_vars, collapse = ',')
-states <- paste0(state_codes$fips, collapse = ',')
+states <- state_codes$state_code %>% 
+  paste0(collapse = ',')
 
 # Map over list of years to gather data for each
-out <- map(years, \(year){
+states_out <- map(years, \(year){
   get_census_data(
     survey_year = year,
     survey = 'acs/acs5',
     vars = vars,
-    county = '*',
+    county = NULL,
     state = states
   )
 })
-get_str(out)
+get_str(states_out)
 
-
-# Clean each set individually, then combine
-results$gini <- out %>% 
-  keep(is.data.frame) %>% 
-  map(\(df) {
-    df %>% 
-      rename(
-        value = B19083_001E,
-        margin = B19083_001M
-      ) %>%
-      mutate(
-        variable_name = 'gini'
-      ) %>% 
-      select(-c(
-        GEO_ID, NAME, state, county
-      ))
-  }) %>% 
-  bind_rows()
+# Clean and combine
+results$gini <- reduce(c(states_out, counties_out), bind_rows) %>% 
+  select(
+    fips,
+    year,
+    value = B19083_001E,
+    margin = B19083_001M
+  ) %>% 
+  mutate(variable_name = 'gini')
 get_str(results$gini)
 
 
@@ -374,16 +353,22 @@ metas$gini <- tibble(
   axis_name = 'Gini index',
   units = 'index',
   scope = 'national',
-  resolution = 'county',
-  year = paste0(unique(results$gini$year), collapse = '|'),
+  resolution = 'county, state',
+  year = get_all_years(results$gini),
+  latest_year = get_max_year(results$gini),
   updates = "5 years",
   source = 'U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022.',
   url = 'https://www.census.gov/data/developers/data-sets/acs-5year.html',
   warehouse = FALSE
 ) %>% 
-  add_citation()
+  add_citation('2025-01-08')
 
 get_str(metas$gini)
+
+
+
+# Wages -------------------------------------------------------------------
+
 
 
 

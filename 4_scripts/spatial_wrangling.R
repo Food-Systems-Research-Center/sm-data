@@ -42,7 +42,7 @@ county <- tidycensus::fips_codes %>%
   rename(county_name = county) %>% 
   select(fips, county_name, state_name) %>% 
   `rownames<-`(NULL)
-
+  
 state <- tidycensus::fips_codes %>% 
   filter(state %in% ne_states) %>% 
   select(state_code, state_name) %>% 
@@ -81,12 +81,28 @@ counties_2024 <- tigris::counties(
   mutate(fips = paste0(statefp, countyfp)) %>% 
   select(fips, aland, awater, geometry)
 
-# Also get states
+# Also get spatial files for NE states
 states_2024 <- tigris::states(
   progress_bar = TRUE,
   year = 2024
 ) %>% 
   filter(STUSPS %in% ne_states) %>% 
+  setNames(snakecase::to_snake_case(names(.))) %>% 
+  select(
+    fips = statefp,
+    name,
+    aland,
+    awater,
+    intptlat,
+    intptlon,
+    geometry
+  )
+
+# And do it again for all states - not just NE
+all_states_2024 <- tigris::states(
+  progress_bar = TRUE,
+  year = 2024
+) %>% 
   setNames(snakecase::to_snake_case(names(.))) %>% 
   select(
     fips = statefp,
@@ -135,7 +151,10 @@ st_write(counties_2024, '2_clean/spatial/ne_counties_2024.gpkg', append = FALSE)
 saveRDS(states_2024, '2_clean/spatial/ne_states.RDS')
 st_write(states_2024, '2_clean/spatial/ne_states.gpkg', append = FALSE)
 
-saveRDS (new_england, '2_clean/spatial/new_england.RDS')
+saveRDS(all_states_2024, '2_clean/spatial/all_states.RDS')
+st_write(all_states_2024, '2_clean/spatial/all_states.gpkg', append = FALSE)
+
+saveRDS(new_england, '2_clean/spatial/new_england.RDS')
 st_write(new_england, '2_clean/spatial/new_england.gpkg', append = FALSE)
 
 

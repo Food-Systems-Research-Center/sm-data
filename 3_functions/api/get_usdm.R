@@ -29,7 +29,6 @@ get_usdm <- function(base,
         cat_out <- cat_out %>% 
           as.data.frame() %>% 
           select(fips, nonConsecutiveWeeks)
-        # names(cat_out) <- c('fips', paste0('cat_', cat, '_weeks'))
       }
       
       return(cat_out)

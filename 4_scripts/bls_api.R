@@ -26,7 +26,9 @@ pacman::p_load(
 
 source('3_functions/metadata_utilities.R')
 fips_key <- readRDS('5_objects/fips_key.rds')
+state_key <- readRDS('5_objects/state_key.rds')
 naics_key <- readRDS('5_objects/naics_key.rds')
+all_fips <- readRDS('5_objects/all_fips.rds')
 
 # Results list
 results <- list()
@@ -252,7 +254,7 @@ results$unemp <- bls_bulk %>%
     str_detect(fips, '^.{2}000') ~ str_sub(fips, start = 1, end = 2),
     .default = fips 
   )) %>% 
-  filter(fips %in% fips_key$fips) %>% 
+  filter(fips %in% all_fips) %>%
   
   # Get names to match our system, then pivot longer, split name and year
   setNames(c(to_lower_camel_case(names(.)))) %>% 
@@ -298,7 +300,7 @@ metas$unemp <- data.frame(
   indicator = c(
     'employee numbers',
     rep('wealth/income distribution', 3),
-    rep('utilities', 2),                                   # revisit this at some point
+    rep('utilities', 2),  # revisit this at some point
     rep('wealth/income distribution', 2),
     'utilities'
   ),
@@ -363,7 +365,7 @@ metas$unemp <- data.frame(
   ),
   annotation = rep(NA, 9),
   scope = rep('national', 9),
-  resolution = rep('county', 9),
+  resolution = get_resolution(results$unemp),
   year = get_all_years(results$unemp),
   latest_year = get_max_year(results$unemp),
   updates = c(

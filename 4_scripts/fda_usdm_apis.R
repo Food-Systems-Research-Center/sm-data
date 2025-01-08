@@ -19,6 +19,7 @@ pacman::p_load(
 source('3_functions/metadata_utilities.R')
 
 fips_key <- readRDS('5_objects/fips_key.rds')
+state_key <- readRDS('5_objects/state_key.rds')
 results <- list()
 metas <- list()
 
@@ -200,9 +201,11 @@ get_str(metas$unemp)
 
 
 # USDM --------------------------------------------------------------------
+## Non-Consec Drought ------------------------------------------------------
 
 
 # Weeks of non-consecutive drought per year for each county in NE
+
 # Drought categories 2 (severe) or higher, last 5 years
 base <- 'https://usdmdataservices.unl.edu/api/ConsecutiveNonConsecutiveStatistics/'
 drought_categories <- c(2, 3, 4)
@@ -230,7 +233,7 @@ end_dates <- c('12/31/2019', '12/31/2020', '12/31/2021', '12/31/2022', '12/31/20
 
 
 
-## Cleaning ----------------------------------------------------------------
+### Cleaning ----------------------------------------------------------------
 
 
 # Pull drought monitor data that was just saved
@@ -287,7 +290,7 @@ get_str(usdm)
 # Make sure that all zeroes are accounted for, even implicit
 grid <- expand.grid(
   fips = fips_key$fips[str_length(fips_key$fips) == 5 & 
-    str_detect(fips_key$fips, '^09\\d{2}0$', negate = TRUE)],
+                         str_detect(fips_key$fips, '^09\\d{2}0$', negate = TRUE)],
   year = as.character(2020:2022),
   variable_name = c('droughtWeeksSevere', 'droughtWeeksExtreme')
 )
@@ -300,44 +303,112 @@ results$usdm <- usdm_clean
 
 
 
+## Avg Perc Drought by Area -----------------------------------------------
+
+
+# Average weekly percent of each state that is in drought (d1 or greater)
+states <- paste0(state_key$state_code, collapse = ',')
+counties <- fips_key %>% 
+  filter(str_length(fips) == 5) %>% 
+  pull(fips) %>% 
+  paste0(collapse = ',')
+start_dates <- c(paste0('1/1/', 2020:2024))
+end_dates <- c(paste0('12/31/', 2020:2024))
+
+# Map over dates for last five years, get data by state
+# out <- map2(start_dates, end_dates, \(start, end) {
+#   url <- glue(
+#     'https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByAreaPercent/',
+#     '?aoi={states}',
+#     '&startdate={start}',
+#     '&enddate={end}',
+#     '&statisticsType=1'
+#   )
+#   print(url)
+#   out <- GET(url, add_headers(Accept = "text/json")) %>%
+#     content(as = 'text') %>%
+#     fromJSON()
+#   return(out)
+# }) %>% 
+#   setNames(c(paste0('y', 2020:2024)))
+# 
+# get_str(out)
+
+# Save output for posterity
+# saveRDS(out, '5_objects/api_outs/usdm_perc_area_drought_2020_2024.rds')
+
+
+
+### Cleaning ----------------------------------------------------------------
+
+
+# We can just take 100 - none, which will give us percent in drought for each week
+# Then take average of every week, giving one value per year per state
+out <- readRDS('5_objects/api_outs/usdm_perc_area_drought_2020_2024.rds')
+get_str(out)
+perc_area_drought <- imap(out, ~ {
+  .x %>% 
+    left_join(
+      select(state_key, state, state_code), 
+      by = join_by(stateAbbreviation == state)
+    ) %>% 
+    mutate(perc_drought = 100 - none) %>% 
+    select(fips = state_code, perc_drought) %>% 
+    group_by(fips) %>% 
+    summarize(droughtMeanPercArea = mean(perc_drought, na.rm = TRUE)) %>% 
+    mutate(year = str_sub(.y, start = 2)) %>% 
+    pivot_longer(
+      cols = droughtMeanPercArea,
+      names_to = 'variable_name',
+      values_to = 'value'
+    )
+}) %>% 
+  bind_rows()
+get_str(perc_area_drought)
+
+# Add it onto USDM DF
+results$usdm <- bind_rows(results$usdm, perc_area_drought)
+get_str(results$usdm)
+
+
+
 ## Metadata ----------------------------------------------------------------
 
 
-vars <- usdm_clean$variable_name %>% 
-  unique %>% 
-  sort
-
-inter <- usdm_clean %>% 
-  group_by(variable_name) %>% 
-  summarize(all_years = list(sort(unique(year)))) %>% 
-  pull(all_years)
-
-all_years <- map_chr(inter, ~ paste0(.x, collapse = ', '))
-max_year <- map_chr(inter, max)
+vars <- get_vars(results$usdm)
 
 metas$usdm <- data.frame(
   variable_name = vars,
   dimension = 'environment',
-  index = 'water stability',
-  indicator = 'days / events of extremes',
+  index = 'water',
+  indicator = 'quantity',
   axis_name = c(
+    'Mean % Area in Drought',
     'Weeks of Severe Drought',
     'Weeks of Extreme Drought'
   ),
   metric = c(
+    'Mean percent area in drought',
     'Weeks of severe drought',
     'Weeks of extreme drought'
   ),
   definition = c(
+    'Mean of weekly percentages of area that under a drought, as defined by the US Drought Monitor (below 20th percentile for most indicators)',
     'Weeks in the year in which there were severe droughts or worse, as defined by the US Drought Monitor (below 10th percentile for most indicators)',
     'Weeks in the year in which there were extreme droughts or worse, as defined by the US Drought Monitor (below 5th percentile for most indicators)'
   ),
-  units = 'count',
+  units = c(
+    'percentage',
+    rep('count', 2)
+  ),
   annotation = NA,
   scope = 'national',
-  resolution = 'county',
-  year = all_years,
-  latest_year = max_year,
+  resolution = c(
+    'state',
+    rep('county', 2)
+  ),
+  year = get_all_years(results$usdm),
+  latest_year = get_max_year(results$usdm),
   updates = 'weekly',
   warehouse = FALSE,
   source = 'U.S. Department of Agriculture, U.S. Drought Monitor. (2024).',

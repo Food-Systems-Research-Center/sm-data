@@ -334,14 +334,6 @@ metas$ghgs
 ## Load
 lakes <- read_csv('1_raw/epa/nars/lakes_data_for_population_estimates_2022.csv')
 
-lakes_meta <- read.table(
-  '1_raw/epa/nars/lakes_metadata.txt',
-  header = TRUE, 
-  sep = '\t',
-  fill = TRUE
-) %>% 
-  filter()
-
 lakes_meta <- read_tsv(
   '1_raw/epa/nars/lakes_metadata.txt',
   col_names = TRUE
@@ -425,7 +417,7 @@ metas$lakes <- lakes_meta %>%
     source = 'U.S. Environmental Protection Agency, National Aquatic Resource Surveys, 2022',
     url = 'https://www.epa.gov/national-aquatic-resource-surveys/data-national-aquatic-resource-surveys'
   ) %>% 
-  add_citation() %>% 
+  add_citation(access_date = '2024-11-14') %>% 
   select(-LEGAL_VALUES)
 
 metas$lakes  
@@ -501,7 +493,7 @@ metas$rivers <- rivers_meta %>%
     source = 'U.S. Environmental Protection Agency, National Aquatic Resource Surveys, 2022',
     url = 'https://www.epa.gov/national-aquatic-resource-surveys/data-national-aquatic-resource-surveys'
   ) %>% 
-  add_citation() %>% 
+  add_citation(access_date = '2024-11-14') %>% 
   select(-LEGAL_VALUES)
 
 metas$rivers

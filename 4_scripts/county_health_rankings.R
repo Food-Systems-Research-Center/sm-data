@@ -210,7 +210,8 @@ select_measures <- map(analytic, ~ {
       cols = !c(fips, year),
       names_to = 'variable_name',
       values_to = 'value'
-    )
+    ) 
+    # mutate(variable_name = str_remove(variable_name, 'RawValue'))
 }) %>% 
   bind_rows()
 get_str(select_measures)
@@ -414,7 +415,8 @@ metas$select_measures <- NULL
 
 # Now we can also make our metric variable names formatted properly
 res$select_measures$variable_name <- res$select_measures$variable_name %>% 
-  snakecase::to_lower_camel_case()
+  snakecase::to_lower_camel_case() %>% 
+  str_remove('RawValue')
 
 
 

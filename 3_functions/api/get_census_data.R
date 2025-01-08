@@ -18,15 +18,25 @@ pacman::p_load(
 get_census_data <- function(survey_year,
                             survey,
                             vars,
-                            county = '*',
+                            county = NULL,
                             state) {
   # Get URL
-  url <- glue(
+  url <- paste0(
     'https://api.census.gov/data/{survey_year}/{survey}',
-    '?get=GEO_ID,NAME,{vars}',
-    '&for=county:{county}',
-    '&in=state:{state}'
+    '?get=GEO_ID,NAME,{vars}'
   )
+  
+  if (is.null(county)) {
+    url <- paste0(url, '&for=state:{state}')
+  } else if (!is.null(county)) {
+    url <- paste0(
+      url,
+      '&for=county:{county}',
+      '&in=state:{state}'
+    )
+  }
+  
+  url <- glue(url)
   
   # Print to check
   cat(paste0('\nQuery:\n', url, '\n'))

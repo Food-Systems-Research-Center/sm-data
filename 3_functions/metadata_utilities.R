@@ -40,6 +40,21 @@ get_max_year <- function(df) {
   return(out)
 }
 
+# Get resolution (state, county, state and county) for each variable
+get_resolution <- function(df) {
+  out <- df %>% 
+    group_by(variable_name) %>% 
+    summarize(
+      resolution = case_when(
+        any(str_length(fips) == 2) & any(str_length(fips) == 5) ~ 'county, state',
+        all(str_length(fips) == 2) ~ 'state',
+        all(str_length(fips) == 5) ~ 'county'
+    )) %>% 
+    arrange(variable_name) %>% 
+    pull(resolution)
+  return(out)
+}
+
 # Create a citation column on metadata with source, url, and access date
 add_citation <- function(df, 
                          source_col = source, 

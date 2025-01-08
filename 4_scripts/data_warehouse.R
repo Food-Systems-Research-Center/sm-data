@@ -24,10 +24,13 @@ results <- list()
 metas <- list()
 
 fips_key <- readRDS('5_objects/fips_key.rds')
+state_key <- readRDS('5_objects/state_key.rds')
+all_fips <- readRDS('5_objects/all_fips.rds')
 
 # Load functions
 source('3_functions/wrangling/warehouse_utilities.R')
 source('3_functions/pipeline_utilities.R')
+source('3_functions/metadata_utilities.R')
 
 
 
@@ -52,12 +55,14 @@ vars
 # Pull them all
 results$local_sales <- local_sales %>% 
   filter(variable_name %in% vars) %>% 
-  rename_local_sales_vars()
+  rename_local_sales_vars() %>% 
+  filter(fips %in% all_fips)
 get_str(results$local_sales)
 
 
 ## Wrangle metadata from data warehouse
 local_meta <- read.csv('1_raw/food_systems_data_warehouse/meta_localfoodsales.csv')
+get_str(local_meta)
 
 metas$local_sales <- local_meta %>% 
   wrangle_meta(vars) %>% 
@@ -104,8 +109,10 @@ metas$local_sales <- local_meta %>%
       variable_name == 'valueAddedSales' ~ 'usd'
     ),
     scope = 'national',
-    resolution = 'county',
-    warehouse = TRUE
+    resolution = 'county, state',
+    warehouse = TRUE,
+    year = get_all_years(results$local_sales),
+    latest_year = get_max_year(results$local_sales)
   )
 
 get_str(metas$local_sales)
@@ -119,8 +126,7 @@ access <- read_csv(
   '1_raw/food_systems_data_warehouse/df_foodaccess.csv',
   show_col_types = FALSE
 ) %>% 
-  filter(state_name %in% fips_key$state_name) %>% 
-  unique()
+  filter(fips %in% all_fips)
 get_str(access)
 
 ## Explore variables
@@ -169,8 +175,10 @@ metas$access <- read_csv(
       .default = NA
     ),
     scope = 'national',
-    resolution = 'county',
-    warehouse = TRUE
+    warehouse = TRUE,
+    resolution = get_resolution(results$access),
+    year = get_all_years(results$access),
+    latest_year = get_max_year(results$access)
   )
 
 get_str(metas$access)
@@ -182,9 +190,9 @@ get_str(metas$access)
 
 infra <- read_csv('1_raw/food_systems_data_warehouse/df_business_dev_infra.csv') %>% 
   mutate(fips = as.character(fips)) %>% 
-  filter_fips('all')
-
+  filter(fips %in% all_fips)
 get_str(infra)
+
 infra$variable_name %>% 
   unique %>% 
   sort
@@ -226,8 +234,10 @@ metas$business_infrastructure <- read_csv(
     ),
     units = 'count',
     scope = 'national',
-    resolution = c(rep('county', 4), rep('state', 2)),
-    warehouse = TRUE
+    resolution = get_resolution(results$dist_chain_capacity),
+    warehouse = TRUE,
+    year = get_all_years(results$dist_chain_capacity),
+    latest_year = get_max_year(results$dist_chain_capacity)
   )
 
 get_str(metas$business_infrastructure)
@@ -239,7 +249,7 @@ names(metas$business_infrastructure)
 
 
 labor <- read_csv('1_raw/food_systems_data_warehouse/df_labor.csv') %>% 
-  filter_fips('all')
+  filter(fips %in% all_fips)
 get_str(labor)
 
 # Explore variables
@@ -282,23 +292,13 @@ metas$labor <- read_csv(
     resolution = 'county',
     warehouse = TRUE,
     updates,
-    axis_name = variable_name
-    # axis_name = c(
-    #   'Median earnings, female, farming ($)',
-    #   'Median earnings, female, food service ($)',
-    #   'Median earnings, male, farming ($)',
-    #   'Median earnings, male, food service ($)',
-    #   'Women\'s earnings as % of male, farming',
-    #   'Women\'s earnings as % of male, food service'
-    # )
+    axis_name = variable_name,
+    year = get_all_years(results$labor),
+    latest_year = get_max_year(results$labor),
+    resolution = get_resolution(results$labor)
   )
 
 get_str(metas$labor)
-metas$labor$metric
-metas$labor$variable_name
-metas$labor$definition
-metas$labor$units
-
 
 
 

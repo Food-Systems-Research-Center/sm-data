@@ -11,8 +11,7 @@ pacman::p_load(
   purrr,
   janitor,
   skimr,
-  tidyr,
-  sf
+  tidyr
 )
 
 # Source functions
@@ -479,32 +478,6 @@ results$n_chemical_operations <- pull_variable(
 )
 get_str(results$n_chemical_operations)
 
-# # Calculate expenses per operation
-# chemical_expenses_per_operation <- bind_rows(
-#   results$n_chemical_operations, 
-#   results$chemical_total_expenses
-# ) %>% 
-#   pivot_wider(
-#     id_cols = 'fips',
-#     names_from = 'variable_name', 
-#     values_from = 'value'
-#   ) %>%  
-#   mutate(
-#     expChemPF = expChemical / nOpsChemical,
-#     .keep = 'unused'
-#   )
-# 
-# # Remake the last one with it...
-# results$chemical_expenses_per_operation <- results$n_chemical_operations %>% 
-#   full_join(chemical_expenses_per_operation, by = 'fips') %>% 
-#   mutate(
-#     value = expChemPF,
-#     variable_name = 'expChemPF',
-#     .keep = 'unused'
-#   )
-# 
-# get_str(results$chemical_expenses_per_operation)
-
 # Metadata
 metas$production_inputs <- tibble(
   dimension = "production",
@@ -518,7 +491,7 @@ metas$production_inputs <- tibble(
   variable_name = c(
     'expChemical',
     'nOpsChemical',
-    'expChemPF'
+    'expChemicalPct'
   ),
   definition = c(
     'Total chemical expenses, measured in dollars',
@@ -1185,57 +1158,59 @@ metas$env <- starter %>%
       'Number of operations harvesting biomass for energy',
       'Acres under conservation easements',
       'Acres under conservation easement per operation',
-      # [] Fixing this now
+      
       'Operations with conservation easements',
       'Operations with conservation income',
       'Conservation income per operation',
       'Total conservation income',
       'Conservation tillage acres, excluding no-till',
+      # 10 
       'Conservation tillage acres, excluding no-till, per operation',
-      'Operations with conseration tillage, excluding no-till',
-      
+      'Operations with conservation tillage, excluding no-till',
       'Conservation tillage, no-till acres',
       'Conservation tillage, no-till acres per operation',
       'Conservation tillage, no-till, operations',
+      # 15
       'Cover crop practices, excluding CRP, acres',
       'Cover crop practices, excluding CRP, acres per operation',
-      # 15
-      
       'Cover crop practices, excluding CRP, operations',
       'Acres drained by ditches',
       'Acres drained by ditches per farm',
+      # 20
       'Operations with drained acres by tile',
       'Acres drained by tile',
-      
       'Acres drained by tile per operation',
       'Operations with acres drained by tile',
+      'Operations using ethanol',
+      # 25
       'Operations with fertilizer expenses',
       'Fertilizer expenses as a percentage of operations expenses',
       'Total fertilizer expenses',
-      
       'Operations using geoexchange',
-      'Operations using precision agriculture',
-      'Operations using renewable energy',
-      'Operations using rotational or intensive grazing',
-      'Acre feet of irrigation from reclaimed water',
+      'Operations using methane energy',
       # 30
-      
+      'Operations using other renewable energy',
+      'Operations using precision agriculture',
+      'Operations using any renewable energy',
+      'Operations using rotational or intensive grazing',
+      'Operations using small hydro energy',
+      # 35
+      'Operations with solar power',
+      'Acre feet of irrigation from reclaimed water',
       'Acres irrigated with reclaimed water in open areas',
       'Operations irrigating with reclaimed water in open areas',
       'Total expenses from water for irrigation sourced off-farm',
+      # 40
       'Expenses from water for irrigation sourced off-farm per acre',
       'Expenses from water for irrigation sourced off-farm per acre foot',
-      
       'Operations with expenses from water for irrigation sourced off-farm',
       'Depth of irrigation wells',
       'Number of irrigation wells',
+      # 45
       'Operations with irrigation wells',
       'Operations with wind turbines rented to others',
-      
-      'Operations with methane digesters',
-      'Operations with solar power',
-      'Operations with wind power'
-      # 43
+      'Operations with wind turbines'
+      # 48
     ),
     indicator = case_when(
       str_detect(metric, 'solar|wind|methane|geo') ~ 'energy efficiency',
@@ -1249,12 +1224,16 @@ metas$env <- starter %>%
       indicator == 'acres in conservation practices' ~ 'biodiversity',
       str_detect(indicator, 'efficien') ~ 'resource use efficiency'
     ),
-    # variable_name = vars, # Don't need this, bringing them in above
     definition = metric, # Fix this at some point
     axis_name = variable_name, # Fix this at some point
     units = case_when(
-      str_detect(variable_name, 'NOps$') ~ 'count',
+      str_detect(variable_name, 'NOps') ~ 'count',
       str_detect(variable_name, '^pct') ~ 'percentage',
+      str_detect(variable_name, 'AcreFt$') ~ 'acre feet',
+      str_detect(variable_name, 'Acres') ~ 'acres',
+      str_detect(variable_name, 'DepthFt$') ~ 'feet',
+      str_detect(variable_name, 'Exp$') ~ 'usd',
+      str_detect(variable_name, 'ExpPerAcre$') ~ 'usd per acre',
       .default = units
     ),
     scope = 'national',
@@ -1263,7 +1242,6 @@ metas$env <- starter %>%
       fips_length == 2 ~ 'state',
       .default = NA_character_
     ),
-    # year = '2022',
     updates = "5 years",
     source = paste0(
       "U.S. Department of Agriculture, National Agricultural Statistics Service. ",
@@ -1276,7 +1254,6 @@ metas$env <- starter %>%
   select(-fips_length)
 
 metas$env
-
 
 
 # Aggregate ---------------------------------------------------------------

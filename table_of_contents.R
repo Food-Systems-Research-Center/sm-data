@@ -66,6 +66,9 @@ source('4_scripts/get_param_options.R')
 # Explore bulk download from USDA ARMS. ARMS isn't helpful for us though.
 source('4_scripts/arms.R')
 
+# USDA ERS Food Environment Atlas
+source('4_scripts/usda_food_environment_atlas.R')
+
 # Sandbox
 '4_scripts/sandbox.R'
 

@@ -38,7 +38,8 @@ agg <- map(dat, ~ {
     mutate(across(c(year, value), as.character)) %>% 
     select(-any_of(c('metric', 'county_name')))
   }) %>% 
-  bind_rows()
+  bind_rows() %>% 
+  select(fips, year, variable_name, value)
 get_str(agg)
 
 # Explore
@@ -52,6 +53,7 @@ agg$variable_name %>%
 # Metadata ----------------------------------------------------------------
 
 
+get_str(meta)
 map(meta, get_str)
 
 # Combine them, warehouse is FALSE if not included

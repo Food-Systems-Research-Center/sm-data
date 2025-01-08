@@ -22,13 +22,16 @@ pacman::p_load(
   tibble,
   lubridate,
   reticulate,
-  tidyr
+  tidyr,
+  readr
 )
 
 source('3_functions/pipeline_utilities.R')
 source('3_functions/metadata_utilities.R')
 
 fips_key <- readRDS('5_objects/fips_key.rds')
+state_key <- readRDS('5_objects/state_key.rds')
+all_states_sf <- readRDS('2_clean/spatial/all_states.RDS')
 ne_counties <- readRDS('2_clean/spatial/ne_counties_2024.RDS')
 
 results <- list()
@@ -301,42 +304,62 @@ saveRDS(treemap_crop, '2_clean/spatial/map_layers/treemap_biomass.rds')
 # Redo TreeMap ------------------------------------------------------------
 
 
-# Run python script to aggregate TreeMap2016 data by counties
-county_path = '2_clean/spatial/ne_counties_2024.gpkg'
-path_list <- dir(
-  '1_raw/spatial/usfs_treemap/',
-  pattern = '*.tif',
-  full.names = TRUE
-)
-df_names <- path_list %>% 
-  str_split_i('2016_', 2) %>% 
-  str_remove('.tif') %>% 
-  str_to_lower()
+# # Run python script to aggregate TreeMap2016 data by counties
+# path_list <- dir(
+#   '1_raw/spatial/usfs_treemap/',
+#   pattern = '*.tif',
+#   full.names = TRUE
+# )
+# df_names <- path_list %>% 
+#   str_split_i('2016_', 2) %>% 
+#   str_remove('.tif') %>% 
+#   str_to_lower()
+# 
+# # Load python function to get means of raster value within each polygon
+# reticulate::source_python('3_functions/spatial/raster_mean_by_polygon.py')
+# 
+# # Map over path list to run function on each one
+# county_path = '2_clean/spatial/ne_counties_2024.gpkg'
+# counties_out <- map2(path_list, df_names, ~ raster_mean_by_polygon(county_path, .x, .y))
+# get_str(counties_out)
+# 
+# # Do it for states as well. 
+# # Note this one takes a while! Whole country raster. Maybe an hour?
+# states_path = '2_clean/spatial/all_states.gpkg'
+# get_time()
+# states_out <- map2(path_list, df_names, ~ raster_mean_by_polygon(states_path, .x, .y))
+# get_str(states_out)
+# 
+# # Save outputs for posterity
+# list(states_out, counties_out) %>% 
+#   saveRDS('5_objects/spatial/processing/treemap_aggregation_out.RDS')
 
-# Map over path list to run function on each one
-reticulate::source_python('3_functions/spatial/raster_mean_by_polygon.py')
-py_out <- map2(path_list, df_names, ~ raster_mean_by_polygon(county_path, .x, .y))
-get_str(py_out)
 
-# Combine DFs, rename columns, format variables
-treemap_dat <- purrr::reduce(py_out, inner_join, by = 'fips') %>% 
-  setNames(c(
-    'fips',
-    'forestCarbonLive',
-    'forestCarbonDeadStanding',
-    'forestCarbonDeadDown',
-    'forestCanopyCover',
-    'forestLiveTreeVolume',
-    'forestLiveTrees',
-    'forestDeadTrees',
-    'forestStandHeight'
-  )) %>% 
-  pivot_longer(
-    cols = !fips,
-    names_to = 'variable_name',
-    values_to = 'value'
-  ) %>% 
-  mutate(year = '2016')
+
+# Pick up saved dataset, then combine, rename, put in variable format
+treemap_agg <- readRDS('5_objects/spatial/processing/treemap_aggregation_out.RDS')
+treemap_dat <- map(treemap_agg, ~ {
+  .x %>% 
+    purrr::reduce(inner_join) %>% 
+    setNames(c(
+      'fips',
+      'forestCarbonLive',
+      'forestCarbonDeadStanding',
+      'forestCarbonDeadDown',
+      'forestCanopyCover',
+      'forestLiveTreeVolume',
+      'forestLiveTrees',
+      'forestDeadTrees',
+      'forestStandHeight'
+    )) %>% 
+    pivot_longer(
+      cols = !fips,
+      names_to = 'variable_name',
+      values_to = 'value'
+    ) %>% 
+    mutate(year = '2016')
+}) %>% 
+  bind_rows()
 get_str(treemap_dat)
 
 # Save to results
@@ -348,10 +371,7 @@ results$treemap <- treemap_dat
 
 
 get_str(treemap_dat)
-vars <- treemap_dat$variable_name %>% 
-  unique %>% 
-  sort
-vars
+(vars <- get_vars(treemap_dat))
 
 metas$treemap <- data.frame(
   variable_name = vars,
@@ -400,7 +420,7 @@ metas$treemap <- data.frame(
     'feet'
   ),
   scope = 'national',
-  resolution = 'county',
+  resolution = 'county, state',
   year = '2016',
   latest_year = '2016',
   updates = "8 years",
@@ -437,17 +457,7 @@ rm(bio_layers)
 
 
 
-# USFS IDS ------------------------------------------------------------
-
-
-# Insect and Disease Dataset (IDS)
-# raw <- st_read('1_raw/spatial/usfs/CONUS_Region9_2023.gdb/CONUS_Region9_2023.gdb/')
-
-# What are we doing here. I don't remember. We didn't like this dataset
-
-
-
-# CDL - CSV ---------------------------------------------------------------
+# Cropland Data Layer - CSV ----------------------------------------------
 
 
 # Here we can get multiple years, diversity across years?
@@ -476,7 +486,6 @@ cdl_clean <- map(dat, ~ {
   df <- .x %>% 
     select(fips = Fips, starts_with('Category')) %>% 
     mutate(fips = ifelse(str_length(fips) == 4, paste0('0', fips), fips)) %>% 
-    filter(fips %in% fips_key$fips) %>% 
     setNames(c('fips', str_split_i(names(.)[-1], '_', 2))) %>% 
     setNames(c('fips', cdl_key$class[match(names(.)[-1], cdl_key$code)]))
   na_indices <- which(is.na(colnames(df)))
@@ -484,19 +493,50 @@ cdl_clean <- map(dat, ~ {
   return(df)
 }) %>% 
   keep(~ nrow(.x) > 1)
+get_str(cdl_clean)
 
-# Now get diversity for each fips for each year
+# Now get diversity for each NE county for each year
 # First have to remove non-crop classes
 pattern <- c('Developed|Forest|Shrubland|Grassland|Wetland|Barren|Missing|Water')
-cdl_div <- imap(cdl_clean, ~ {
+cdl_div_counties <- imap(cdl_clean, ~ {
+  df <- .x %>% 
+    filter_fips(scope = 'counties')
+  
+  if (any(df$fips %in% fips_key$fips)) {
+    out <- df %>% 
+      column_to_rownames('fips') %>% 
+      select(!matches(pattern)) %>% 
+      diversity() %>% 
+      as.data.frame() %>% 
+      rownames_to_column() %>% 
+      setNames(c('fips', 'cropDiversity')) %>% 
+      mutate(year = .y) %>% 
+      pivot_longer(
+        cols = cropDiversity,
+        names_to = 'variable_name',
+        values_to = 'value'
+      )
+  } else {
+    out <- NULL
+  }
+  return(out)
+  }) %>% 
+  bind_rows()
+get_str(cdl_div_counties)
+
+# Group by state (first two letters of fips) and get diversity for each state
+cdl_div_states <- imap(cdl_clean, ~ {
   .x %>% 
-    column_to_rownames('fips') %>% 
-    select(!matches(pattern)) %>% 
-    diversity() %>% 
-    as.data.frame() %>% 
-    rownames_to_column() %>% 
-    setNames(c('fips', 'cropDiversity')) %>% 
-    mutate(year = .y) %>% 
+    mutate(fips = str_sub(fips, end = 2)) %>% 
+    group_by(fips) %>% 
+    summarize(across(everything(), sum)) %>% 
+    column_to_rownames('fips') %>%
+    select(!matches(pattern)) %>%
+    diversity() %>%
+    as.data.frame() %>%
+    rownames_to_column() %>%
+    setNames(c('fips', 'cropDiversity')) %>%
+    mutate(year = .y) %>%
     pivot_longer(
       cols = cropDiversity,
       names_to = 'variable_name',
@@ -504,18 +544,18 @@ cdl_div <- imap(cdl_clean, ~ {
     )
   }) %>% 
   bind_rows()
-get_str(cdl_div)
+get_str(cdl_div_states)
 
-# Save it
-results$crop_div <- cdl_div
+# Combine counties and states, save to results
+results$crop_div <- bind_rows(cdl_div_counties, cdl_div_states)
+get_str(results$crop_div)
 
 
 
 ## Metadata ----------------------------------------------------------------
 
 
-get_str(cdl_div)
-years <- cdl_div$year %>% unique %>% sort %>% paste0(collapse = ', ')
+get_str(results$crop_div)
 
 metas$crop_div <- data.frame(
   variable_name = 'cropDiversity',
@@ -527,9 +567,9 @@ metas$crop_div <- data.frame(
   indicator = 'crop diversity',
   units = 'index',
   scope = 'national',
-  resolution = 'county',
-  year = years,
-  latest_year = '2023',
+  resolution = 'county, state',
+  year = get_all_years(results$crop_div),
+  latest_year = get_max_year(results$crop_div),
   updates = "annual",
   source = 'U.S. Department of Agriculture, National Agricultural Statistics Service, Cropland Data Layer',
   url = 'https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php',
