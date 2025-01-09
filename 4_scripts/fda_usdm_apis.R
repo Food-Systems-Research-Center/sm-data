@@ -25,7 +25,7 @@ metas <- list()
 
 
 
-# Recall Enforcement ------------------------------------------------------
+# FDA Recall Enforcement ---------------------------------------------------
 
 
 # +AND+ to string together multiple filters
@@ -427,11 +427,11 @@ get_str(metas$usdm)
 out <- aggregate_metrics(results, metas)
 
 # Check record counts to see if they match
-check_n_records(out$result, out$meta, 'FSA, USDM')
+check_n_records(out$result, out$meta, 'FDA, USDM')
 
 # Save 
-saveRDS(out$result, '5_objects/metrics/fsa_usdm.RDS')
-saveRDS(out$meta, '5_objects/metadata/fsa_usdm_meta.RDS')
+saveRDS(out$result, '5_objects/metrics/fda_usdm.RDS')
+saveRDS(out$meta, '5_objects/metadata/fda_usdm_meta.RDS')
 
 clear_data()
 gc()

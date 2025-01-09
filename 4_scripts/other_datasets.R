@@ -24,136 +24,6 @@ metas <- list()
 
 
 
-# # EPA GHGs from Ag --------------------------------------------------------
-# 
-# 
-# # https://cfpub.epa.gov/ghgdata/inventoryexplorer/
-# # Read in files from inventory, add _inv to variable name to keep them straight
-# inv_paths <- list.files(
-#   '1_raw/epa/ghg_ide_agriculture_inventory/',
-#   full.names = TRUE
-# )
-# names <- map(inv_paths, ~ names(read_csv(.x))[1])
-# 
-# inv <- map(inv_paths, ~ {
-#   df <- read_csv(.x)
-#   var_name <- names(df)[1]
-#   df %>% 
-#     rename('state' = 1) %>% 
-#     filter(state %in% fips_key$state_name) %>% 
-#     pivot_longer(
-#       cols = !state,
-#       names_to = 'year',
-#       values_to = 'value'
-#     ) %>% 
-#     mutate(
-#       metric = paste(
-#         str_replace(str_split_i(var_name, ', ', 2), '\\.', ','),
-#         str_split_i(var_name, ',', 1),
-#         '(Inventory Sectors)'
-#       ),
-#       variable_name = paste0(
-#         'mmtCo2',
-#         var_name %>%
-#           str_split_i(',', 1) %>%
-#           to_lower_camel_case(),
-#         'Inv'
-#       )
-#     )
-# })
-# get_str(inv[[1]])
-# get_str(inv)
-# 
-# # Same for economic sectors
-# econ_paths <- list.files(
-#   '1_raw/epa/ghg_ide_agriculture_economic/',
-#   full.names = TRUE
-# )
-# econ <- map(econ_paths, ~ {
-#   df <- read_csv(.x)
-#   var_name <- names(df)[1]
-#   df %>% 
-#     rename('state' = 1) %>% 
-#     filter(state %in% fips_key$state_name) %>% 
-#     pivot_longer(
-#       cols = !state,
-#       names_to = 'year',
-#       values_to = 'value'
-#     ) %>% 
-#     mutate(
-#       metric = paste(
-#         str_replace(str_split_i(var_name, ', ', 2), '\\.', ','),
-#         str_split_i(var_name, ',', 1),
-#         '(Economic Sectors)'
-#       ),
-#       variable_name = paste0(
-#         'mmtCo2',
-#         var_name %>%
-#           str_split_i(',', 1) %>%
-#           to_lower_camel_case(),
-#         'Econ'
-#       )
-#     )
-# })
-# get_str(econ)
-# econ[[1]]
-# 
-# # Combine and bring fips
-# state_key <- fips_key %>% 
-#   select(fips, state_name) %>% 
-#   filter(str_length(fips) == 2, state_name != 'US')
-# dat <- c(econ, inv) %>% 
-#   bind_rows() %>% 
-#   left_join(state_key, by = join_by(state == state_name)) %>% 
-#   select(-state)
-# get_str(dat)
-# 
-# # Check vars
-# vars <- dat$variable_name %>% 
-#   unique %>% 
-#   sort
-# vars
-# 
-# # Add to results
-# results$ghgs <- dat
-# 
-# 
-# 
-# ## Metadata ----------------------------------------------------------------
-# 
-# 
-# # Check vars
-# vars
-# get_str(results$ghgs)
-# 
-# metas$ghgs <- results$ghgs %>% 
-#   select(metric, variable_name) %>% 
-#   unique() %>% 
-#   mutate(
-#     dimension = "environment",
-#     index = 'air quality',
-#     indicator = 'greenhouse gas emissions',
-#     definition = paste(
-#       'Greenhouse gas emissions by state in millions of metric tons.',
-#       'Categorized as either economic sector or inventory sector, the latter of which is consistent with international standards.'
-#     ),
-#     units = 'mmt CO2 equivalent',
-#     axis_name = variable_name,
-#     scope = 'national',
-#     resolution = 'state',
-#     year = paste(sort(unique(results$ghgs$year)), collapse = ', '),
-#     latest_year = max(unique(results$ghgs$year)),
-#     updates = "annual",
-#     source = paste0(
-#       'U.S. Environmental Protection Agency, Greenhouse Gas Inventory Explorer, 2023'
-#     ),
-#     url = 'https://cfpub.epa.gov/ghgdata/inventoryexplorer/'
-#   ) %>% 
-#   add_citation()
-# metas$ghgs
-
-
-
 # EPA GHGs ----------------------------------------------------------------
 
 
@@ -164,13 +34,14 @@ metas <- list()
 un_raw <- read_xlsx(
   '1_raw/epa/state_ghgs_1990_2022/AllStateGHGData90-22_v082924.xlsx',
   sheet = 2
-)
+) %>% 
+  unique()
 get_str(un_raw)
 
 # Narrow down to New England, Agriculture, relevant columns
 un <- un_raw %>% 
   select(
-    sector:sub_category_1, 
+    sector:sub_category_3, 
     state = geo_ref,
     ghg_category,
     starts_with('Y')
@@ -180,7 +51,6 @@ un <- un_raw %>%
     select(fips_key, fips, state_code), 
     by = join_by(state == state_code)
   ) %>% 
-  mutate(sub_category_1 = ifelse(is.na(sub_category_1), '', sub_category_1)) %>% 
   select(-state, -sector) # Don't need sector anymore - all agriculture
 get_str(un)
 
@@ -188,7 +58,17 @@ get_str(un)
 # variable name I guess. Leaving it as definition for now.
 un <- un %>% 
   mutate(
-    definition = str_c(subsector, category, sub_category_1, sep = ' > '),
+    # Turn NA into '' so we can paste them together
+    across(starts_with('sub_'), ~ ifelse(is.na(.x), '', .x)),
+    # Paste unique identifiers as deep as we need to go
+    definition = paste(
+      subsector, 
+      category, 
+      sub_category_1, 
+      sub_category_2, 
+      sub_category_3, 
+      sep = ' > '
+    ),
     definition = case_when(
       str_detect(definition, '^CO2') ~ paste0(
         str_sub(definition, end = 4),
@@ -200,9 +80,11 @@ un <- un %>%
         str_to_lower(definition)
       ),
       .default = NA
-    )
+    ),
+    definition = str_remove_all(definition, ' > $| >  > ') # remove blanks
   )
 get_str(un)
+dim(un)
 
 # Calculate aggregates by category in separate df
 subsector_totals <- un %>%
@@ -212,6 +94,7 @@ subsector_totals <- un %>%
     names_prefix = "Y",
     values_to = "value"
   ) %>%
+  # aggregating to subsector
   group_by(fips, year, subsector, ghg_category) %>%
   summarize(value = sum(value, na.rm = TRUE), .groups = "drop") %>%
   mutate(definition = paste0(
@@ -222,6 +105,7 @@ subsector_totals <- un %>%
   )) %>%
   select(-subsector)
 get_str(subsector_totals)
+dim(subsector_totals)
 
 # Another set where we get CO2, CH4, and N2O totals per fips and year
 ghg_totals <- subsector_totals %>% 
@@ -250,6 +134,7 @@ un_definitions <- un %>%
   bind_rows(ghg_totals) %>% 
   mutate(
     definition = paste(definition, '(Tg)'),
+    
     metric = str_remove(
       definition, 
       'manure management > |field burning of agricultural residues > |enteric fermentation > '
@@ -258,31 +143,36 @@ un_definitions <- un %>%
       str_remove('agricultural ') %>% 
       str_remove('carbon-containing ') %>% 
       str_replace_all(' > ', ' '),
+    
     variable_name = metric %>% 
-      str_remove('Subsector ') %>% 
       str_remove('Total ') %>% 
       str_remove('emissions ') %>% 
-      str_remove(':') %>% 
-      str_remove_all(',') %>% 
-      str_remove('from ') %>% 
-      str_remove('management ') %>% 
-      str_remove('burning ') %>% 
-      str_remove('of ') %>% 
-      str_remove('and ') %>% 
-      str_replace('agriculture', 'ag') %>% 
-      str_replace('enteric fermentation ', 'ferment ') %>% 
-      str_remove('application other fertilizers ') %>% 
-      str_remove('liming ') %>% 
-      str_remove('direct indirect n2o emissions from soils agricultural ') %>% 
-      str_remove('rice cultivation ') %>% 
-      str_remove('american ') %>% 
+      str_replace('from agriculture ', 'from ag ') %>% 
+      str_remove('from manure management ') %>% 
+      str_remove('from agriculture: ') %>% 
+      str_replace('from field burning of residues ', 'burning residues ') %>% 
+      str_remove('from liming, urea application and other ') %>% 
+      str_remove('from enteric ') %>% 
+      str_remove('residues ') %>% 
+      str_remove('from direct and indirect n2o emissions from soils agricultural ') %>% 
+      str_replace('other other ', 'other ') %>% 
+      str_remove('and roots other ') %>% 
+      str_replace('management ', 'manage ') %>% 
+      str_replace('cropland ', 'crop ') %>% 
+      str_replace('grassland ', 'grass ') %>% 
       str_remove(' \\(Tg\\)'),
+    
     variable_name = paste0(
       str_sub(variable_name, end = 3),
       snakecase::to_upper_camel_case(str_sub(variable_name, start = 4))
     )
   )
+
+un_definitions$variable_name %>% unique
 get_str(un_definitions)
+un_definitions$definition %>% unique
+un_definitions$metric %>% unique
+
 
 # Pull out just the metric values for results list
 un_metrics <- un_definitions %>% 
