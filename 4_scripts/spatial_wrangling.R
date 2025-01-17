@@ -4,6 +4,10 @@
 #' Getting spatial features, counties, fips and states codes sorted out and 
 #' saved to be used throughout project. Original script from USDA FAME warehouse
 
+#' Note that this script has been a slow drip of additions leading to some 
+#' pretty gross code, and calling from tigris more than necessary. Update this
+#' at some point.
+
 
 
 # Housekeeping ------------------------------------------------------------
@@ -23,7 +27,7 @@ pacman::p_load(
 
 
 
-# Wrangle spatial data ----------------------------------------------------
+# FIPS Keys ---------------------------------------------------------------
 
 
 # Vector of New England States
@@ -61,7 +65,12 @@ county_state <- bind_rows(county, state) %>%
     state_code = 'US'
   )
 
-# Import county spatial data frame
+
+
+# Spatial Data ------------------------------------------------------------
+
+
+# Import county spatial data frame (before CT changes)
 counties_2021 <- tigris::counties(
   state = ne_states, 
   progress_bar = TRUE,
@@ -71,9 +80,29 @@ counties_2021 <- tigris::counties(
   mutate(fips = paste0(statefp, countyfp)) %>% 
   select(fips, aland, awater, geometry)
 
-# Import county spatial data frame
+# Import county spatial data frame for 2024 (after CT changes)
 counties_2024 <- tigris::counties(
   state = ne_states, 
+  progress_bar = TRUE,
+  year = 2024
+) %>% 
+  clean_names() %>% 
+  mutate(fips = paste0(statefp, countyfp)) %>% 
+  select(fips, aland, awater, geometry)
+
+# Get spatial data for all counties (using this for area later)
+all_counties_2021 <- tigris::counties(
+  state = NULL, 
+  progress_bar = TRUE,
+  year = 2021
+) %>% 
+  clean_names() %>% 
+  mutate(fips = paste0(statefp, countyfp)) %>% 
+  select(fips, aland, awater, geometry)
+
+# Get spatial data for all counties (using this for area later)
+all_counties_2024 <- tigris::counties(
+  state = NULL, 
   progress_bar = TRUE,
   year = 2024
 ) %>% 
@@ -134,6 +163,36 @@ all_fips <- c(
 ) %>% unique()
 
 
+
+# Area DF -----------------------------------------------------------------
+
+
+# creating DF with all county and state fips, and their area
+
+## NE FIPS key
+fips_key
+counties_2021
+counties_2024
+
+# Take 2024 counties first. Then just add remaining 2021 counties not included
+most_areas <- reduce(list(all_counties_2024, all_states_2024), bind_rows)
+
+# Pull just old 2021 counties from CT
+old_ct <- all_counties_2021 %>% 
+  filter(str_detect(fips, '^09.{2}[1-9]'))
+
+# Combine old CT counties with rest of areas
+areas <- bind_rows(most_areas, old_ct)
+
+# Just get clean DF with fips and area, put areas in sq km units
+area_df <- areas %>% 
+  st_drop_geometry() %>% 
+  select(fips, area_sqkm = aland, water_sqkm = awater) %>% 
+  mutate(across(c(area_sqkm, water_sqkm), ~ round(.x / 1e6, 2)))
+get_str(area_df)
+
+
+
 # Save and Clear ----------------------------------------------------------
 
 
@@ -154,9 +213,18 @@ st_write(states_2024, '2_clean/spatial/ne_states.gpkg', append = FALSE)
 saveRDS(all_states_2024, '2_clean/spatial/all_states.RDS')
 st_write(all_states_2024, '2_clean/spatial/all_states.gpkg', append = FALSE)
 
-saveRDS(new_england, '2_clean/spatial/new_england.RDS')
-st_write(new_england, '2_clean/spatial/new_england.gpkg', append = FALSE)
+saveRDS(all_counties_2021, '2_clean/spatial/all_counties_2021.RDS')
+st_write(all_counties_2021, '2_clean/spatial/all_counties_2021.gpkg', append = FALSE)
+
+saveRDS(all_counties_2024, '2_clean/spatial/all_counties_2024.RDS')
+st_write(all_counties_2024, '2_clean/spatial/all_counties_2024.gpkg', append = FALSE)
+
+# saveRDS(new_england, '2_clean/spatial/new_england.RDS')
+# st_write(new_england, '2_clean/spatial/new_england.gpkg', append = FALSE)
+
+saveRDS(area_df, '5_objects/areas.RDS')
 
 
 # Clear
 clear_data()
+gc()

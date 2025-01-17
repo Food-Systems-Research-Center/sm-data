@@ -18,6 +18,8 @@ pacman::p_load(
 source('3_functions/metadata_utilities.R')
 source('3_functions/pipeline_utilities.R')
 fips_key <- readRDS('5_objects/fips_key.rds')
+state_key <- readRDS('5_objects/state_key.rds')
+areas <- readRDS('5_objects/areas.rds')
 
 results <- list()
 metas <- list()
@@ -42,16 +44,17 @@ get_str(un_raw)
 un <- un_raw %>% 
   select(
     sector:sub_category_3, 
-    state = geo_ref,
+    geo_ref,
     ghg_category,
     starts_with('Y')
   ) %>% 
   filter(sector == 'Agriculture') %>% 
-  inner_join(
-    select(fips_key, fips, state_code), 
-    by = join_by(state == state_code)
+  left_join(
+    select(state_key, state, fips = state_code), 
+    by = join_by(geo_ref == state),
+    keep = TRUE
   ) %>% 
-  select(-state, -sector) # Don't need sector anymore - all agriculture
+  select(-sector, -geo_ref)
 get_str(un)
 
 # Combine categories so we can use them as definition later. It will also become
@@ -167,12 +170,7 @@ un_definitions <- un %>%
       snakecase::to_upper_camel_case(str_sub(variable_name, start = 4))
     )
   )
-
-un_definitions$variable_name %>% unique
 get_str(un_definitions)
-un_definitions$definition %>% unique
-un_definitions$metric %>% unique
-
 
 # Pull out just the metric values for results list
 un_metrics <- un_definitions %>% 
@@ -264,12 +262,12 @@ lake_dat <- lakes %>%
     names_to = 'variable_name',
     values_to = 'value'
   ) %>% 
-  inner_join(fips_key, by = join_by(PSTL_CODE == state_code)) %>% 
-  select(fips, variable_name, value) %>% 
+  # inner_join(fips_key, by = join_by(PSTL_CODE == state_code)) %>% 
+  inner_join(state_key, by = join_by(PSTL_CODE == state)) %>% 
+  select(fips = state_code, variable_name, value) %>% 
   mutate(year = '2022') %>% 
   filter(variable_name != 'RDIS_COND')
 get_str(lake_dat)
-lake_dat
 
 results$lakes <- lake_dat
 
@@ -339,8 +337,8 @@ river_vars <- rivers_meta %>%
 river_vars
 
 river_dat <- rivers %>% 
-  inner_join(fips_key, by = join_by(PSTL_CODE == state_code)) %>% 
-  select(fips, all_of(river_vars)) %>% 
+  inner_join(state_key, by = join_by(PSTL_CODE == state)) %>% 
+  select(fips = state_code, all_of(river_vars)) %>% 
   group_by(fips) %>% 
   summarize(across(everything(), ~ mean(.x %in% c('Good', 'Fair')))) %>% 
   pivot_longer(
@@ -427,23 +425,23 @@ ag_raw <- map(paths, read_excel)
 
 # Select cols 1, 5, and last, filter by fips to NE, combine all years
 # Note that we are not keeping info on what kind of events they are. May regret
-ag <- map(ag_raw, ~ {
+ag_all <- map(ag_raw, ~ {
   .x %>% 
     select(1, 5, contains('YEAR')) %>% 
     setNames(c('fips', 'des', 'year')) %>% 
     mutate(
       across(everything(), as.character),
       year = ifelse(year == '2011, 2012', '2012', year)
-    ) %>% 
-    filter(fips %in% fips_key$fips)
+    ) 
 }) %>% 
   bind_rows()
-get_str(ag)
+get_str(ag_all)
 
 
 # Want variables by county, state, whole system
 # county first - number of unique events in each year
-ag_county <- ag %>% 
+ag_county <- ag_all %>% 
+  filter(fips %in% fips_key$fips) %>% 
   group_by(fips, year) %>% 
   summarize(n_des = length(unique(des))) %>% 
   arrange(fips)
@@ -472,10 +470,63 @@ ag_county <- ag_county %>%
   )
 get_str(ag_county)
 
-# [] Should we get state and system as well?
-
 # Save it
 results$fsa_sec <- ag_county
+
+
+
+### State -------------------------------------------------------------------
+
+
+# Different metric for state, because data only exists at county level
+# For state, do proportion of area of state that had a declaration per year
+# So we need to combine all the counties per state per year, get area, then
+# divide by total area in that state
+get_str(ag_all)
+get_str(areas)
+
+# Get unique counties with a declaration in each year
+by_state_year <- ag_all %>% 
+  mutate(state_fips = str_sub(fips, end = 2)) %>% 
+  group_by(state_fips, year) %>% 
+  distinct(fips) %>% 
+  ungroup()
+get_str(by_state_year)
+
+# Now add areas, get total affected per state per year
+area_per_state <- by_state_year %>% 
+  left_join(select(areas, fips, area_sqkm)) %>% 
+  group_by(state_fips, year) %>% 
+  summarize(area_affected = sum(area_sqkm))
+get_str(area_per_state)
+
+# Add area of each state, and get proportion affected
+prop_by_state <- area_per_state %>% 
+  left_join(
+    select(areas, fips, total_area = area_sqkm), 
+    by = join_by(state_fips == fips)
+  ) %>% 
+  mutate(
+    propAreaFsaSecDisasters = (area_affected / total_area) %>% 
+      ifelse(is.na(.), 0, .) %>% 
+      round(3) %>% 
+      format(nsmall = 3),
+    .keep = 'unused'
+  )
+get_str(prop_by_state)
+
+# Clean it up into long format
+prop_area_fsa_sec <- prop_by_state %>% 
+  rename(fips = state_fips) %>% 
+  pivot_longer(
+    cols = propAreaFsaSecDisasters,
+    values_to = 'value',
+    names_to = 'variable_name'
+  )
+get_str(prop_area_fsa_sec)
+
+# Save this to results
+results$prop_area_fsa_sec <- prop_area_fsa_sec
 
 
 
@@ -488,7 +539,7 @@ paths <- list.files(
   full.names = TRUE
 )
 pres_raw <- map(paths, read_excel)
-  
+map(pres_raw, get_str)  
 # Select cols 1, 5, and last, filter by fips to NE, combine all years
 # Note that we are not keeping info on what kind of events they are. May regret
 pres <- map(pres_raw, ~ {
@@ -543,38 +594,53 @@ results$fsa_pres <- pres_county
 
 ## Metadata ----------------------------------------------------------------
 
+
 names(results)
 results$fsa_pres$variable_name %>% unique
 results$fsa_sec$variable_name %>% unique
+results$fsa_sec$variable_name %>% unique
+
+check <- bind_rows(
+  results$fsa_pres, 
+  results$fsa_sec, 
+  results$prop_area_fsa_sec
+)
+get_vars(check)
 
 metas$fsa <- data.frame(
-  variable_name = c(
-    'nFsaPresDisasters',
-    'nFsaSecDisasters'
-  ),
+  variable_name = get_vars(check),
   metric = c(
     'Number of FSA presidential disaster declarations',
-    'Number of FSA Agriculture Secretary disaster declarations'
+    'Number of FSA Agriculture Secretary disaster declarations',
+    'Proportion of area affected by FSA Agriculture Secretary disaster declaration'
   ),
   definition = c(
+    'Number of unique Presidential major disaster declarations. Used to trigger eligibility for emergency loans and FSA disaster assistance programs.',
     'Number of unique disaster declarations made by the Secretary of Agriculture. Used to trigger eligibility for emergency loans and FSA disaster assistance programs.',
-    'Number of unique Presidential major disaster declarations. Used to trigger eligibility for emergency loans and FSA disaster assistance programs.'
+    paste(
+      'Proportion of area within a state affected by FSA Agriculture Secretary disaster declarations.',
+      'Declarations are made at the county level, so the area of each county affected is summed and divided by the area of the state.'
+    )
   ),
   axis_name = c(
     'FSA Pres. Disasters',
-    'FSA Sec. Disasters'
+    'FSA Sec. Disasters',
+    'Prop Area FSA Sec. Disasters'
   ),
   dimension = "environment",
   index = 'water stability',
   indicator = 'days / events of extremes',
-  units = 'count',
-  scope = 'national',
-  resolution = 'county',
-  year = c(
-    paste(c(2017:2020, 2023), collapse = ', '),
-    paste(c(2012:2020, 2022:2023), collapse = ', ')
+  units = c(
+    rep('count', 2),
+    'proportion'
   ),
-  latest_year = '2023',
+  scope = 'national',
+  resolution = c(
+    rep('county', 2),
+    'state'
+  ),
+  year = get_all_years(check),
+  latest_year = get_max_year(check),
   updates = "annual",
   source = 'U.S. Department of Agriculture, Farm Service Agency Disaster Assistance',
   url = 'https://www.fsa.usda.gov/resources/disaster-assistance-program/disaster-designation-information'
@@ -599,16 +665,17 @@ metas$fsa
 imports_raw <- read_csv('1_raw/usda/ers_state_trade/top_5_ag_imports_by_state.csv') %>% 
   setNames(c(snakecase::to_snake_case(names(.))))
 get_str(imports_raw)
+get_str(state_key)
 
 # Filter down to New England
 # Only keep world totals of top 5 imports, not each individual one
 # Also only keeping fiscal year total, not quarterly
-imports <- fips_key %>% 
-  select(fips, state_code) %>% 
-  inner_join(imports_raw, by = join_by(state_code == state)) %>% 
+imports <- state_key %>%
+  select(state, state_code) %>%
+  inner_join(imports_raw) %>% 
   filter(country == 'World', fiscal_quarter == '0') %>%
   select(
-    fips, 
+    fips = state_code, 
     year = fiscal_year, 
     variable_name = commodity_name, 
     value = dollar_value
@@ -643,21 +710,20 @@ results$imports <- imports
 exports_raw <- read_csv('1_raw/usda/ers_state_trade/state_exports.csv') %>% 
   setNames(c(snakecase::to_snake_case(names(.))))
 get_str(exports_raw)
+get_str(state_key)
 
 # Filter to New England and clean
-exports <- fips_key %>% 
-  select(fips, state_name) %>% 
-  filter(str_length(fips) == 2) %>% 
+exports <- state_key %>% 
+  select(state, state_code, state_name) %>% 
   inner_join(exports_raw, by = join_by(state_name == state)) %>% 
-  select(-state_name, -units) %>% 
+  select(-state_name, -state, -units) %>% 
   mutate(
     variable_name = paste0('exports', snakecase::to_upper_camel_case(commodity)) %>% 
       str_remove('Exports$'),
     .keep = 'unused'
-  )
+  ) %>% 
+  rename(fips = state_code)
 get_str(exports)
-
-# Add a sum of all exports for a total
 
 # Save 
 results$exports <- exports
@@ -812,18 +878,19 @@ census$local_spending <- read_xlsx(
 get_str(census)
 
 # Now we can put them together
-all_states <- fips_key$state_code[!is.na(fips_key$state_code)]
+# all_states <- fips_key$state_code[!is.na(fips_key$state_code)]
 census <- map(census, ~ {
   .x %>% 
     mutate(state = ifelse(state == 'National', 'US', state)) %>% 
-    filter(state %in% all_states) %>% 
-    left_join(select(fips_key, fips, state_code), by = join_by(state == state_code)) %>% 
+    filter(state %in% c(state_key$state, 'US')) %>% 
+    left_join(select(state_key, fips = state_code, state), by = join_by(state == state)) %>% 
+    mutate(fips = ifelse(state == 'US', '00', fips)) %>% 
     select(-state)
 }) %>% 
   reduce(inner_join) %>% 
   mutate(sfaLocalFoodCosts = as.numeric(sfaLocalFoodCosts)) %>% 
   mutate(across(is.numeric, ~ format(round(.x, 2), nsmall = 2)))
-get_str(census)
+get_str(census, 3)
 
 # Pivot longer, add year, format like all other variables
 census <- census %>%

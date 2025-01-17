@@ -44,8 +44,7 @@ economics,food business resilience,labor costs,Number of short-term workers,nWor
 economics,food business resilience,labor costs,Number of unpaid workers,nUnpaidWorkers,county,,,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 economics,food business resilience,total costs,Expenses per operation,expPF,county,,,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 economics,food business resilience,income stability,mean farm related income per operation,farmIncomePF,county,x,x,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
-economics,food business resilience,use of ag/farm/crop insurance,Number of FSA Agriculture Secretary disaster declarations,nFsaSecDisasters,county,x,x,,"U.S. Department of Agriculture, Farm Service Agency Disaster Assistance"
-economics,food business resilience,use of ag/farm/crop insurance,Number of FSA presidential disaster declarations,nFsaPresDisasters,county,x,x,,"U.S. Department of Agriculture, Farm Service Agency Disaster Assistance"
+economics,food business resilience,use of ag/farm/crop insurance,Proportion of area (by county) affected by FSA secretary of agriculture declarations,propAreaFsaSecDisasters,state,x,x,,"U.S. Department of Agriculture, Farm Service Agency Disaster Assistance"
 economics,utilities,utils,Civilian Labor Force,civLaborForce,county,,,,"U.S. Department of Labor, Bureau of Labor Statistics, Local Area Unemployment Statistics (LAUS)"
 environment,"carbon, ghg, nutrients",fluxes,CH4 emissions from enteric fermentation american bison (Tg),CH4FermentBison,state,,,,U.S. Environmental Protection Agency State GHG Data (2024).
 environment,"carbon, ghg, nutrients",fluxes,CH4 emissions from enteric fermentation beef cattle (Tg),CH4FermentBeefCattle,state,,,,U.S. Environmental Protection Agency State GHG Data (2024).
@@ -97,9 +96,9 @@ environment,"carbon, ghg, nutrients",fluxes,"Subsector CO2 emissions from agricu
 environment,"carbon, ghg, nutrients",fluxes,Subsector N2O emissions from agriculture: direct and indirect n2o emissions from soils (Tg),N2OAgDirectIndirectN2OEmissionsFromSoils,state,,,,U.S. Environmental Protection Agency State GHG Data (2024).
 environment,"carbon, ghg, nutrients",fluxes,Subsector N2O emissions from agriculture: field burning of residues (Tg),N2OAgFieldResidues,state,,,,U.S. Environmental Protection Agency State GHG Data (2024).
 environment,"carbon, ghg, nutrients",fluxes,Subsector N2O emissions from agriculture: manure management (Tg),N2OAgManure,state,,,,U.S. Environmental Protection Agency State GHG Data (2024).
-environment,"carbon, ghg, nutrients",fluxes,Total CH4 emissions from agriculture (Tg),CH4Ag,state,x,x,,U.S. Environmental Protection Agency State GHG Data (2024).
-environment,"carbon, ghg, nutrients",fluxes,Total CO2 emissions from agriculture (Tg),CO2Ag,state,x,x,,U.S. Environmental Protection Agency State GHG Data (2024).
-environment,"carbon, ghg, nutrients",fluxes,Total N2O emissions from agriculture (Tg),N2OAg,state,x,x,,U.S. Environmental Protection Agency State GHG Data (2024).
+environment,"carbon, ghg, nutrients",fluxes,Total CH4 emissions from agriculture (Tg),CH4FromAg,state,x,x,,U.S. Environmental Protection Agency State GHG Data (2024).
+environment,"carbon, ghg, nutrients",fluxes,Total CO2 emissions from agriculture (Tg),CO2FromAg,state,x,x,,U.S. Environmental Protection Agency State GHG Data (2024).
+environment,"carbon, ghg, nutrients",fluxes,Total N2O emissions from agriculture (Tg),N2OFromAg,state,x,x,,U.S. Environmental Protection Agency State GHG Data (2024).
 environment,"carbon, ghg, nutrients",stocks,Forest carbon - dead and down,forestCarbonDeadDown,county,x,x,,TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016
 environment,"carbon, ghg, nutrients",stocks,Forest carbon - live standing,forestCarbonLive,county,x,x,,TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016
 environment,"carbon, ghg, nutrients",stocks,Forest carbon - standing dead,forestCarbonDeadStanding,county,x,x,,TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016

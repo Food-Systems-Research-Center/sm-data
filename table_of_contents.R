@@ -46,11 +46,11 @@ source('4_scripts/lulc.R')
 # Combine data from all sources
 source('4_scripts/aggregate_data.R')
 
-# Explore aggregated data
-'4_scripts/explore.R'
-
 # Export data to sm-docs and sm-explorer
 source('4_scripts/export.R')
+
+# Explore aggregated data
+'4_scripts/explore.R'
 
 
 

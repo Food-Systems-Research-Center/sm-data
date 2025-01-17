@@ -79,7 +79,7 @@ saveRDS(crop, '2_clean/spatial/map_layers/mrlc_lulc_ne.rds')
 
 ## Get cell counts of each category for each county
 county_path <- '2_clean/spatial/ne_counties_2024.gpkg'
-state_path <- '2_clean/spatial/ne_states.gpkg'
+state_path <- '2_clean/spatial/all_states.gpkg'
 raster_path <- '1_raw/spatial/mrlc_lulc/Annual_NLCD_LndCov_2023_CU_C1V0.tif'
 
 # Load python function, get cell counts for county and state
@@ -88,14 +88,18 @@ out <- map(list(county_path, state_path), ~ cat_zonal_stats(raster_path, .x))
 get_str(out)
 
 # Get unique levels. Use later to make sure we are not missing any
-all_levels <- names(out[[1]])[-which(names(out[[1]]) == 'fips')]
+all_levels <- map(out, names) %>% 
+  unlist() %>% 
+  unique() %>% 
+  sort() %>% 
+  str_subset('fips', negate = TRUE)
 
 # Descriptions of LULC codes. Removing perennial ice/snow (12) - none here
 codes <- data.frame(
   lulc_code = all_levels,
   metric = c(
     'LULC, proportion, open water',
-    # 'LULC, proportion, perennial ice/snow',
+    'LULC, proportion, perennial ice/snow',
     'LULC, proportion, developed, open space',
     'LULC, proportion, developed, low intensity',
     'LULC, proportion, developed, medium intensity',
@@ -114,7 +118,7 @@ codes <- data.frame(
   ),
   definition = c(
     'Areas of open water, generally with less than 25% cover of vegetation or soil',
-    # 'Areas characterized by a perennial cover of ice and/or snow',
+    'Areas characterized by a perennial cover of ice and/or snow',
     'Areas with a mixture of some constructed materials, but mostly vegetation in the form of lawn grasses. Impervious surfaces account for less than 20% of total cover. These areas most commonly include large-lot single-family housing units, parks, golf courses, and vegetation planted in developed settings for recreation, erosion control, or aeshetic purposes',
     'Areas with a mixture of constructed materials and vegetation. Impervious surfaces account for 20% to 49% percent of total cover. Thesea reas most commonly include single-family housing units.',
     'Areas with a mixture of constructed materials and vegetation. Impervious surfaces account for 50 % to 79% of the total cover. These areas most commonly include single - family housing units.',

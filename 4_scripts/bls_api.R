@@ -37,12 +37,19 @@ metas <- list()
 
 
 # QCEW --------------------------------------------------------------------
-## Pull All Counties -------------------------------------------------------
+## Pull Counties and States -----------------------------------------------
 
 
-# # Try mapping over several counties
-# out <- map(fips_key$fips, \(fips) {
-#   
+# Get a list of NE counties and all US states
+fips_list <- c(
+  fips_key$fips[str_length(fips_key$fips) == 5],
+  paste0(state_key$state_code, '000')
+) %>% 
+  unique()
+
+# # Map over whole list. Just 2023 apparently for now
+# out <- map(fips_list, \(fips) {
+# 
 #   tryCatch({
 #     blsQCEW(
 #       method = 'Area',
@@ -62,8 +69,8 @@ metas <- list()
 # })
 # 
 # get_str(out)
-# # Works!
-# 
+# Works!
+
 # # Save this as intermediate object so we don't have to call API
 # saveRDS(out, '5_objects/api_outs/bls_qcew.rds')
 
@@ -85,11 +92,17 @@ dat <- out %>%
         ) %>% 
       mutate(
         across(everything(), as.character),
+        
+        # If fips has a missing leading 0 (length 4), add the leading 0 back
         area_fips = ifelse(
           str_length(area_fips) == 4,
           paste0('0', area_fips),
           area_fips
-        )
+        ),
+        
+        # If area fips is a state (ends in 000), remove the 000
+        area_fips = str_remove(area_fips, '000')
+          
       ) %>%
       pivot_longer(
         cols = c(
@@ -130,7 +143,6 @@ results$qcew$variable_name %>% unique %>% sort
 # Let's just get rid of disclosure codes actually
 # Could deal with these later...
 results$qcew <- results$qcew %>% 
-  # select(-disclosure) %>% 
   filter(str_detect(variable_name, 'DisclosureCode', negate = TRUE))
 get_str(results$qcew)
 
@@ -254,7 +266,6 @@ results$unemp <- bls_bulk %>%
     str_detect(fips, '^.{2}000') ~ str_sub(fips, start = 1, end = 2),
     .default = fips 
   )) %>% 
-  filter(fips %in% all_fips) %>%
   
   # Get names to match our system, then pivot longer, split name and year
   setNames(c(to_lower_camel_case(names(.)))) %>% 
@@ -428,10 +439,9 @@ get_str(farm_income)
 
 # Join to fips key to to add fips and lose state names
 # Also filter to 2000 or later
-farm_income <- fips_key %>% 
-  select(fips, state_code) %>% 
-  right_join(farm_income, by = join_by(state_code == state)) %>% 
-  select(-state_code) %>% 
+farm_income <- state_key %>% 
+  select(state, state_code) %>% 
+  right_join(farm_income) %>% 
   filter(year >= 2000)
 get_str(farm_income)
 

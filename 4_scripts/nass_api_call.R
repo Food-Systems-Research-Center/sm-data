@@ -184,42 +184,77 @@ base_get <- 'https://quickstats.nass.usda.gov/api/api_GET/'
 source_desc <- 'CENSUS'
 sector_desc <- 'ECONOMICS'
 years <- seq(2013, 2023, 5)
+years <- 2023
 freq_desc <- 'annual'
-unique_state_fips <- c(unique(state_fips))
+# all_state_fips <- unique(state_key$state_code)[1:25]
+all_state_fips <- unique(state_key$state_code)[26:length(unique(state_key$state_code))]
+# commodity_desc = c('WELLS', 'WATER')
+commodity_desc = 'WATER'
+ 
+# water_vars <- c(paste(
+#   'WATER, IRRIGATION, RECLAIMED - WATER APPLIED, MEASURED IN ACRE FEET',
+#   'WATER, IRRIGATION, RECLAIMED, IN THE OPEN - ACRES IRRIGATED',
+#   'WATER, IRRIGATION, RECLAIMED, IN THE OPEN - OPERATIONS WITH AREA IRRIGATED',
+#   
+#   'WATER, IRRIGATION, SOURCE = OFF FARM - EXPENSE, MEASURED IN $',
+#   'WATER, IRRIGATION, SOURCE = OFF FARM - EXPENSE, MEASURED IN $ / ACRE FOOT',
+#   'WATER, IRRIGATION, SOURCE = OFF FARM - EXPENSE, MEASURED IN $ / ACRE IRRIGATED',
+#   'WATER, IRRIGATION, SOURCE = OFF FARM - OPERATIONS WITH EXPENSE',
+#   collapse = ','
+# ))
 
 # For each year, pull data for all counties.
-# out <- map(years, \(year) {
-#   map(unique_state_fips, \(state) {
-# 
-#     url <- glue(
-#       base_get,
-#       '?key={api_key}',
-#       '&state_fips_code={state}',
-#       '&year={year}',
-#       '&source_desc={source_desc}',
-#       '&sector_desc={sector_desc}',
-#       '&domain_desc=TOTAL'
-#     )
-# 
-#     print(url)
-# 
-#     GET(url) %>%
-#         content(as = 'text') %>%
-#         fromJSON() %>%
-#         .$data
-# 
-#   }) %>%
-#     setNames(c(unique_state_fips)) %>%
-#     discard(is.null)
-# }) %>%
-#   setNames(c(paste0('year_', years)))
+out <- map(years, \(year) {
+  map(all_state_fips, \(state) {
+      
+      tryCatch({
+        url <- glue(
+          base_get,
+          '?key={api_key}',
+          '&state_fips_code={state}',
+          '&year={year}',
+          '&source_desc={source_desc}',
+          '&sector_desc={sector_desc}',
+          '&commodity_desc={commodity_desc}',
+          '&domain_desc=TOTAL'
+        )
+    
+        print(url)
+    
+        GET(url) %>%
+            content(as = 'text') %>%
+            fromJSON() %>%
+            .$data
+      }, error = function (e) {
+        message('Call failed')
+        print(e)
+      })
+
+  })
+})
 
 get_str(out)
+out1 <- out
+out2 <- out
+out3 <- out
+out4 <- out
 
-water <- out %>% 
+water_dfs <- map(list(out1, out2, out3, out4), ~ {
+  map(.x, \(y) {
+    y %>% 
+      discard(is.null) %>% 
+      keep(is.data.frame) %>% 
+      .[[1]]
+  })
+})
+get_str(water_dfs, 3)
+
+water <- water_dfs %>% 
   flatten() %>% 
   bind_rows()
 get_str(water)
+
+water$short_desc
 
 water <- water %>% 
   rename(

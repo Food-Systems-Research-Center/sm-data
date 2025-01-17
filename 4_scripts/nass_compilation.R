@@ -1024,85 +1024,88 @@ get_str(env$renew)
 
 
 
-## Water -------------------------------------------------------------------
+# Water -------------------------------------------------------------------
 
 
 # Pulling from 2023 cycle datasets
-water <- readRDS('1_raw/nass/nass_states_irrigation_2013-2023_5yr.rds')
+# water <- readRDS('1_raw/nass/nass_states_irrigation_2013-2023_5yr.rds')
+water <- read_csv('1_raw/nass/census_water_addendum_2013_2018_2023.csv') %>% 
+  janitor::clean_names()
 get_str(water)
+water$data_item %>% unique
 
-vars <- c(
-  'WATER, IRRIGATION, RECLAIMED - WATER APPLIED, MEASURED IN ACRE FEET',
-  'WATER, IRRIGATION, RECLAIMED, IN THE OPEN - ACRES IRRIGATED',
-  'WATER, IRRIGATION, RECLAIMED, IN THE OPEN - OPERATIONS WITH AREA IRRIGATED',
+var_crosswalk <- data.frame(
+  data_item = c(
+    'WATER, IRRIGATION, RECLAIMED - WATER APPLIED, MEASURED IN ACRE FEET',
+    'WATER, IRRIGATION, RECLAIMED, IN THE OPEN - ACRES IRRIGATED',
+    'WATER, IRRIGATION, RECLAIMED, IN THE OPEN - OPERATIONS WITH AREA IRRIGATED',
   
-  'WATER, IRRIGATION, SOURCE = OFF FARM - EXPENSE, MEASURED IN $',
-  'WATER, IRRIGATION, SOURCE = OFF FARM - EXPENSE, MEASURED IN $ / ACRE FOOT',
-  'WATER, IRRIGATION, SOURCE = OFF FARM - EXPENSE, MEASURED IN $ / ACRE IRRIGATED',
-  'WATER, IRRIGATION, SOURCE = OFF FARM - OPERATIONS WITH EXPENSE'
+    'WATER, IRRIGATION, SOURCE = OFF FARM - EXPENSE, MEASURED IN $',
+    'WATER, IRRIGATION, SOURCE = OFF FARM - EXPENSE, MEASURED IN $ / ACRE FOOT',
+    'WATER, IRRIGATION, SOURCE = OFF FARM - EXPENSE, MEASURED IN $ / ACRE IRRIGATED',
+    'WATER, IRRIGATION, SOURCE = OFF FARM - OPERATIONS WITH EXPENSE'
+    ),
+  variable_name = c(
+    'waterIrrReclaimedAcreFt',
+    'waterIrrReclaimedOpenAcres',
+    'waterIrrReclaimedOpenAreaNOps',
+    'waterIrrSrcOffFarmExp',
+    'waterIrrSrcOffFarmExpPerAcreFt',
+    'waterIrrSrcOffFarmExpPerAcre',
+    'waterIrrSrcOffFarmNOpsWithExp'
+  )
 )
+var_crosswalk$data_item %in% water$data_item
 
-names <- c(
-  'waterIrrReclaimedAcreFt',
-  'waterIrrReclaimedOpenAcres',
-  'waterIrrReclaimedOpenAreaNOps',
-  'waterIrrSrcOffFarmExp',
-  'waterIrrSrcOffFarmExpPerAcreFt',
-  'waterIrrSrcOffFarmExpPerAcre',
-  'waterIrrSrcOffFarmNOpsWithExp'
-)
-
-env$water <- map2(vars, names, \(var, name) {
-  pull_variable(
-    water,
-    sector_desc = 'ECONOMICS',
-    commodity_desc = 'WATER',
-    domain_desc = 'TOTAL',
-    short_desc = var,
-    variable_name = name
+### We are right here []. Have to wrangle slightly different dataset here.
+get_str(water)
+water_df <- water %>% 
+  select(
+    fips = state_ansi, 
+    year, 
+    data_item, 
+    value
   ) %>% 
-    filter(
-      !is.na(value),
-      !str_detect(value, '(D)')
-    ) %>% 
-    select(fips, year, variable_name, value)
-}) %>% 
-  setNames(c(names))
-get_str(env$water)
+  inner_join(var_crosswalk) %>% 
+  select(-data_item)
+get_str(water_df)  
+
+# Save to results
+env$water <- water_df
 
 
 
-## Wells -------------------------------------------------------------------
-
-
-vars <- c(
-  'WELLS, USED FOR IRRIGATION - NUMBER OF WELLS',
-  'WELLS, USED FOR IRRIGATION - OPERATIONS WITH WELLS',
-  'WELLS, USED FOR IRRIGATION, PUMPED - WELL DEPTH, MEASURED IN FEET'
-)
-
-names <- c(
-  'wellsIrrigationN',
-  'wellsIrrigationNOps',
-  'wellsIrrigationDepthFt'
-)
-
-
-env$wells <- map2(vars, names, \(var, name) {
-  pull_variable(
-    water,
-    sector_desc = 'ECONOMICS',
-    commodity_desc = 'WELLS',
-    domain_desc = 'TOTAL',
-    short_desc = var,
-    variable_name = name
-  ) %>% 
-    filter(
-      !is.na(value),
-      !str_detect(value, '(D)')
-    )
-})
-get_str(env$wells)
+# ## Wells -------------------------------------------------------------------
+# 
+# 
+# vars <- c(
+#   'WELLS, USED FOR IRRIGATION - NUMBER OF WELLS',
+#   'WELLS, USED FOR IRRIGATION - OPERATIONS WITH WELLS',
+#   'WELLS, USED FOR IRRIGATION, PUMPED - WELL DEPTH, MEASURED IN FEET'
+# )
+# 
+# names <- c(
+#   'wellsIrrigationN',
+#   'wellsIrrigationNOps',
+#   'wellsIrrigationDepthFt'
+# )
+# 
+# 
+# env$wells <- map2(vars, names, \(var, name) {
+#   pull_variable(
+#     water,
+#     sector_desc = 'ECONOMICS',
+#     commodity_desc = 'WELLS',
+#     domain_desc = 'TOTAL',
+#     short_desc = var,
+#     variable_name = name
+#   ) %>% 
+#     filter(
+#       !is.na(value),
+#       !str_detect(value, '(D)')
+#     )
+# })
+# get_str(env$wells)
 
 
 
@@ -1110,31 +1113,32 @@ get_str(env$wells)
 
 
 get_str(env)
-env <- flatten(env) %>% 
+test <- list(flatten(env[setdiff(names(env), 'water')]), env$water)
+get_str(test)
+
+# Remove water because it is already good to go
+no_water <- env[!names(env) %in% 'water']
+get_str(no_water)
+
+env_df <- flatten(no_water) %>% 
   map(\(x) mutate(x, value = as.character(value))) %>% 
   bind_rows() %>% 
+  bind_rows(env$water) %>% 
   select(fips, year, variable_name, value, unit_desc)
-get_str(env)
-
-env$variable_name %>% 
-  unique %>% 
-  sort
+get_str(env_df)
 
 # Add to results
-results$env <- env
+results$env <- env_df
 
 
 
 ## Metadata ----------------------------------------------------------------
 
 
-get_str(env)
-vars <- env$variable_name %>% 
-  unique %>% 
-  sort
-vars
+get_str(env_df)
+(vars <- get_vars(env_df))
 
-starter <- env %>% 
+starter <- env_df %>% 
   group_by(variable_name) %>% 
   summarize(
     units = unit_desc %>% 
@@ -1145,8 +1149,20 @@ starter <- env %>%
     latest_year = max(year),
     year = paste0(unique(year), collapse = ', '),
     fips_length = min(str_length(fips))
+  ) %>% 
+  mutate(
+    units = case_when(
+      str_detect(variable_name, 'NOps$') ~ 'count',
+      str_detect(variable_name, 'dAcreFt$') ~ 'acre feet',
+      str_detect(variable_name, 'Exp$') ~ 'usd',
+      str_detect(variable_name, 'ExpPerAcre$') ~ 'usd per acre',
+      str_detect(variable_name, 'OpenAcres$') ~ 'acres',
+      str_detect(variable_name, 'ExpPerAcreFt$') ~ 'usd per acre foot',
+      .default = units
+    )
   )
 get_str(starter)
+(vars <- get_vars(env_df))
 
 # Environment metadata
 metas$env <- starter %>% 
@@ -1204,13 +1220,12 @@ metas$env <- starter %>%
       'Expenses from water for irrigation sourced off-farm per acre',
       'Expenses from water for irrigation sourced off-farm per acre foot',
       'Operations with expenses from water for irrigation sourced off-farm',
-      'Depth of irrigation wells',
-      'Number of irrigation wells',
-      # 45
-      'Operations with irrigation wells',
+      # 'Depth of irrigation wells',
+      # 'Number of irrigation wells',
+      # 'Operations with irrigation wells',
       'Operations with wind turbines rented to others',
       'Operations with wind turbines'
-      # 48
+      # 45
     ),
     indicator = case_when(
       str_detect(metric, 'solar|wind|methane|geo') ~ 'energy efficiency',
