@@ -170,7 +170,7 @@ all_fips <- c(
 # creating DF with all county and state fips, and their area
 
 ## NE FIPS key
-fips_key
+county_state
 counties_2021
 counties_2024
 
