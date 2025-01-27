@@ -50,10 +50,11 @@ get_str(out)
 # Export Data -------------------------------------------------------------
 
 
-# Paths to SMquarto and SMexplorer
+# Paths to SMquarto and SMexplorer. Also to SMdata to load into DB
 paths <- c(
   '../sm-docs/data/sm_data.rds',
-  '../sm-explorer/dev/data/sm_data.rds'
+  '../sm-explorer/dev/data/sm_data.rds',
+  '6_outputs/sm_data.rds'
 )
 walk(paths, ~ saveRDS(out, .x))
 cat('\nExported data to:\n', paths[1], '\n', paths[2], sep = '')
