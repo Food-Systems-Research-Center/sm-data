@@ -23,6 +23,9 @@ economics,community economy,wealth/income distribution,Median Household Income (
 economics,community economy,wealth/income distribution,Number Employed,employed,county,,,,"U.S. Department of Labor, Bureau of Labor Statistics, Local Area Unemployment Statistics (LAUS)"
 economics,community economy,wealth/income distribution,Number unemployed,unemployed,county,,,,"U.S. Department of Labor, Bureau of Labor Statistics, Local Area Unemployment Statistics (LAUS)"
 economics,community economy,wealth/income distribution,Unemployment Rate,unemploymentRate,county,x,x,,"U.S. Department of Labor, Bureau of Labor Statistics, Local Area Unemployment Statistics (LAUS)"
+economics,community economy,business failure rate of food business,NONE,NONE,,x,,,
+economics,food business resilience,marketplace,NONE,NONE,,x,,,
+economics,food business resilience,market mix,NONE,NONE,,x,,,
 economics,food business resilience,operations diversification,"Farms, direct-to-consumer sales as a percent of all farm sales",d2cSalesPerc,county,x,x,,"U.S. Department of Agriculture, National Agricultural Statistical Survey, Census of Agriculture"
 economics,food business resilience,operations diversification,"On farm market, number of businesses",nOnFarmMarket,county,,,"not good metrics, and no updates","U.S. Department of Agriculture, Local Food Directories"
 economics,food business resilience,operations diversification,"Agritourism, sales as a percent of all farm sales",agTourSalesPerc,county,x,x,,"U.S. Department of Agriculture, National Agricultural Statistical Survey, Census of Agriculture"
@@ -45,6 +48,9 @@ economics,food business resilience,labor costs,Number of unpaid workers,nUnpaidW
 economics,food business resilience,total costs,Expenses per operation,expPF,county,,,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 economics,food business resilience,income stability,mean farm related income per operation,farmIncomePF,county,x,x,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 economics,food business resilience,use of ag/farm/crop insurance,Proportion of area (by county) affected by FSA secretary of agriculture declarations,propAreaFsaSecDisasters,state,x,x,,"U.S. Department of Agriculture, Farm Service Agency Disaster Assistance"
+economics,tbd index,market vacancy/health index,NONE,NONE,,x,,,
+economics,tbd index,precarity index,NONE,NONE,,x,,,
+economics,value from rural landscape,diversity of farm types,NONE,NONE,,x,,,
 economics,utilities,utils,Civilian Labor Force,civLaborForce,county,,,,"U.S. Department of Labor, Bureau of Labor Statistics, Local Area Unemployment Statistics (LAUS)"
 environment,"carbon, ghg, nutrients",fluxes,CH4 emissions from enteric fermentation american bison (Tg),CH4FermentBison,state,,,,U.S. Environmental Protection Agency State GHG Data (2024).
 environment,"carbon, ghg, nutrients",fluxes,CH4 emissions from enteric fermentation beef cattle (Tg),CH4FermentBeefCattle,state,,,,U.S. Environmental Protection Agency State GHG Data (2024).
@@ -128,6 +134,8 @@ environment,species and habitat,land use diversity,"LULC, proportion, pasture/ha
 environment,species and habitat,land use diversity,"LULC, proportion, shrub/scrub",lulcPropShrub,"county, state",,,,"U.S. Geological Survey, Multi-Resolution Land Characteristics Consortium (2024). Sioux Falls, SD"
 environment,species and habitat,land use diversity,"LULC, proportion, woody wetlands",lulcPropWoodyWetlands,"county, state",,,,"U.S. Geological Survey, Multi-Resolution Land Characteristics Consortium (2024). Sioux Falls, SD"
 environment,species and habitat,land use diversity,Land Use Diversity,lulcDiversity,"county, state",x,x,,"U.S. Geological Survey, Multi-Resolution Land Characteristics Consortium (2024). Sioux Falls, SD"
+environment,species and habitat,biodiversity,NONE,NONE,,x,,,
+environment,species and habitat,sensitive or rare habitats,NONE,NONE,,x,,,
 environment,env index tbd,env ind tbd,Acres under conservation easement per operation,consEasementAcresPF,state,,,where should these go now,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,env index tbd,env ind tbd,Acres under conservation easements,consEasementAcres,state,,,where should these go now,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,env index tbd,env ind tbd,Conservation income per operation,consIncomePF,state,,,where should these go now,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
@@ -202,8 +210,8 @@ health,food security,access to culturally appropriate food,SFAs serving cultural
 health,food security,dietary quality,SFAs percentage of spending on local food,sfaLocalFoodCosts,state,,,,U.S. Department of Agriculture Food and Nutrition Service Farm to School Program Census (2023).
 health,food security,dietary quality,SFAs serving local food,sfaServeLocal,state,x,x,,U.S. Department of Agriculture Food and Nutrition Service Farm to School Program Census (2023).
 health,food security,dietary quality,SFAs with Farm to School program,sfaFarmToSchool,state,,,,U.S. Department of Agriculture Food and Nutrition Service Farm to School Program Census (2023).
-health,food security,food affordability,"Food insecurity rate, child",foodInsecChild,county,x,,,"Feeding America, Map the Meal Gap"
-health,food security,food affordability,"Food insecurity rate, overall",foodInsecOverall,county,x,,,"Feeding America, Map the Meal Gap"
+health,food security,food security tbd,"Food insecurity rate, child",foodInsecChild,county,,x,,"Feeding America, Map the Meal Gap"
+health,food security,food security tbd,"Food insecurity rate, overall",foodInsecOverall,county,,x,,"Feeding America, Map the Meal Gap"
 health,food security,food access,Grocery stores,nGroc,county,,,,"U.S. Department of Agriculture, Economic Research Service, Food Environment Atlas, Food Environment Atlas"
 health,food security,food access,"Grocery stores/1,000 pop",nGrocPTH,county,x,x,,"U.S. Department of Agriculture, Economic Research Service, Food Environment Atlas, Food Environment Atlas"
 health,food security,food affordability,"SNAP participation rates, all eligible people",snapPercPart,county,,,,"U.S. Department of Agriculture, Food and Nutrition Service, Supplemental Nutrition Assistance Program (SNAP)"
@@ -212,10 +220,11 @@ health,food security,food affordability,"Specialized food stores/1,000 pop",nSpe
 health,food security,food affordability,WIC coverage rate,wicPercPart,county,,,,"U.S. Department of Agriculture, Food and Nutrition Service"
 health,food security,food affordability,WIC eligibility rate,wicPercEligible,county,,,,"U.S. Department of Agriculture, Food and Nutrition Service"
 health,food security,food affordability,"WIC-authorized stores/1,000 pop",nWicsGrocPTH,county,,,,"U.S. Department of Agriculture, Economic Research Service, Food Environment Atlas, Food Environment Atlas"
-health,food security,food security tbd,Food insecurity,foodInsecurity,county,x,x,"index, check for redundancy","University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,mental health,mental health tbd,Frequent mental distress,frequentMentalDistress,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,mental health,mental health tbd,Poor mental health days,poorMentalHealthDays,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,mental health,mental health tbd,Suicides,suicides,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,food security,food security tbd,Food insecurity,foodInsecurity,county,,x,"index, check for redundancy","University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,food security,food agency,NONE,NONE,,x,,,
+health,mental health,mental health tbd,Frequent mental distress,frequentMentalDistress,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,mental health,mental health tbd,Poor mental health days,poorMentalHealthDays,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,mental health,mental health tbd,Suicides,suicides,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,housing supply and quality,Broadband access,broadbandAccess,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Access to exercise opportunities,accessToExerciseOpportunities,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Child care centers,childCareCenters,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
@@ -225,7 +234,7 @@ health,physical health,physical health tbd,Drinking water violations,drinkingWat
 health,physical health,physical health tbd,Food environment index,foodEnvironmentIndex,county,x,x,"infrastructure? index, check for redundancy","University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Limited access to healthy foods,limitedAccessToHealthyFoods,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Mammography screening,mammographyScreening,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Mental health providers,mentalHealthProviders,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,mental health,mental health tbd,Mental health providers,mentalHealthProviders,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Other primary care providers,otherPrimaryCareProviders,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Primary care physicians,primaryCarePhysicians,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Uninsured,uninsured,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
@@ -273,6 +282,11 @@ health,physical health,physical health tbd,Premature death,prematureDeath,county
 health,physical health,physical health tbd,Preventable hospital stays,preventableHospitalStays,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Sexually transmitted infections,sexuallyTransmittedInfections,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Teen births,teenBirths,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,access to care,NONE,NONE,,x,,,
+health,physical health,nutritious diets,NONE,NONE,,x,,,
+health,stability agency,farmer agency to improve,NONE,NONE,,x,,,
+health,happiness,happiness tbd,NONE,NONE,,x,,,
+health,intention to consume pbp,intention to consume pbp tbd,NONE,NONE,,x,,,
 production,imports vs exports,total quantity exported,Value of beef and veal exports,exportsBeefAndVeal,state,,,,"US Department of Agriculture, Economic Research Service, State Agricultural Trade Data, State Exports"
 production,imports vs exports,total quantity exported,Value of broiler meat exports,exportsBroilerMeat,state,,,,"US Department of Agriculture, Economic Research Service, State Agricultural Trade Data, State Exports"
 production,imports vs exports,total quantity exported,Value of corn exports,exportsCorn,state,,,,"US Department of Agriculture, Economic Research Service, State Agricultural Trade Data, State Exports"
@@ -301,7 +315,7 @@ production,imports vs exports,total quantity exported,Value of vegetables fresh 
 production,imports vs exports,total quantity exported,Value of vegetables processed exports,exportsVegetablesProcessed,state,,,,"US Department of Agriculture, Economic Research Service, State Agricultural Trade Data, State Exports"
 production,imports vs exports,total quantity exported,Value of wheat exports,exportsWheat,state,,,,"US Department of Agriculture, Economic Research Service, State Agricultural Trade Data, State Exports"
 production,imports vs exports,total quantity imported,value of top five imports,importsTopFive,state,x,,would like a better measure than top 5 imports,"US Department of Agriculture, Economic Research Service, State Agricultural Trade Data, State Trade by Country of Origin and Destination"
-production,production diversity,richness,Crop diversity,cropDiversity,county,x,x,,"U.S. Department of Agriculture, National Agricultural Statistics Service, Cropland Data Layer"
+production,production diversity,production species diversity,Crop diversity,cropDiversity,county,x,x,,"U.S. Department of Agriculture, National Agricultural Statistics Service, Cropland Data Layer"
 production,production margins,production inputs,Chemical expenses,expChemical,county,,,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 production,production margins,production inputs,Mean chemical expenses per operation,expChemicalPct,county,x,x,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 production,production margins,production inputs,Number of operations with chemical expenses,nOpsChemical,county,,,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
@@ -309,26 +323,43 @@ production,production margins,total quantity food products,Total animal and crop
 production,production margins,total quantity food products,Total animal sales,salesAnimal,county,,,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 production,production margins,total quantity food products,Total crop sales,salesCrop,county,,,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 production,production margins,total quantity forest products,Total forest product income,incForestProducts,county,x,x,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
+production,production margins,total quantity non-food agricultural products,NONE,NONE,,x,,,
 production,production margins,value added market,"Farms, number of farms with value-added sales",nValueAddedFarms,county,,,,"U.S. Department of Agriculture, National Agricultural Statistical Survey, Census of Agriculture"
 production,production margins,value added market,"Farms, percent of all farms with value-added sales",valueAddedFarmsPerc,county,x,x,redundant?,"U.S. Department of Agriculture, National Agricultural Statistical Survey, Census of Agriculture"
 production,production margins,value added market,"Farms, value-added sales",valueAddedSales,county,,,,"U.S. Department of Agriculture, National Agricultural Statistical Survey, Census of Agriculture"
 production,production margins,value added market,"Farms, value-added sales as a percent of all farm sales",valueAddedSalesPerc,county,x,x,redundant?,"U.S. Department of Agriculture, National Agricultural Statistical Survey, Census of Agriculture"
+production,production margins,yield,NONE,NONE,,x,,,
 production,production index tbd,production ind tbd,Anaerobic digestion facilities,nAnaerDigestion,county,,,"not good metrics, and no updates",U.S. Environmental Protection Agency (EPA)
 production,production index tbd,production ind tbd,"Composting facilities, number",nCompost,county,,,"not good metrics, and no updates",U.S. Environmental Protection Agency (EPA)
 production,production index tbd,production ind tbd,"Food hubs, count",nFoodHubs,county,,,"not good metrics, and no updates","U.S. Department of Agriculture, Local Food Directories"
 production,production index tbd,production ind tbd,"Meat processors, count",nMeatProcess,county,,,"not good metrics, and no updates","U.S. Department of Agriculture, Food Safety and Inspection Service"
 production,production index tbd,production ind tbd,"Refrigerated warehouses, private and semi private, count",nPrivFridge,state,,,"not good metrics, and no updates","U.S. Department of Agriculture, Economics, Statistics, and Market Information System"
 production,production index tbd,production ind tbd,"Refrigerated warehouses, public, count",nPubFridge,state,,,"not good metrics, and no updates","U.S. Department of Agriculture, Economics, Statistics, and Market Information System"
+production,product quality,certificates of assurance,NONE,NONE,,x,,,
+production,product quality,product safety (not livestock),NONE,NONE,,x,,,
+production,product quality,product quality tbd,NONE,NONE,,x,,,
+production,product quality,nutrition,NONE,NONE,,x,,,
+production,waste and losses,crop failure,NONE,NONE,,x,,,
+production,production efficiency,technology adoption,NONE,NONE,,x,,,
 social,community embeddedness,social connectedness,Children in single-parent households,childrenInSingleParentHouseholds,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community embeddedness,social connectedness,Disconnected youth,disconnectedYouth,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community embeddedness,social connectedness,Social associations,socialAssociations,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community embeddedness,social connectedness,Driving alone to work,drivingAloneToWork,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+social,community embeddedness,trust,NONE,NONE,,x,,,
+social,community embeddedness,reciprocity,NONE,NONE,,x,,,
+social,community embeddedness,belonging to community,NONE,NONE,,x,,,
+social,community embeddedness,collective action,NONE,NONE,,x,,,
+social,community embeddedness,tradition/heritage,NONE,NONE,,x,,,
+social,community embeddedness,common goals,NONE,NONE,,x,,,
 social,community livability,community safety,Alcohol-impaired driving deaths,alcoholImpairedDrivingDeaths,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community livability,community safety,Juvenile arrests,juvenileArrests,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community livability,diverse representation,Residential segregation - black/white,residentialSegregationBlackWhite,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community livability,diverse representation,School segregation,schoolSegregation,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community livability,community livability ind tbd,Long commute - driving alone,longCommuteDrivingAlone,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community livability,community livability ind tbd,Traffic volume,trafficVolume,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+social,community livability,NIMBYism,NONE,NONE,,x,,,
+social,community livability,outmigration,NONE,NONE,,x,,,
+social,community livability,open spaces and natural beauty,NONE,NONE,,x,,,
 social,food and farmworker diversity,gender diversity,Ratio of female to male producers,ftmProdRatio,county,x,x,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 social,food and farmworker diversity,age diversity,Mean producer age,ageProducers,county,x,x,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 social,food and farmworker diversity,gender diversity,Number of female producers,nFemProducers,county,,,aggregate these,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
@@ -340,8 +371,16 @@ social,food and farmworker diversity,racial diversity,Number of Hispanic produce
 social,food and farmworker diversity,racial diversity,Number of Native Hawaiian or Pacific Islander producers,nNaHaProducers,county,,,aggregate these,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 social,food and farmworker diversity,racial diversity,Number of White producers,nWhiteProducers,county,,,aggregate these,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 social,food and farmworker diversity,racial diversity,Total number of producers,nProducer,county,,,aggregate these,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
+social,food and farmworker diversity,racial diversity,NONE,NONE,,x,,,
+social,food and farmworker diversity,sexuality,NONE,NONE,,x,,,
 social,food system governance,participatory governance,Census participation,censusParticipation,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,food system governance,participatory governance,Voter turnout,voterTurnout,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+social,food system governance,policies,NONE,NONE,,x,,,
+social,food system governance,regulations and incentives,NONE,NONE,,x,,,
+social,food system governance,transparency,NONE,NONE,,x,,,
+social,food system governance,farmer stewardship ethic,NONE,NONE,,x,,,
+social,food system governance,conservation program,NONE,NONE,,x,,,
+social,food system governance,behaviors/decisions/motivations,NONE,NONE,,x,,,
 utilities,utilities,utils,Metropolitan Area,metro,county,,,,"U.S. Department of of Agriculture, Economic Research Service"
 utilities,utilities,utils,Rural Urban Continuum Code,ruralUrbanContinuumCode,county,,,,"U.S. Department of of Agriculture, Economic Research Service"
 utilities,utilities,utils,Urban Influence Code,urbanInfluenceCode,county,,,,"U.S. Department of of Agriculture, Economic Research Service"

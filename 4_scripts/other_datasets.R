@@ -199,8 +199,8 @@ metas$ghgs <- un_definitions %>%
   mutate(
     axis_name = variable_name,
     dimension = 'environment',
-    index = 'air quality',
-    indicator = 'carbon, ghg, nutrients',
+    index = 'carbon, ghg, nutrients',
+    indicator = 'fluxes',
     units = 'Tg',
     scope = 'national',
     resolution = 'state',

@@ -29,21 +29,49 @@ out$metrics <- read_all_rds(path = '2_clean/', pattern = '^met')
 
 # Spatial objects and references
 out$fips <- read_all_rds(path = '5_objects/', pattern = '_key.rds$')
-out$counties_and_states <- read_all_rds(
-  '2_clean/spatial/', 
-  pattern = '(?i)^ne_.*.rds|^all_.*.rds'
-)
-
-# Map layers
-out$spatial <- read_all_rds('2_clean/spatial/map_layers/', pattern = '.rds$')
 
 # Refined tree structure for new framework
-out$refined_tree <- read.csv('2_clean/trees/refined_secondary_tree.csv')
+# For placeholders (metric == 'none'), give them unique numbers
+tree <- read.csv('2_clean/trees/refined_secondary_tree.csv')
+count <- sum(tree$metric == 'NONE')
+tree$metric[tree$metric == 'NONE'] <- paste0('NONE_', 1:count)
+out$refined_tree <- tree
 
 # Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")
 
 get_str(out)
+
+
+
+# Spatial Data ------------------------------------------------------------
+
+
+# Separating all spatial files from tabular files
+spatial <- list()
+
+# Map layers
+spatial$spatial <- read_all_rds('2_clean/spatial/map_layers/', pattern = '.rds$')
+
+# County and state layers
+# NOTE: all counties files are over 100MB and cannot be easily pushed on GitHub
+# We are dropping these for now - don't actually use them yet.
+
+# Old code here to pull everything:
+# spatial$counties_and_states <- read_all_rds(
+#   '2_clean/spatial/', 
+#   pattern = '(?i)^ne_.*.rds|^all_.*.rds'
+# )
+
+# Pull everything except the national counties polygons (only new england)
+spatial$counties_and_states <- read_all_rds(
+  '2_clean/spatial/',
+  pattern = '(?i)^ne_.*.rds|^all_states.*.rds'
+)
+
+# Flatten into single level list
+spatial <- list_flatten(spatial, name_spec = "{inner}")
+get_str(spatial)
 
 
 
@@ -57,6 +85,14 @@ paths <- c(
   '6_outputs/sm_data.rds'
 )
 walk(paths, ~ saveRDS(out, .x))
-cat('\nExported data to:\n', paths[1], '\n', paths[2], sep = '')
+
+# Save spatial data in those places also
+spatial_paths <- c(
+  '../sm-docs/data/sm_spatial.rds',
+  '../sm-explorer/dev/data/sm_spatial.rds',
+  '6_outputs/sm_spatial.rds'
+)
+walk(spatial_paths, ~ saveRDS(spatial, .x))
 
 clear_data()
+gc()
