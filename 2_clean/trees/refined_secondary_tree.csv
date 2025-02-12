@@ -113,7 +113,8 @@ environment,"carbon, ghg, nutrients",embodied,Operations with methane digesters,
 environment,"carbon, ghg, nutrients",embodied,Operations with solar power,solarNOps,state,x,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,"carbon, ghg, nutrients",embodied,Operations with wind power,windTurbinesNOps,state,x,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,"carbon, ghg, nutrients",embodied,Operations with wind turbines rented to others,windRentedToOthersNOps,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
-environment,forest,complexity,Dead trees per forested acre,forestDeadTrees,county,x,x,need more complexity,TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016
+environment,forest,complexity,NONE,NONE,,x,,,
+environment,forest,health,Dead trees per forested acre,forestDeadTrees,county,x,x,need more complexity,TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016
 environment,forest,health,Forest canopy cover,forestCanopyCover,county,x,x,,TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016
 environment,forest,health,Forest live tree volume per acre,forestLiveTreeVolume,county,x,x,,TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016
 environment,forest,health,Forest stand height,forestStandHeight,county,x,x,,TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016
@@ -207,42 +208,42 @@ health,education,educational attainment,Some college,someCollege,county,,,,"Univ
 health,food security,food access,"Community Supported Agriculture (CSA), number of businesses",nCSA,county,x,,economics or health?,"U.S. Department of Agriculture, Local Food Directories"
 health,food security,food access,"Farmers markets, number of businesses",nFarmersMarket,county,x,,economics or health?,"U.S. Department of Agriculture, Local Food Directories"
 health,food security,access to culturally appropriate food,SFAs serving culturally relevant food,sfaCulturallyRelevant,state,x,x,,U.S. Department of Agriculture Food and Nutrition Service Farm to School Program Census (2023).
-health,food security,dietary quality,SFAs percentage of spending on local food,sfaLocalFoodCosts,state,,,,U.S. Department of Agriculture Food and Nutrition Service Farm to School Program Census (2023).
+health,food security,dietary quality,SFAs percentage of spending on local food,sfaLocalFoodCosts,state,x,,,U.S. Department of Agriculture Food and Nutrition Service Farm to School Program Census (2023).
 health,food security,dietary quality,SFAs serving local food,sfaServeLocal,state,x,x,,U.S. Department of Agriculture Food and Nutrition Service Farm to School Program Census (2023).
-health,food security,dietary quality,SFAs with Farm to School program,sfaFarmToSchool,state,,,,U.S. Department of Agriculture Food and Nutrition Service Farm to School Program Census (2023).
+health,food security,dietary quality,SFAs with Farm to School program,sfaFarmToSchool,state,x,,,U.S. Department of Agriculture Food and Nutrition Service Farm to School Program Census (2023).
 health,food security,food security tbd,"Food insecurity rate, child",foodInsecChild,county,,x,,"Feeding America, Map the Meal Gap"
 health,food security,food security tbd,"Food insecurity rate, overall",foodInsecOverall,county,,x,,"Feeding America, Map the Meal Gap"
 health,food security,food access,Grocery stores,nGroc,county,,,,"U.S. Department of Agriculture, Economic Research Service, Food Environment Atlas, Food Environment Atlas"
 health,food security,food access,"Grocery stores/1,000 pop",nGrocPTH,county,x,x,,"U.S. Department of Agriculture, Economic Research Service, Food Environment Atlas, Food Environment Atlas"
-health,food security,food affordability,"SNAP participation rates, all eligible people",snapPercPart,county,,,,"U.S. Department of Agriculture, Food and Nutrition Service, Supplemental Nutrition Assistance Program (SNAP)"
+health,food security,food affordability,"SNAP participation rates, all eligible people",snapPercPart,county,x,,,"U.S. Department of Agriculture, Food and Nutrition Service, Supplemental Nutrition Assistance Program (SNAP)"
 health,food security,food affordability,"SNAP-authorized stores/1,000 pop",nSnapGrocPTH,county,x,x,,"U.S. Department of Agriculture, Economic Research Service, Food Environment Atlas, Food Environment Atlas"
 health,food security,food affordability,"Specialized food stores/1,000 pop",nSpecGrocPTH,county,,,,"U.S. Department of Agriculture, Economic Research Service, Food Environment Atlas, Food Environment Atlas"
-health,food security,food affordability,WIC coverage rate,wicPercPart,county,,,,"U.S. Department of Agriculture, Food and Nutrition Service"
-health,food security,food affordability,WIC eligibility rate,wicPercEligible,county,,,,"U.S. Department of Agriculture, Food and Nutrition Service"
-health,food security,food affordability,"WIC-authorized stores/1,000 pop",nWicsGrocPTH,county,,,,"U.S. Department of Agriculture, Economic Research Service, Food Environment Atlas, Food Environment Atlas"
+health,food security,food affordability,WIC coverage rate,wicPercPart,county,x,,,"U.S. Department of Agriculture, Food and Nutrition Service"
+health,food security,food affordability,WIC eligibility rate,wicPercEligible,county,x,,,"U.S. Department of Agriculture, Food and Nutrition Service"
+health,food security,food affordability,"WIC-authorized stores/1,000 pop",nWicsGrocPTH,county,x,,,"U.S. Department of Agriculture, Economic Research Service, Food Environment Atlas, Food Environment Atlas"
 health,food security,food security tbd,Food insecurity,foodInsecurity,county,,x,"index, check for redundancy","University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,food security,food agency,NONE,NONE,,x,,,
 health,mental health,mental health tbd,Frequent mental distress,frequentMentalDistress,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,mental health,mental health tbd,Poor mental health days,poorMentalHealthDays,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,mental health,mental health tbd,Suicides,suicides,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,housing supply and quality,Broadband access,broadbandAccess,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Access to exercise opportunities,accessToExerciseOpportunities,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Child care centers,childCareCenters,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Child care cost burden,childCareCostBurden,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Dentists,dentists,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,access to care,Access to exercise opportunities,accessToExerciseOpportunities,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,access to care,Child care centers,childCareCenters,county,x,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,access to care,Child care cost burden,childCareCostBurden,county,x,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,access to care,Dentists,dentists,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Drinking water violations,drinkingWaterViolations,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Food environment index,foodEnvironmentIndex,county,x,x,"infrastructure? index, check for redundancy","University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Limited access to healthy foods,limitedAccessToHealthyFoods,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Mammography screening,mammographyScreening,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,physical health tbd,Food environment index,foodEnvironmentIndex,county,,x,"infrastructure? index, check for redundancy","University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,food security,food access,Limited access to healthy foods,limitedAccessToHealthyFoods,county,x,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,access to care,Mammography screening,mammographyScreening,county,x,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,mental health,mental health tbd,Mental health providers,mentalHealthProviders,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Other primary care providers,otherPrimaryCareProviders,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Primary care physicians,primaryCarePhysicians,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Uninsured,uninsured,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Uninsured adults,uninsuredAdults,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Uninsured children,uninsuredChildren,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,access to care,Primary care physicians,primaryCarePhysicians,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,access to care,Uninsured,uninsured,county,x,x,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,access to care,Uninsured adults,uninsuredAdults,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,access to care,Uninsured children,uninsuredChildren,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,housing supply and quality,Homeownership,homeownership,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,housing supply and quality,Severe housing cost burden,severeHousingCostBurden,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,housing supply and quality,Severe housing problems,severeHousingProblems,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,housing supply and quality,Severe housing problems,severeHousingProblems,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Health Factor Group,healthFactorGroup,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Health Factor Z-Score,healthFactorZ,county,,x,"index, check for redundancy","University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Health Outcome Group,healthOutcomeGroup,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
@@ -258,16 +259,16 @@ health,physical health,housing supply and quality,Number of vacant housing units
 health,physical health,housing supply and quality,Rental vacancy rate,vacancyRate,county,x,x,,"U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022"
 health,physical health,physical health tbd,Adult obesity,adultObesity,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Adult smoking,adultSmoking,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Air pollution - particulate matter,airPollutionParticulateMatter,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+environment,"carbon, ghg, nutrients",fluxes,Air pollution - particulate matter,airPollutionParticulateMatter,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Child mortality,childMortality,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Diabetes prevalence,diabetesPrevalence,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,physical health tbd,Diabetes prevalence,diabetesPrevalence,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Drug overdose deaths,drugOverdoseDeaths,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Excessive drinking,excessiveDrinking,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Firearm fatalities,firearmFatalities,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Flu vaccinations,fluVaccinations,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Frequent physical distress,frequentPhysicalDistress,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Hiv prevalence,hivPrevalence,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,physical health tbd,Homicides,homicides,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,access to care,Flu vaccinations,fluVaccinations,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,physical health tbd,Frequent physical distress,frequentPhysicalDistress,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+health,physical health,physical health tbd,Hiv prevalence,hivPrevalence,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+social,community livability,community safety,Homicides,homicides,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Infant mortality,infantMortality,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Injury deaths,injuryDeaths,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,physical health tbd,Insufficient sleep,insufficientSleep,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
@@ -341,7 +342,7 @@ production,product quality,product quality tbd,NONE,NONE,,x,,,
 production,product quality,nutrition,NONE,NONE,,x,,,
 production,waste and losses,crop failure,NONE,NONE,,x,,,
 production,production efficiency,technology adoption,NONE,NONE,,x,,,
-social,community embeddedness,social connectedness,Children in single-parent households,childrenInSingleParentHouseholds,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+social,community embeddedness,social connectedness,Children in single-parent households,childrenInSingleParentHouseholds,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community embeddedness,social connectedness,Disconnected youth,disconnectedYouth,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community embeddedness,social connectedness,Social associations,socialAssociations,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community embeddedness,social connectedness,Driving alone to work,drivingAloneToWork,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
@@ -351,11 +352,11 @@ social,community embeddedness,belonging to community,NONE,NONE,,x,,,
 social,community embeddedness,collective action,NONE,NONE,,x,,,
 social,community embeddedness,tradition/heritage,NONE,NONE,,x,,,
 social,community embeddedness,common goals,NONE,NONE,,x,,,
-social,community livability,community safety,Alcohol-impaired driving deaths,alcoholImpairedDrivingDeaths,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-social,community livability,community safety,Juvenile arrests,juvenileArrests,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+social,community livability,community safety,Alcohol-impaired driving deaths,alcoholImpairedDrivingDeaths,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+social,community livability,community safety,Juvenile arrests,juvenileArrests,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community livability,diverse representation,Residential segregation - black/white,residentialSegregationBlackWhite,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community livability,diverse representation,School segregation,schoolSegregation,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-social,community livability,community livability ind tbd,Long commute - driving alone,longCommuteDrivingAlone,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+social,community embeddedness,belonging to community,Long commute - driving alone,longCommuteDrivingAlone,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community livability,community livability ind tbd,Traffic volume,trafficVolume,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community livability,NIMBYism,NONE,NONE,,x,,,
 social,community livability,outmigration,NONE,NONE,,x,,,

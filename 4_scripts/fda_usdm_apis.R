@@ -171,13 +171,13 @@ metas$unemp <- data.frame(
   variable_name = vars,
   dimension = 'production',
   index = 'product quality',
-  indicator = 'recalls in each industry',
+  indicator = 'product safety (not livestock)',
   axis_name = c(
     'Food Recalls, New England',
     'Food Recalls by State',
     'Food Recalls by ZIP'
   ),
-  metric = 'food recalls',
+  metric = 'FDA food recalls',
   definition = rep('Number of food recall enforcement reports documented in the FDA Recall Enterprise System', 3),
   units = 'count',
   annotation = NA,

@@ -12,12 +12,22 @@ source('4_scripts/nass_bulk_download.R')
 
 
 
-# Main Workflow -----------------------------------------------------------
+# Workflow ----------------------------------------------------------------
+## API Calls ---------------------------------------------------------------
 
 
-## Collect Data -----
-# Pulling NASS data from API, then aggregating, then cleaning and compiling
+# Note that some API calls are in scripts with cleaning. To Do: pull them out
+# and compile them here.
+
+# Pulling NASS data from API
 '4_scripts/nass_api_call.R'
+
+
+
+## Wrangle Data ------------------------------------------------------------
+
+
+# Cleaning and compiling NASS data from API
 source('4_scripts/nass_compilation.R')
 
 # Pull existing data from USDA ARMS Data Warehouse
@@ -35,14 +45,18 @@ source('4_scripts/fda_usdm_apis.R')
 # County health rankings
 source('4_scripts/county_health_rankings.R')
 
-# Other datasets. Mostly EPA, also USDA bee surveys, FSA disaster declarations
+# Other - EPA, USDA bee surveys, FSA disaster declarations, ERS farm income and
+# wealth
 source('4_scripts/other_datasets.R')
 
 # Spatial data - MRLC, VT BioD Proj, USFS Treemap (long run time)
 source('4_scripts/lulc.R')
 
 
-## Aggregate and Export -----
+
+## Export ------------------------------------------------------------------
+
+
 # Combine data from all sources
 source('4_scripts/aggregate_data.R')
 

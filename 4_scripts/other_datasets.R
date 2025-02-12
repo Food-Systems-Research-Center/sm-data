@@ -841,6 +841,172 @@ metas$import_export
 
 
 
+# ERS Income and Wealth ---------------------------------------------------
+
+
+# https://www.ers.usda.gov/data-products/farm-income-and-wealth-statistics/data-files-us-and-state-level-farm-income-and-wealth-statistics
+# 'Download all data in CSV file'
+
+# Load csv file from ERS
+raw <- read_csv('1_raw/usda/ers_wealth_and_income/FarmIncome_WealthStatisticsData_February2025.csv') %>% 
+  janitor::clean_names()
+get_str(raw)
+
+# Explore variables available at state level (some only at US aggregate)
+vars <- raw %>% 
+  filter(state != 'US') %>%
+  pull(variable_description_total) %>% 
+  unique()
+vars
+
+# Subset by a few keywords we are interested in
+relevant_vars <- vars %>% 
+  str_subset(
+    regex(
+      'Interest|Capital|emergency|indemnit|risk|dairy margin|milk|loss|forest',
+      ignore_case = TRUE
+    )
+  )
+relevant_vars
+
+# Check years
+get_table(raw$year)
+# Goes back to 1910, but scant data
+# Looks like 2024 and 2025 are still incomplete
+
+# Check 2024
+raw %>% 
+  filter(year == 2024) %>% 
+  pull(state) %>% 
+  unique
+# 2024 and 2025 are ONLY for US. No good. So just take up to 2023
+
+# Pull relevant vars for years going back to 2000, and up to 2023
+# Then ditch irrelevant columns
+get_str(raw)
+ers_dat <- raw %>% 
+  filter(
+    year > 2000, 
+    year <= 2023, 
+    variable_description_total %in% relevant_vars
+  ) %>% 
+  select(
+    year,
+    fips = state,
+    metric = variable_description_total,
+    value = amount
+  )
+get_str(ers_dat)
+
+# Recode states to fips codes. First add US to state codes
+get_str(state_key)
+states_and_us <- state_key %>% 
+  select(state, state_code) %>% 
+  add_row(state = 'US', state_code = '00')
+# Recode two letter state names with 2 digit fips codes
+ers_dat <- ers_dat %>% 
+  mutate(fips = states_and_us$state_code[match(ers_dat$fips, states_and_us$state)])
+get_str(ers_dat)
+
+# DF of metric names and variable names
+(metric_names <- get_vars(ers_dat, 'metric'))
+ers_crosswalk <- data.frame(
+  metric = metric_names,
+  variable_name = c(
+    'totalCapConsNoDwellings',
+    'totalCapConsWithDwellings',
+    'totalCapExpNoDwellings',
+    'totalCapExpWithDwellings',
+    'totalCapExpBldgs',
+    'totalCapExpBldgsLandNoDwellings',
+    'totalCapExpBldgsLandWithDwellings',
+    'totalCapExpBldgsLandDwellingsOnly',
+    'totalCapExpCars',
+    'totalCapExpTractors',
+    'totalCapExpTrucks',
+    'totalCapExpLandImprovements',
+    'totalCapExpMisc',
+    'totalCapExpVehiclesTractors',
+    'totalCapExpOtherMachinery',
+    'totalCapExpVehiclesMachinery',
+    'totalReceiptsAllForestProducts',
+    'totalIntExpNoDwellings',
+    'totalIntExpWithDwellings',
+    'totalIntExpNomRealEstateAll',
+    'totalIntExpRealEstateNoDwellings',
+    'totalIntExpRealEstateWithDwellings',
+    'totalRentNoCapCons',
+    'totalRentNonOpLandLordNoCapCons',
+    'totalRentNonOpLandLordWithCapCons',
+    'totalRentOpLandLordNoCapCons',
+    'totalIncomeInsuranceIndemnities',
+    'totalIncomeInsuranceIndemnitiesFederal',
+    'totalValueEmergPayments',
+    'totalValueAgRiskCoveragePayments',
+    'totalValueOtherAdHocEmergPayments',
+    'totalValueDairyMarginProtPayments',
+    'totalValueMilkLossPayments',
+    'totalValueAllLossCoveragePayments',
+    'totalValueServicesAndForestry'
+  )
+)
+ers_crosswalk
+
+# Recode ers_dat to swap out the metric names for variable names
+ers_dat <- ers_dat %>% 
+  mutate(variable_name = ers_crosswalk$variable_name[match(metric, ers_crosswalk$metric)]) %>% 
+  select(-metric)
+get_str(ers_dat)
+ers_dat$variable_name %>% unique
+
+# Save to results list
+results$ers_income_wealth <- ers_dat
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+(vars <- get_vars(ers_dat))
+ers_crosswalk
+
+# Check units for our variables
+unique(raw$unit_desc[raw$variable_description_total %in% ers_crosswalk$metric])
+# All 1000 usd
+
+metas$ers_income_wealth <- ers_crosswalk %>% 
+  mutate(
+    definition = metric,
+    axis_name = variable_name,
+    dimension = case_when(
+      str_detect(metric, 'Capital|Interest|Net rent') ~ 'economics',
+      .default = 'production'
+    ),
+    index = case_when(
+      str_detect(metric, regex('forest', ignore_case = TRUE)) ~ 'production margins',
+      str_detect(metric, 'Capital|Interest|Net rent') ~ 'access to capital/credit',
+      .default = 'waste and losses'
+    ),
+    indicator = case_when(
+      str_detect(metric, 'forest') ~ 'total quantity non-food agricultural products',
+      str_detect(metric, 'Capital|Interest|Net rent') ~ 'access to land',
+      .default = 'crop failure'
+    ),
+    units = '$1,000 usd',
+    scope = 'national',
+    resolution = 'state',
+    year = get_all_years(ers_dat),
+    latest_year = get_max_year(ers_dat),
+    updates = "annual",
+    source = 'U.S. Department of Agriculture, Economic Research Service. (2025, February 6). Farm Income and Wealth Statistics.',
+    url = 'https://www.ers.usda.gov/data-products/farm-income-and-wealth-statistics/data-files-us-and-state-level-farm-income-and-wealth-statistics'
+) %>%  
+  add_citation(access_date = '2025-02-12')
+
+metas$ers_income_wealth
+
+
+
 # USDA F2S Census ---------------------------------------------------------
 
 
@@ -952,6 +1118,85 @@ metas$census <- data.frame(
   add_citation(access_date = '2024-12-18')
   
 metas$census
+
+
+
+# Happiness ---------------------------------------------------------------
+
+
+# World Population Review / WalletHub
+# https://worldpopulationreview.com/state-rankings/happiest-states
+
+# Load state data from 2024
+happy <- read_csv('1_raw/world_pop_review/world_pop_review_happiness_scores.csv')
+get_str(happy)
+
+# Add fips and fix names
+happy_df <- state_key %>% 
+  select(state_name, state_code) %>% 
+  right_join(happy, by = join_by(state_name == state)) %>% 
+  select(-state_name) %>% 
+  setNames(c('fips', 'happinessScore', 'wellbeingRank', 'communityEnvRank', 'workEnvRank')) %>% 
+  mutate(year = 2024)
+get_str(happy_df)
+
+# Pivot longer to format for metrics data
+happy_df <- happy_df %>% 
+  pivot_longer(
+    cols = happinessScore:workEnvRank,
+    values_to = 'value',
+    names_to = 'variable_name'
+  )
+get_str(happy_df)
+
+# Save it
+results$happiness <- happy_df
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+(vars <- get_vars(happy_df))
+
+metas$happiness <- data.frame(
+  variable_name = get_vars(happy_df),
+  metric = c(
+    'Community and Environment Rank',
+    'Total Happiness Score',
+    'Physical and Emotional Wellbeing Rank',
+    'Work Environment Rank'
+  ),
+  definition = c(
+    'Composite index that includes volunteer rate, ideal weather, average leisure time per day, separation and divorce rate, and safety.',
+    'Weighted average of Physical and Emotional Wellbeing rank, Community and Environment rank, and Work Environment rank.',
+    'Composite index that includes career wellbeing, physical health index, adverse childhood experiences, share of adult depression, social wellbeing, share of adults with alcohol use disorder, adequate sleep rate, sports participation rate, share of adults feeling active and productive, share of adults with poor mental health, life expectancy, suicide rate, and food insecurity rate',
+    'Composite index that includes number of work hours, commute time, share of households earning $75,000, share of adults with anxiety, unemployment rate, share of labor force unemployed 15 weeks or longer, underemployment rate, job security, share of work related stressed tweets, income growth rate, economic security, and median credit score.'
+  ),
+  axis_name = c(
+    'Community and Env Rank',
+    'Happiness Score',
+    'Wellbeing Rank',
+    'Work Environment Rank'
+  ),
+  dimension = 'health',
+  index = 'happiness',
+  indicator = 'happiness tbd',
+  units = c(
+    'rank',
+    'index',
+    rep('rank', 2)
+  ),
+  scope = 'national',
+  resolution = 'state',
+  year = get_all_years(happy_df),
+  latest_year = get_max_year(happy_df),
+  updates = "annual",
+  source = 'WalletHub Happiest States in America (2025)',
+  url = 'https://worldpopulationreview.com/state-rankings/happiest-states'
+) %>% 
+  add_citation(access_date = '2025-02-12')
+metas$happiness
 
 
 

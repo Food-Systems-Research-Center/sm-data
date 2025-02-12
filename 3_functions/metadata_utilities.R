@@ -6,8 +6,8 @@ pacman::p_load(
   lubridate
 )
 # Get unique variable_names from a long-format DF
-get_vars <- function(df) {
-  df$variable_name %>% 
+get_vars <- function(df, col_name = 'variable_name') {
+  df[[col_name]] %>% 
     unique %>% 
     sort
 }

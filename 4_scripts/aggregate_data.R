@@ -85,6 +85,9 @@ meta_agg <- meta_agg %>%
 meta_agg$latest_year
 meta_agg$year
 
+# If there is no axis name, make it the variable_name
+meta_agg <- meta_agg %>% 
+  mutate(axis_name = ifelse(is.na(axis_name), variable_name, axis_name))
 
 # Remove NAICS variables here too
 meta_agg$variable_name %>% 

@@ -11,7 +11,8 @@ pacman::p_load(
   purrr,
   janitor,
   skimr,
-  tidyr
+  tidyr,
+  vegan
 )
 
 # Source functions
@@ -678,12 +679,14 @@ metas$total_forest_product_income <- tibble(
 
 nass_vars <- c(
   'PRODUCERS - AGE, AVG, MEASURED IN YEARS',
+  
   # 'PRODUCERS - AGE 25 TO 34 - NUMBER OF PRODUCERS',
   # 'PRODUCERS - AGE 35 TO 44 - NUMBER OF PRODUCERS',
   # 'PRODUCERS - AGE 45 TO 54 - NUMBER OF PRODUCERS',
   # 'PRODUCERS - AGE 55 TO 64 - NUMBER OF PRODUCERS',
   # 'PRODUCERS - AGE 65 TO 74 - NUMBER OF PRODUCERS',
   # 'PRODUCERS - AGE GE TO 75 - NUMBER OF PRODUCERS',
+  
   'PRODUCERS - NUMBER OF PRODUCERS',
   'PRODUCERS, (ALL), FEMALE - NUMBER OF PRODUCERS',
   'PRODUCERS, (ALL), MALE - NUMBER OF PRODUCERS',
@@ -697,12 +700,14 @@ nass_vars <- c(
 
 variable_names <- c(
   'ageProducers',
+  
   # 'n_producers_25_34',
   # 'n_producers_35_44',
   # 'n_producers_45_44',
   # 'n_producers_55_54',
   # 'n_producers_65_64',
   # 'n_producers_75_74',
+  
   'nProducer',
   'nFemProducers',
   'nMaleProducers',
@@ -727,6 +732,70 @@ social <- map2(nass_vars, variable_names, \(var, name) {
   setNames(c(variable_names))
 
 get_str(social)
+
+
+
+
+### Racial Diversity --------------------------------------------------------
+
+
+# For each fips in each year, get shannon index on race through nProducer vars
+get_str(social)
+
+# Pull out just the nRaceProducer vars
+races <- social[!names(social) %in% c('ageProducers', 'nProducer')]
+get_str(races)
+
+# Pull relevant columns and join together
+races <- map(races, ~ {
+  .x %>% 
+    select(fips, variable_name, year, value)
+}) %>% 
+  bind_rows()
+get_str(races)
+
+# Make wider
+races <- races %>% 
+  pivot_wider(
+    id_cols = c('fips', 'year'),
+    names_from = 'variable_name',
+    values_from = 'value'
+  )
+get_str(races)
+
+# We will have to split each year to be able to use vegan::diversity()
+get_table(races$year)
+race_list <- list(
+  races_2017 = filter(races, year == 2017),
+  races_2022 = filter(races, year == 2022)
+)
+get_str(race_list, 3)
+
+# For each year, remove year column, make fips a rowname, filter to states only,
+# turn NAs into zeroes (should check about this though), get diversity, and put
+# fips back as a column, add year back as column, then pivot longer and bind
+race_diversity <- map2(race_list, c(2017, 2022), ~ {
+  df <- .x %>% 
+    select(-year) %>% 
+    filter(str_length(fips) == 2) %>% 
+    mutate(across(starts_with('n'), ~ ifelse(is.na(.x), 0, .x))) %>% 
+    tibble::column_to_rownames('fips') %>% 
+    diversity() %>% 
+    as.data.frame() %>% 
+    tibble::rownames_to_column() %>% 
+    setNames(c('fips', 'producerRacialDiversity')) %>% 
+    mutate(year = .y) %>% 
+    pivot_longer(
+      cols = 'producerRacialDiversity',
+      values_to = 'value',
+      names_to = 'variable_name'
+    )
+}) %>% 
+  bind_rows()
+get_str(race_diversity, 3)
+
+# Add this to social list
+social$producerRacialDiversity <- race_diversity
 
 
 
@@ -778,6 +847,7 @@ metas$social <- tibble(
     'gender diversity',
     'racial diversity',
     'racial diversity',
+    'racial diversity',
     'racial diversity'
   ),
   metric = c(
@@ -791,17 +861,22 @@ metas$social <- tibble(
     'Number of male producers',
     'Number of Native Hawaiian or Pacific Islander producers',
     'Total number of producers',
-    'Number of White producers'
+    'Number of White producers',
+    'Racial diversity of producers'
   ),
   definition = metric,
   variable_name = vars,
   units = c(
     'ratio',
     'age',
-    rep('count', 9)
+    rep('count', 9),
+    'index'
   ),
   scope = 'national',
-  resolution = 'county, state',
+  resolution = c(
+    rep('county, state', 11),
+    'state'
+  ),
   year = get_all_years(results$social),
   latest_year = get_max_year(results$social),
   updates = "5 years",
@@ -811,7 +886,13 @@ metas$social <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation(access_date = '2024-11-13')
+  add_citation(access_date = '2024-11-13') %>% 
+  mutate(definition = case_when(
+    variable_name == 'producerRacialDiversity' ~ 'Shannon index of NASS producer race statistics',
+    .default = definition
+  ))
+
+get_str(metas$social)
 
 
 
