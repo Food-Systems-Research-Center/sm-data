@@ -589,6 +589,136 @@ get_str(metas$crop_div)
 
 
 
+# NatureServe -------------------------------------------------------------
+
+
+# Number of ecosystem by state (but also species counts)
+# https://geohub-natureserve.opendata.arcgis.com/datasets/Natureserve::natureserve-biodiversity-in-focus-total-ecosystems/about
+ns_raw <- st_read('1_raw/spatial/nature_serve/NatureServe_Biodiversity_in_Focus_-_Total_Ecosystems.geojson') %>% 
+  janitor::clean_names()
+ns_raw
+get_str(ns_raw)
+
+# Drop geometry to get plain df, then keep only relevant columns
+# We want species counts, at risk species, ecosystem count, and at risk eco
+ns <- st_drop_geometry(ns_raw) %>% 
+  select(
+    fips = state_fips,
+    matches('^total|^atrisk'),
+    atrisk_ecosystems = pct_atrisk_eco,
+    -matches('sym$')
+  )
+get_str(ns)
+
+# Filter down to 50 states and DC and add current year column
+ns <- filter(ns, fips %in% state_key$state_code) %>% 
+  mutate(year = 2022) %>% 
+  select(fips, year, everything())
+get_str(ns)
+
+# Make better variable names
+ns <- ns %>% 
+  setNames(c(
+    names(.)[1:2],
+    'sppAnimals',
+    'sppPlants',
+    'sppBees',
+    'sppOrchids',
+    'pctAtRiskAnimalSpp',
+    'pctAtRiskPlantSpp',
+    'pctAtRiskBeeSpp',
+    'pctAtRiskOrchidSpp',
+    'nEcosystems',
+    'pctAtRiskEcosystems'
+  ))
+get_str(ns)
+
+# Add current year and pivot longer to fit with other metrics
+# Make value character to match others
+ns <- ns %>% 
+  mutate(year = 2022) %>% 
+  pivot_longer(
+    cols = !c('fips', 'year'),
+    values_to = 'value',
+    names_to = 'variable_name'
+  ) %>% 
+  mutate(across(everything(), as.character))
+get_str(ns)
+
+# Save to results list
+results$nature_serve <- ns
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+get_str(results$nature_serve)
+get_vars(results$nature_serve)
+
+metas$nature_serve <- data.frame(
+  variable_name = get_vars(results$nature_serve),
+  metric = c(
+    'Total number of ecosystems',
+    'Percentage of animal species at risk',
+    'Percentage of bee species at risk',
+    'Percentage of ecosystems at risk',
+    'Percentage of orchid species at risk',
+    'Percentage of plant species at risk',
+    'Total number of animal species',
+    'Total number of bee species',
+    'Total number of orchid species',
+    'Total number of plant species'
+  ),
+  definition = c(
+    'Number of ecosystems represented in state based on the US National Vegetation Classification from 2022',
+    'Percentage of animal species within state that are at risk of extinction (vulnerable, imperiled, critically imperiled, or possibly extinct)',
+    'Percentage of bee species within state that are at risk of extinction (vulnerable, imperiled, critically imperiled, or possibly extinct)',
+    'Percentage of ecosystems within state that are at risk (vulnerable, imperiled, or critically imperiled)',
+    'Percentage of orchid species within state that are at risk of extinction (vulnerable, imperiled, critically imperiled, or possibly extinct)',
+    'Percentage of plant species within state that are at risk of extinction (vulnerable, imperiled, critically imperiled, or possibly extinct)',
+    'Total number of animal species within state',
+    'Total number of bee species within state',
+    'Total number of orchid species within state',
+    'Total number of plant species within state'
+  ),
+  axis_name = c(
+    'Number of Ecosystems',
+    'At Risk Animal Spp (%)',
+    'At Risk Bee Spp (%)',
+    'At Risk Ecosystems (%)',
+    'At Risk Orchid Spp (%)',
+    'At Risk Plant Spp (%)',
+    'Number Animal spp',
+    'Number Bee spp',
+    'Number Orchid spp',
+    'Number Plant spp'
+  ),
+  dimension = 'environment',
+  index = 'species and habitat',
+  units = c(
+    'count',
+    rep('percentage', 5),
+    rep('count', 4)
+  ),
+  scope = 'national',
+  resolution = 'state',
+  year = get_all_years(results$nature_serve),
+  latest_year = get_max_year(results$nature_serve),
+  updates = "annual",
+  source = 'NatureServe Network. (2023). Biodiversity in Focus: United States Edition. Arlington, VA.',
+  url = 'https://geohub-natureserve.opendata.arcgis.com/datasets/Natureserve::natureserve-biodiversity-in-focus-total-ecosystems/about'
+) %>% 
+  add_citation(access_date = '2025-02-13') %>% 
+  mutate(indicator = case_when(
+    str_detect(variable_name, 'Ecosystem') ~ 'sensitive or rare habitats',
+    .default = 'biodiversity'
+  ))
+
+get_str(metas$nature_serve)
+
+
+
 # Save and Clear ----------------------------------------------------------
 
 
