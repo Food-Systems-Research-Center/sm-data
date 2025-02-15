@@ -52,6 +52,9 @@ economics,tbd index,market vacancy/health index,NONE,NONE,,x,,,
 economics,tbd index,precarity index,NONE,NONE,,x,,,
 economics,value from rural landscape,diversity of farm types,NONE,NONE,,x,,,
 economics,utilities,utils,Civilian Labor Force,civLaborForce,county,,,,"U.S. Department of Labor, Bureau of Labor Statistics, Local Area Unemployment Statistics (LAUS)"
+economics,access to capital/credit,access to land,"Capital expenditures, buildings and land, excl. operator dwellings",totalCapExpBldgsLandNoDwellings   ,,x,,,
+economics,access to capital/credit,access to land,"Capital consumption, all, excl. operator dwellings",totalCapConsNoDwellings,,x,,,
+economics,access to capital/credit,access to land,"Interest expenses, real estate, excl. operator dwellings",totalIntExpRealEstateNoDwellings,,x,,,
 environment,"carbon, ghg, nutrients",fluxes,CH4 emissions from enteric fermentation american bison (Tg),CH4FermentBison,state,,,,U.S. Environmental Protection Agency State GHG Data (2024).
 environment,"carbon, ghg, nutrients",fluxes,CH4 emissions from enteric fermentation beef cattle (Tg),CH4FermentBeefCattle,state,,,,U.S. Environmental Protection Agency State GHG Data (2024).
 environment,"carbon, ghg, nutrients",fluxes,CH4 emissions from enteric fermentation dairy cattle (Tg),CH4FermentDairyCattle,state,,,,U.S. Environmental Protection Agency State GHG Data (2024).
@@ -135,8 +138,16 @@ environment,species and habitat,land use diversity,"LULC, proportion, pasture/ha
 environment,species and habitat,land use diversity,"LULC, proportion, shrub/scrub",lulcPropShrub,"county, state",,,,"U.S. Geological Survey, Multi-Resolution Land Characteristics Consortium (2024). Sioux Falls, SD"
 environment,species and habitat,land use diversity,"LULC, proportion, woody wetlands",lulcPropWoodyWetlands,"county, state",,,,"U.S. Geological Survey, Multi-Resolution Land Characteristics Consortium (2024). Sioux Falls, SD"
 environment,species and habitat,land use diversity,Land Use Diversity,lulcDiversity,"county, state",x,x,,"U.S. Geological Survey, Multi-Resolution Land Characteristics Consortium (2024). Sioux Falls, SD"
-environment,species and habitat,biodiversity,NONE,NONE,,x,,,
-environment,species and habitat,sensitive or rare habitats,NONE,NONE,,x,,,
+environment,species and habitat,biodiversity,Percentage of animal species at risk,pctAtRiskAnimalSpp,,x,,,
+environment,species and habitat,biodiversity,Percentage of bee species at risk,pctAtRiskBeeSpp,,x,,,
+environment,species and habitat,sensitive or rare habitats,Percentage of ecosystems at risk,pctAtRiskEcosystems,,x,,,
+environment,species and habitat,biodiversity,Percentage of orchid species at risk,pctAtRiskOrchidSpp,,x,,,
+environment,species and habitat,biodiversity,Percentage of plant species at risk,pctAtRiskPlantSpp,,x,,,
+environment,species and habitat,biodiversity,Total number of animal species,sppAnimals,,x,,,
+environment,species and habitat,biodiversity,Total number of bee species,sppBees,,x,,,
+environment,species and habitat,biodiversity,Total number of orchid species,sppOrchids,,x,,,
+environment,species and habitat,biodiversity,Total number of plant species,sppPlants,,x,,,
+environment,species and habitat,sensitive or rare habitats,Total number of ecosystems,nEcosystems,,x,,,
 environment,env index tbd,env ind tbd,Acres under conservation easement per operation,consEasementAcresPF,state,,,where should these go now,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,env index tbd,env ind tbd,Acres under conservation easements,consEasementAcres,state,,,where should these go now,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,env index tbd,env ind tbd,Conservation income per operation,consIncomePF,state,,,where should these go now,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
@@ -324,12 +335,13 @@ production,production margins,total quantity food products,Total animal and crop
 production,production margins,total quantity food products,Total animal sales,salesAnimal,county,,,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 production,production margins,total quantity food products,Total crop sales,salesCrop,county,,,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 production,production margins,total quantity forest products,Total forest product income,incForestProducts,county,x,x,,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
-production,production margins,total quantity non-food agricultural products,NONE,NONE,,x,,,
 production,production margins,value added market,"Farms, number of farms with value-added sales",nValueAddedFarms,county,,,,"U.S. Department of Agriculture, National Agricultural Statistical Survey, Census of Agriculture"
 production,production margins,value added market,"Farms, percent of all farms with value-added sales",valueAddedFarmsPerc,county,x,x,redundant?,"U.S. Department of Agriculture, National Agricultural Statistical Survey, Census of Agriculture"
 production,production margins,value added market,"Farms, value-added sales",valueAddedSales,county,,,,"U.S. Department of Agriculture, National Agricultural Statistical Survey, Census of Agriculture"
 production,production margins,value added market,"Farms, value-added sales as a percent of all farm sales",valueAddedSalesPerc,county,x,x,redundant?,"U.S. Department of Agriculture, National Agricultural Statistical Survey, Census of Agriculture"
 production,production margins,yield,NONE,NONE,,x,,,
+production,production margins,total quantity non-food ag products,"Cash receipts value, forest products , all",totalReceiptsAllForestProducts,,x,,,
+production,production margins,total quantity non-food ag products,"Value of production, services and forestry, all",totalValueServicesAndForestry,,x,,,
 production,production index tbd,production ind tbd,Anaerobic digestion facilities,nAnaerDigestion,county,,,"not good metrics, and no updates",U.S. Environmental Protection Agency (EPA)
 production,production index tbd,production ind tbd,"Composting facilities, number",nCompost,county,,,"not good metrics, and no updates",U.S. Environmental Protection Agency (EPA)
 production,production index tbd,production ind tbd,"Food hubs, count",nFoodHubs,county,,,"not good metrics, and no updates","U.S. Department of Agriculture, Local Food Directories"
@@ -340,7 +352,14 @@ production,product quality,certificates of assurance,NONE,NONE,,x,,,
 production,product quality,product safety (not livestock),NONE,NONE,,x,,,
 production,product quality,product quality tbd,NONE,NONE,,x,,,
 production,product quality,nutrition,NONE,NONE,,x,,,
-production,waste and losses,crop failure,NONE,NONE,,x,,,
+production,waste and losses,crop failure,"Other farm income, insurance indemnities",totalIncomeInsuranceIndemnities,,x,,,
+production,waste and losses,crop failure,"Other farm income, insurance indemnities, federal",totalIncomeInsuranceIndemnitiesFederal,,x,,,
+production,waste and losses,crop failure,"Value of ad hoc and emergency program payments, all",totalValueEmergPayments,,x,,,
+production,waste and losses,crop failure,"Value of agricultural risk coverage payments, all",totalValueAgRiskCoveragePayments,,x,,,
+production,waste and losses,crop failure,Value of all other ad hoc and emergency program payments,totalValueOtherAdHocEmergPayments,,x,,,
+production,waste and losses,crop failure,Value of dairy margin protection program payments,totalValueDairyMarginProtPayments,,x,,,
+production,waste and losses,crop failure,"Value of milk income loss program payments, all",totalValueMilkLossPayments,,x,,,
+production,waste and losses,crop failure,"Value of price loss coverage payments, all",totalValueAllLossCoveragePayments,,x,,,
 production,production efficiency,technology adoption,NONE,NONE,,x,,,
 social,community embeddedness,social connectedness,Children in single-parent households,childrenInSingleParentHouseholds,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community embeddedness,social connectedness,Disconnected youth,disconnectedYouth,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
@@ -372,7 +391,7 @@ social,food and farmworker diversity,racial diversity,Number of Hispanic produce
 social,food and farmworker diversity,racial diversity,Number of Native Hawaiian or Pacific Islander producers,nNaHaProducers,county,,,aggregate these,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 social,food and farmworker diversity,racial diversity,Number of White producers,nWhiteProducers,county,,,aggregate these,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 social,food and farmworker diversity,racial diversity,Total number of producers,nProducer,county,,,aggregate these,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
-social,food and farmworker diversity,racial diversity,NONE,NONE,,x,,,
+social,food and farmworker diversity,racial diversity,Racial diversity of producers,producerRacialDiversity,,x,,,
 social,food and farmworker diversity,sexuality,NONE,NONE,,x,,,
 social,food system governance,participatory governance,Census participation,censusParticipation,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,food system governance,participatory governance,Voter turnout,voterTurnout,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"

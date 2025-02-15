@@ -154,7 +154,10 @@ aggregate_metrics <- function(metrics = results,
   
   out$meta <- map(metas, ~ {
     .x %>% 
-      mutate(latest_year = as.character(latest_year))
+      mutate(
+        year = as.character(year),
+        latest_year = as.character(latest_year)
+      )
   }) %>%  
     bind_rows()
   

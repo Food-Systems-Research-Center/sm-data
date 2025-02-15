@@ -21,6 +21,7 @@ pacman::p_load(
 api_key <- Sys.getenv('NASS_API_KEY')
 source('3_functions/api/api_functions.R')
 fips_key <- readRDS('5_objects/fips_key.rds')
+state_key <- readRDS('5_objects/state_key.rds')
 
 # Define fips - have to split back into 2 digit state and 3 digit county
 full_fips <- fips_key %>% 
@@ -169,6 +170,73 @@ all_dat %>%
 
 # Save this as our real dataset
 saveRDS(all_dat, '1_raw/nass/ne_counties_all_states_2007-2022.rds')
+
+
+
+# Yield Data - Survey -----------------------------------------------------
+
+
+# Pulling from 2022 survey to test out yield data. Just doing one year for now.
+
+
+# Base request
+base_get <- 'https://quickstats.nass.usda.gov/api/api_GET/'
+
+# Other Parameters
+source_desc <- 'SURVEY'
+years <- 2022
+state_fips <- unique(state_key$state_code)
+agg_level_desc <- 'STATE'
+
+
+## All states for one year
+out <- map(state_fips, \(state) {
+  tryCatch({
+    url <- glue(
+      base_get,
+      '?key={api_key}',
+      '&state_fips_code={state}',
+      '&agg_level_desc={agg_level_desc}',
+      '&year={years}',
+      '&source_desc={source_desc}',
+      '&domain_desc=TOTAL'
+    )
+    print(url)
+    GET(url) %>%
+      content(as = 'text') %>%
+      fromJSON() %>%
+      .$data
+  },
+  error = function(e) {
+    message('Call failed')
+    print(e)
+  }) 
+}) %>%
+  setNames(c(paste0('state', state_fips))) %>%
+  discard(is.null)
+
+# Check it
+get_str(out)
+
+# Combine it
+yield_dat <- out %>% 
+  bind_rows() %>% 
+  filter(
+    domain_desc == 'TOTAL',
+    statisticcat_desc == 'YIELD'
+  )
+
+vars <- unique(yield_dat$short_desc)
+
+# Check what is available for NE states
+ne_vars <- yield_dat %>% 
+  filter(state_alpha %in% c('VT', 'NH', 'ME', 'MA', 'CT', 'DE')) %>% 
+  pull(short_desc) %>% 
+  unique()
+# 26 vars represented in New England
+
+# Save combined yield data to be wrangled in NASS compilation script
+saveRDS(out, '1_raw/nass/nass_survey_2022.rds')
 
 
 

@@ -104,7 +104,7 @@
     },
     "RMySQL": {
       "Package": "RMySQL",
-      "Version": "0.10.29",
+      "Version": "0.11.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -112,7 +112,7 @@
         "R",
         "methods"
       ],
-      "Hash": "5da07d3a30916f38bebd773a125ae08a"
+      "Hash": "df730f7d5bbe75ad175470d7f1655afb"
     },
     "Rcpp": {
       "Package": "Rcpp",
@@ -219,7 +219,7 @@
         "httr",
         "rjson"
       ],
-      "Hash": "2d46b8226fcac3428e790589e751a936"
+      "Hash": "a5ce805faa4b93a5c0d11569f7725f99"
     },
     "brew": {
       "Package": "brew",
@@ -1791,7 +1791,7 @@
         "tidyselect",
         "vctrs"
       ],
-      "Hash": "81523e889a83ae43599c25deec94d496"
+      "Hash": "39bfab19f7c0e0907cca1b81e26eab5a"
     },
     "snakecase": {
       "Package": "snakecase",

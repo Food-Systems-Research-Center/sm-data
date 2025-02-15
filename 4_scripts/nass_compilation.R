@@ -29,6 +29,17 @@ coa_ne <- readRDS('1_raw/nass/ne_counties_all_states_2007-2022.rds') %>%
 get_str(coa_ne)
 coa_ne$fips %>% unique
 
+# Pull NASS survey for yield data
+survey <- readRDS('1_raw/nass/nass_survey_2022.rds') %>% 
+  bind_rows() %>% 
+  rename(fips = state_ansi) %>% 
+  setNames(c(names(.) %>% snakecase::to_snake_case())) %>% 
+  mutate(value = case_when(
+    str_detect(value, '(D)') ~ NA,
+    .default = as.numeric(str_remove_all(value, ','))
+  ))
+get_str(survey)
+
 # Fips keys
 fips_key <- readRDS('5_objects/fips_key.rds')
 state_key <- readRDS('5_objects/state_key.rds')
@@ -40,6 +51,7 @@ metas <- list()
 
 # Last time API was called
 access_date <- '2025-01-07'
+survey_access_date <- '2025-02-14'
 
 
 
@@ -673,6 +685,111 @@ metas$total_forest_product_income <- tibble(
 
 
 
+## Yield -------------------------------------------------------------------
+
+
+# This is coming from NASS Survey, whereas everything else here is census
+# Does not represent New England very well though
+
+# Get variables
+vars <- survey %>% 
+  filter(
+    domain_desc == 'TOTAL',
+    statisticcat_desc == 'YIELD'
+  ) %>% 
+  # select(short_desc, commodity_desc, domain_desc, sector_desc) %>% 
+  pull(short_desc) %>% 
+  unique()
+vars  
+ 
+# Variable names as a function of short_desc - too many to deal with manually
+# Actually using this to set up metadata table
+survey_meta <- survey %>% 
+  filter(
+    domain_desc == 'TOTAL',
+    statisticcat_desc == 'YIELD'
+  ) %>% 
+  select(
+    short_desc,
+    year, 
+    units = unit_desc
+  ) %>% 
+  mutate(definition = short_desc) %>% 
+  unique()
+get_str(survey_meta)
+
+# Make things lower case, create variable name and metric out of definition
+survey_meta <- survey_meta %>% 
+  mutate(
+    definition = snakecase::to_sentence_case(definition),
+    metric = definition %>% 
+      str_split_i(' measured', 1),
+    variable_name = paste0(
+      'yield',
+      metric %>% 
+        snakecase::to_upper_camel_case() %>% 
+        str_remove('Yield$')
+    ),
+    units = units %>%
+      str_to_lower() %>% 
+      str_remove_all(' ')
+  )
+get_str(survey_meta)
+
+## Now actually get data, map over short_desc from survey meta
+out <- map2(survey_meta$short_desc, survey_meta$variable_name, \(desc, var) {
+  pull_variable(
+    survey,
+    sector_desc = 'CROPS',
+    # commodity_desc = , # Commodities are different between states, take all
+    statisticcat_desc = 'YIELD',
+    domain_desc = 'TOTAL',
+    short_desc = desc,
+    variable_name = var,
+    source_desc = 'SURVEY'
+  )
+})
+get_str(out)
+
+# Put them together into one DF and clean it
+yield_df <- out %>% 
+  bind_rows() %>% 
+  select(fips, year, variable_name, value) %>% 
+  mutate(across(everything(), as.character))
+get_str(yield_df)
+
+# Save to results
+results$yield <- yield_df
+
+# Filter survey meta to yield variables - some get lost
+survey_meta <- survey_meta %>% 
+  filter(variable_name %in% unique(results$yield$variable_name))
+
+
+### Metadata ----------------------------------------------------------------
+
+
+# Remove short_desc from metadata df, then finish metadata table
+metas$yield <- survey_meta %>% 
+  select(-short_desc) %>% 
+  mutate(
+    dimension = 'production',
+    index = 'production margins',
+    indicator = 'yield',
+    axis_name = variable_name,
+    scope = 'national',
+    resolution = 'state',
+    updates = "annual",
+    latest_year = '2022', #
+    source = "U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Agriculture Survey.",
+    url = 'https://quickstats.nass.usda.gov/',
+    warehouse = FALSE
+  ) %>%
+  add_citation(access_date = survey_access_date)
+get_str(metas$yield)
+
+
+
 # Social ------------------------------------------------------------------
 ## Food worker and farmer diversity ----------------------------------------
 
@@ -1138,7 +1255,7 @@ var_crosswalk <- data.frame(
 )
 var_crosswalk$data_item %in% water$data_item
 
-### We are right here []. Have to wrangle slightly different dataset here.
+### Have to wrangle slightly different dataset here.
 get_str(water)
 water_df <- water %>% 
   select(
@@ -1350,6 +1467,7 @@ metas$env <- starter %>%
   select(-fips_length)
 
 metas$env
+
 
 
 # Aggregate ---------------------------------------------------------------
