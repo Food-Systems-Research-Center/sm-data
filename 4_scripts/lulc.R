@@ -9,9 +9,9 @@
 
 
 pacman::p_load(
+  dplyr,
   sf,
   stars,
-  dplyr,
   mapview,
   terra,
   stringr,
@@ -84,8 +84,15 @@ raster_path <- '1_raw/spatial/mrlc_lulc/Annual_NLCD_LndCov_2023_CU_C1V0.tif'
 
 # Load python function, get cell counts for county and state
 reticulate::source_python('3_functions/spatial/cat_zonal_stats.py')
+tic()
 out <- map(list(county_path, state_path), ~ cat_zonal_stats(raster_path, .x))
+toc()
 get_str(out)
+# ~ 6 minutes
+
+# Save intermediate outputs
+saveRDS(out, '5_objects/spatial/processing/lulc_zonal_stats_out.rds')
+out <- readRDS('5_objects/spatial/processing/lulc_zonal_stats_out.rds')
 
 # Get unique levels. Use later to make sure we are not missing any
 all_levels <- map(out, names) %>% 
@@ -227,7 +234,7 @@ div <- map(all_lulc, ~ {
   .x %>% 
     column_to_rownames('fips') %>% 
     select(-c(matches('Dev|Barren'))) %>% 
-    diversity() %>%
+    diversity() %>% 
     round(3) %>% 
     format(nsmall = 3) %>% 
     as.data.frame() %>% 
@@ -241,6 +248,12 @@ div <- map(all_lulc, ~ {
     mutate(year = '2023')
 }) %>% 
   bind_rows()
+div
+
+# Filter down to 51 states we are working with to get rid of NAs (most of them)
+div <- div %>% 
+  filter(fips %in% c(fips_key$fips, state_key$state_code)) %>% 
+  mutate(value = ifelse(str_detect(value, 'NA'), NA, value))
 div
 
 # Save

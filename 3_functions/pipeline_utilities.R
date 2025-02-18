@@ -8,8 +8,8 @@ pacman::p_load(
   purrr,
   dplyr,
   stringr,
-  purrr,
-  rlang
+  purrr
+  # rlang
 )
 
 # Pivot wider and add year to the variable name

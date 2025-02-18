@@ -442,7 +442,9 @@ get_str(farm_income)
 farm_income <- state_key %>% 
   select(state, state_code) %>% 
   right_join(farm_income) %>% 
-  filter(year >= 2000)
+  filter(year >= 2000) %>% 
+  select(-state) %>% 
+  rename(fips = state_code)
 get_str(farm_income)
 
 # Join to results list
@@ -467,7 +469,8 @@ metas$farm_income <- data.frame(
   annotation = NA,
   scope = 'national',
   resolution = 'state',
-  year = paste0(unique(farm_income$year), collapse = '|'), 
+  year = get_all_years(results$farm_income),
+  latest_year = get_max_year(results$farm_income),
   updates = 'annual',
   warehouse = FALSE,
   source = 'U.S. Department of Agriculture, Economic Research Service, Farm Income and Wealth Statistics',

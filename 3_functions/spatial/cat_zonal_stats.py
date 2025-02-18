@@ -38,7 +38,7 @@ def cat_zonal_stats(raster_path, polygon_path):
     categorical=True
   )
   
-  # Convert to dataframe, put add fips column back in
+  # Convert to dataframe, put fips column back in
   df = pd.DataFrame(out)
   df['fips'] = polygons['fips']
   return df

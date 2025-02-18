@@ -903,6 +903,7 @@ get_str(state_key)
 states_and_us <- state_key %>% 
   select(state, state_code) %>% 
   add_row(state = 'US', state_code = '00')
+
 # Recode two letter state names with 2 digit fips codes
 ers_dat <- ers_dat %>% 
   mutate(fips = states_and_us$state_code[match(ers_dat$fips, states_and_us$state)])

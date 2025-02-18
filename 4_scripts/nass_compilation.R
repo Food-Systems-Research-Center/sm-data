@@ -1265,7 +1265,13 @@ water_df <- water %>%
     value
   ) %>% 
   inner_join(var_crosswalk) %>% 
-  select(-data_item)
+  select(-data_item) %>% 
+  
+  # Turn (D) into NA
+  mutate(value = case_when(
+    str_detect(value, 'D') ~ NA,
+    .default = value
+  ))
 get_str(water_df)  
 
 # Save to results

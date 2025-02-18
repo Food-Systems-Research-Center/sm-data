@@ -52,7 +52,7 @@ economics,tbd index,market vacancy/health index,NONE,NONE,,x,,,
 economics,tbd index,precarity index,NONE,NONE,,x,,,
 economics,value from rural landscape,diversity of farm types,NONE,NONE,,x,,,
 economics,utilities,utils,Civilian Labor Force,civLaborForce,county,,,,"U.S. Department of Labor, Bureau of Labor Statistics, Local Area Unemployment Statistics (LAUS)"
-economics,access to capital/credit,access to land,"Capital expenditures, buildings and land, excl. operator dwellings",totalCapExpBldgsLandNoDwellings   ,,x,,,
+economics,access to capital/credit,access to land,"Capital expenditures, buildings and land, excl. operator dwellings",totalCapExpBldgsLandNoDwellings,,x,,,
 economics,access to capital/credit,access to land,"Capital consumption, all, excl. operator dwellings",totalCapConsNoDwellings,,x,,,
 economics,access to capital/credit,access to land,"Interest expenses, real estate, excl. operator dwellings",totalIntExpRealEstateNoDwellings,,x,,,
 environment,"carbon, ghg, nutrients",fluxes,CH4 emissions from enteric fermentation american bison (Tg),CH4FermentBison,state,,,,U.S. Environmental Protection Agency State GHG Data (2024).
@@ -170,13 +170,13 @@ environment,env index tbd,env ind tbd,Operations with conservation income,consIn
 environment,env index tbd,env ind tbd,Operations with fertilizer expenses,fertExpenseOpsWithExp,state,,,where should these go now,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,env index tbd,env ind tbd,Total conservation income,consIncomeTotal,state,,,where should these go now,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,env index tbd,env ind tbd,Total fertilizer expenses,fertExpenseTotal,state,,,where should these go now,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
-environment,water,quantity,Acre feet of irrigation from reclaimed water,waterIrrReclaimedAcreFt,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
+environment,water,quantity,Acre feet of irrigation from reclaimed water,waterIrrReclaimedAcreFt,state,,,lots of missing data,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,water,quantity,Acres drained by ditches,drainedDitchesAcres,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,water,quantity,Acres drained by ditches per farm,drainedDitchesAcresPF,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,water,quantity,Acres drained by tile,drainedTileAcres,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,water,quantity,Acres drained by tile per operation,drainedTileAcresPF,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,water,quantity,Acres irrigated with reclaimed water in open areas,waterIrrReclaimedOpenAcres,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
-environment,water,quantity,Depth of irrigation wells,wellsIrrigationDepthFt,state,x,,"raw n is no good here, might need number of wells too, if we aggregate","U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
+environment,water,quantity,Depth of irrigation wells,wellsIrrigationDepthFt,state,,,"raw n is no good here, might need number of wells too, if we aggregate","U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,water,quantity,Expenses from water for irrigation sourced off-farm per acre,waterIrrSrcOffFarmExpPerAcre,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,water,quantity,Expenses from water for irrigation sourced off-farm per acre foot,waterIrrSrcOffFarmExpPerAcreFt,state,x,x,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,water,quantity,Number of irrigation wells,wellsIrrigationN,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
@@ -185,7 +185,7 @@ environment,water,quantity,Operations with irrigation wells,wellsIrrigationNOps,
 environment,water,quantity,Operations with acres drained by tile,drainedTileNOps,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,water,quantity,Operations with drained acres by tile,drainedDitchesNOps,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,water,quantity,Operations with expenses from water for irrigation sourced off-farm,waterIrrSrcOffFarmNOpsWithExp,state,,,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
-environment,water,quantity,Total expenses from water for irrigation sourced off-farm,waterIrrSrcOffFarmExp,state,x,x,raw n is no good here,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
+environment,water,quantity,Total expenses from water for irrigation sourced off-farm,waterIrrSrcOffFarmExp,state,x,x,looks complete,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 environment,water,quality,Acidity condition class,lakesAcidCond,state,,,"state level, categorical","U.S. Environmental Protection Agency, National Aquatic Resource Surveys, 2022"
 environment,water,quality,"Bed sediment condition, based on log relative bed stability (LRBS_use)",riversBedsedCond,state,,,"state level, categorical","U.S. Environmental Protection Agency, National Aquatic Resource Surveys, 2022"
 environment,water,quality,"Condition based on ANC, DOC, and sulfate",riversAcidCond,state,,,"state level, categorical","U.S. Environmental Protection Agency, National Aquatic Resource Surveys, 2022"
@@ -358,7 +358,7 @@ production,waste and losses,crop failure,"Value of ad hoc and emergency program 
 production,waste and losses,crop failure,"Value of agricultural risk coverage payments, all",totalValueAgRiskCoveragePayments,,x,,,
 production,waste and losses,crop failure,Value of all other ad hoc and emergency program payments,totalValueOtherAdHocEmergPayments,,x,,,
 production,waste and losses,crop failure,Value of dairy margin protection program payments,totalValueDairyMarginProtPayments,,x,,,
-production,waste and losses,crop failure,"Value of milk income loss program payments, all",totalValueMilkLossPayments,,x,,,
+production,waste and losses,crop failure,"Value of milk income loss program payments, all",totalValueMilkLossPayments,,,,all 0,
 production,waste and losses,crop failure,"Value of price loss coverage payments, all",totalValueAllLossCoveragePayments,,x,,,
 production,production efficiency,technology adoption,NONE,NONE,,x,,,
 social,community embeddedness,social connectedness,Children in single-parent households,childrenInSingleParentHouseholds,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
@@ -372,7 +372,7 @@ social,community embeddedness,collective action,NONE,NONE,,x,,,
 social,community embeddedness,tradition/heritage,NONE,NONE,,x,,,
 social,community embeddedness,common goals,NONE,NONE,,x,,,
 social,community livability,community safety,Alcohol-impaired driving deaths,alcoholImpairedDrivingDeaths,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-social,community livability,community safety,Juvenile arrests,juvenileArrests,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+social,community livability,community safety,Juvenile arrests,juvenileArrests,county,,,half states missing,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community livability,diverse representation,Residential segregation - black/white,residentialSegregationBlackWhite,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community livability,diverse representation,School segregation,schoolSegregation,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,community embeddedness,belonging to community,Long commute - driving alone,longCommuteDrivingAlone,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
@@ -393,7 +393,7 @@ social,food and farmworker diversity,racial diversity,Number of White producers,
 social,food and farmworker diversity,racial diversity,Total number of producers,nProducer,county,,,aggregate these,"U.S. Department of Agriculture, National Agricultural Statistics Service. (2024). 2022 Census of Agriculture."
 social,food and farmworker diversity,racial diversity,Racial diversity of producers,producerRacialDiversity,,x,,,
 social,food and farmworker diversity,sexuality,NONE,NONE,,x,,,
-social,food system governance,participatory governance,Census participation,censusParticipation,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
+social,food system governance,participatory governance,Census participation,censusParticipation,county,,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,food system governance,participatory governance,Voter turnout,voterTurnout,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 social,food system governance,policies,NONE,NONE,,x,,,
 social,food system governance,regulations and incentives,NONE,NONE,,x,,,
