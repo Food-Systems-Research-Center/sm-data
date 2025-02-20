@@ -13,7 +13,8 @@ pacman::p_load(
   memoise,
   purrr,
   readr,
-  stringr
+  stringr,
+  tidyr
 )
 
 source('3_functions/metadata_utilities.R')
