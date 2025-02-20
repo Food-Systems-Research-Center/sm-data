@@ -34,6 +34,7 @@ source('4_scripts/nass_compilation.R')
 source('4_scripts/data_warehouse.R')
 
 # Pull census data (ACS5). [Switching from bulk download to API calls]
+# Note - need to move API calls in different script, save raw outputs
 source('4_scripts/census.R')
 
 # BLS QCEW

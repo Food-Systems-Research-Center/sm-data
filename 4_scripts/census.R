@@ -50,6 +50,9 @@ metas <- list()
 
 # All relevant variables for American Community Survey data
 variables <- list(
+  # Population
+  'population' = 'B01003_001E',
+  
   # Education
   'edTotal' = 'B15003_001E',
   'edTotalHS' = 'B15003_017E',
@@ -58,7 +61,6 @@ variables <- list(
   
   # Housing
   'nHousingUnits' = 'B25001_001E',
-  # 'total_occupancy_status' = 'B25002_001E',
   'nHousingOccupied' = 'B25002_002E',
   'nHousingVacant' = 'B25002_003E',
   
@@ -104,6 +106,7 @@ variables <- list(
 crosswalk <- setNames(names(variables), variables)
 
 
+
 ## Pull County Data --------------------------------------------------------
 
 
@@ -128,6 +131,9 @@ counties_out <- map(years, \(year){
 # Note that the first five years didn't come through. Only have 2015 to 2022
 # So we only have 9?
 get_str(counties_out)
+
+# Save raw output
+saveRDS(counties_out, '5_objects/api_outs/census_counties_2015_2022.rds')
 
 
 
@@ -155,10 +161,17 @@ states_out <- map(years, \(year){
 # So we only have 9?
 get_str(states_out)
 
+# Save raw output
+saveRDS(states_out, '5_objects/api_outs/census_states_2015_2022.rds')
 
 
-## Wrangle -----------------------------------------------------------------
 
+# Wrangle -----------------------------------------------------------------
+
+
+# Reload raw outputs from API calls
+states_out <- readRDS('5_objects/api_outs/census_states_2015_2022.rds')
+counties_out <- readRDS('5_objects/api_outs/census_counties_2015_2022.rds')
 
 # Combine county and state data
 dat <- reduce(c(counties_out, states_out), bind_rows) %>% 
@@ -204,10 +217,10 @@ results$acs5 <- dat
 ## Metadata ----------------------------------------------------------------
 
 
-vars <- results$acs5$variable_name %>% 
-  unique %>% 
-  sort
-vars
+(vars <- get_vars(results$acs5))
+# Have to redo this... []
+# Before we pulled median earnings data from data warehouse
+# Better to do it ourselves here.
 
 # Save metadata
 metas$acs5 <- tibble(
