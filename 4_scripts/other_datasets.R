@@ -1201,6 +1201,105 @@ metas$happiness
 
 
 
+# BEA GDP -----------------------------------------------------------------
+
+
+# Bureau of Economic Analysis, SAGDP - Annual GDP by State
+# Also has breakdowns by industry codes
+# ALL AREAS files are consolidated
+# SAGDP_1 is chained 2017 dollars (we want this)
+# https://apps.bea.gov/regional/downloadzip.htm
+
+bea_raw <- read_csv('1_raw/bea/SAGDP/SAGDP1__ALL_AREAS_1997_2023.csv') %>% 
+  janitor::clean_names()
+get_str(bea_raw)
+
+# Reduce to 5 digit state keys (and US 00000)
+# Also reduce to relevant columns
+get_str(state_key)
+bea <- bea_raw %>% 
+  filter(geo_fips %in% c(state_key$full_state_code, '00000')) %>% 
+  select(
+    fips = geo_fips,
+    definition = description,
+    units = unit,
+    starts_with('x')
+  )
+get_str(bea)  
+
+# Reduce to relevant variables: current dollar GDP, real GDP (chained 2017)
+gdp <- bea %>% 
+  filter(str_detect(definition, '^Real GDP|Current-dollar GDP')) %>% 
+  mutate(
+    definition = str_remove(definition, '1/'),
+    variable_name = case_when(
+      str_detect(definition, 'Real GDP') ~ 'gdpRealChained',
+      str_detect(definition, 'Current-dollar') ~ 'gdpCurrent',
+      .default = NA
+    )
+  )
+get_str(gdp)  
+get_table(gdp$definition)  
+get_table(gdp$units)  
+  
+# Pull this out into a df for metadata only (just take units and definition)
+gdp_meta <- gdp %>% 
+  select(variable_name, units, definition) %>% 
+  unique()
+gdp_meta
+# Use this later for seeding metadata
+
+# Now continue with metrics df. Pivot longer and fix year names
+get_str(gdp)
+gdp_df <- gdp %>% 
+  select(-units, -definition) %>% 
+  mutate(fips = str_sub(fips, end = 2)) %>% 
+  pivot_longer(
+    cols = starts_with('x'),
+    values_to = 'value',
+    names_to = 'year'
+  ) %>% 
+  mutate(
+    year = str_remove(year, 'x'),
+    across(everything(), as.character)
+  )
+get_str(gdp_df)
+
+# Save to results
+results$gdp <- gdp_df
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+gdp_meta
+
+metas$gdp <- gdp_meta %>% 
+  arrange(variable_name) %>% 
+  mutate(
+    metric = definition,
+    definition = c(
+      'Real GDP is in millions of chained 2017 dollars. Calculations are performed on unrounded data.',
+      'Chained (2017) dollar series are calculated as the product of the chain-type quantity index and the 2017 current-dollar value of the corresponding series, divided by 100. Because the formula for the chain-type quantity indexes uses weights of more than one period, the corresponding chained-dollar estimates are usually not additive.'
+    ),
+    axis_name = c('GDP Real (Millions)', 'GDP Chained (Millions)'),
+    dimension = 'utilities',
+    index = 'utilities_index',
+    indicator = 'utilities_indicator',
+    scope = 'national',
+    resolution = 'state',
+    year = get_all_years(gdp_df),
+    latest_year = get_max_year(gdp_df),
+    updates = "annual",
+    source = 'U.S. Department of Commerce, Bureau of Economic Analysis (2024). Regional Economic Accounts.',
+    url = 'https://apps.bea.gov/regional/downloadzip.htm'
+  ) %>% 
+  add_citation(access_date = '2025-02-24')
+metas$gdp
+
+
+
 # Aggregate and Save ------------------------------------------------------
 
 

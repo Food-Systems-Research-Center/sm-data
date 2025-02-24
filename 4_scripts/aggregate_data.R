@@ -121,3 +121,5 @@ write_csv(meta_agg, '6_outputs/metadata.csv')
 
 clear_data()
 gc()
+
+cat('\n*Aggregation complete*')

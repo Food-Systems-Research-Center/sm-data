@@ -304,16 +304,16 @@ metas$unemp <- data.frame(
   ),
   index = c(
     rep('community economy', 4),
-    rep('utilities', 2),
+    rep('utilities_index', 2),
     rep('community economy', 2),
-    'utilities'
+    'utilities_index'
   ),
   indicator = c(
     'employee numbers',
     rep('wealth/income distribution', 3),
-    rep('utilities', 2),  # revisit this at some point
+    rep('utilities_indicator', 2),  # revisit this at some point
     rep('wealth/income distribution', 2),
-    'utilities'
+    'utilities_indicator'
   ),
   axis_name = c(
     'Civ Labor Force',

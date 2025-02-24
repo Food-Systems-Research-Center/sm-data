@@ -110,59 +110,59 @@ crosswalk <- setNames(names(variables), variables)
 ## Pull County Data --------------------------------------------------------
 
 
-# Set parameters
-years <- c(2012:2022)
-vars <- paste0(variables, collapse = ',')
-states <- fips_key %>% 
-  filter(str_length(fips) == 2 & fips != '00') %>% 
-  pull(fips) %>% 
-  paste0(collapse = ',')
-
-# Map over list of years to gather data for each
-counties_out <- map(years, \(year){
-  get_census_data(
-    survey_year = year,
-    survey = 'acs/acs5',
-    vars = vars,
-    county = '*',
-    state = states
-  )
-})
-# Note that the first five years didn't come through. Only have 2015 to 2022
-# So we only have 9?
-get_str(counties_out)
-
-# Save raw output
-saveRDS(counties_out, '5_objects/api_outs/census_counties_2015_2022.rds')
+# # Set parameters
+# years <- c(2012:2022)
+# vars <- paste0(variables, collapse = ',')
+# states <- fips_key %>% 
+#   filter(str_length(fips) == 2 & fips != '00') %>% 
+#   pull(fips) %>% 
+#   paste0(collapse = ',')
+# 
+# # Map over list of years to gather data for each
+# counties_out <- map(years, \(year){
+#   get_census_data(
+#     survey_year = year,
+#     survey = 'acs/acs5',
+#     vars = vars,
+#     county = '*',
+#     state = states
+#   )
+# })
+# # Note that the first five years didn't come through. Only have 2015 to 2022
+# # So we only have 9?
+# get_str(counties_out)
+# 
+# # Save raw output
+# saveRDS(counties_out, '5_objects/api_outs/census_counties_2015_2022.rds')
 
 
 
 ## Pull State Data ---------------------------------------------------------
 
 
-# Now all state data, but not counties.
-# Set parameters
-years <- seq(2015, 2022)
-vars <- paste0(variables, collapse = ',')
-states <- state_codes$state_code %>% 
-  paste0(collapse = ',')
-
-# Map over list of years to gather data for each
-states_out <- map(years, \(year){
-  get_census_data(
-    survey_year = year,
-    survey = 'acs/acs5',
-    vars = vars,
-    county = NULL,
-    state = states
-  )
-})
-# Note that the first five years didn't come through. Only have 2015 to 2022
-# So we only have 9?
-get_str(states_out)
-
-# Save raw output
-saveRDS(states_out, '5_objects/api_outs/census_states_2015_2022.rds')
+# # Now all state data, but not counties.
+# # Set parameters
+# years <- seq(2015, 2022)
+# vars <- paste0(variables, collapse = ',')
+# states <- state_codes$state_code %>% 
+#   paste0(collapse = ',')
+# 
+# # Map over list of years to gather data for each
+# states_out <- map(years, \(year){
+#   get_census_data(
+#     survey_year = year,
+#     survey = 'acs/acs5',
+#     vars = vars,
+#     county = NULL,
+#     state = states
+#   )
+# })
+# # Note that the first five years didn't come through. Only have 2015 to 2022
+# # So we only have 9?
+# get_str(states_out)
+# 
+# # Save raw output
+# saveRDS(states_out, '5_objects/api_outs/census_states_2015_2022.rds')
 
 
 
@@ -199,6 +199,14 @@ dat <- dat %>%
    ))
 get_str(dat)
 
+# Calculations for female earnings as proportion of male in FFF and FPS
+dat <- dat %>% 
+  mutate(
+    womenEarnPercMenFFF = (medianFemaleEarningsFFF / medianMaleEarningsFPS) * 100,
+    womenEarnPercMenFPS = (medianFemaleEarningsFPS / medianMaleEarningsFPS) * 100
+  )
+get_str(dat)
+
 # Now pivot longer to combine with other data
 dat <- dat %>% 
   pivot_longer(
@@ -218,131 +226,167 @@ results$acs5 <- dat
 
 
 (vars <- get_vars(results$acs5))
-# Have to redo this... []
-# Before we pulled median earnings data from data warehouse
-# Better to do it ourselves here.
 
 # Save metadata
-metas$acs5 <- tibble(
-  dimension = c(
-    rep("health", 11)
-  ),
-  index = c(
-    rep('education', 2),
-    rep('physical health', 9)
-  ),
-  indicator = c(
-    rep('educational attainment', 2),
-    rep('housing supply and quality', 9)
-  ),
-  metric = c(
-    'Percentage with bachelor\'s degree',
-    'Percentage with high school diploma, GED, or equivalent',
-    'Median housing age',
-    'Number of occupied housing units',
-    'Number of total housing units',
-    'Number of vacant housing units',
-    'Median rent',
-    'Median rent, 1br',
-    'Median rent, 4br',
-    'Median rent as a percentage of income',
-    'Rental vacancy rate'
-  ),
-  variable_name = c(
-    vars
-  ),
-  definition = c(
-    'Percentage of population age 25 or older with bachelor\'s degree',
-    'Percentage of population age 25 or older with high school diploma, GED, or equivalent',
-    'Median year in which housing unit was constructed',
-    'Number of occupied housing units',
-    'Number of total housing units',
-    'Number of vacant housing units',
-    'Median gross rent, aggregate',
-    'Median gross rent for a 1-bedroom apartment',
-    'Median gross rent for a 4-bedroom apartment',
-    'Median gross rent as a percentage of household income over the last 12 months',
-    'Vacancy rate, rentals'
-  ),
-  axis_name = c(
-    'Bachelor\'s degree (%)',
-    'HS or GED (%)',
-    'Median housing year',
-    'Number of occupied units',
-    'Number of housing units',
-    'Number of vacant units',
-    'Median rent',
-    'Median rent 1BR',
-    'Median rent 4BR',
-    'Rent as % of income',
-    'Vacancy rate'
-  ),
-  units = c(
-    rep('percentage', 2),
-    'year',
-    rep('count', 3),
-    rep('usd', 4),
-    'percentage'
-  ),
-  scope = 'national',
-  resolution = 'county, state',
-  year = get_all_years(results$acs5),
-  latest_year = get_max_year(results$acs5),
-  updates = "5 years",
-  source = 'U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022',
-  url = 'https://www.census.gov/data/developers/data-sets/acs-5year.html',
-  warehouse = FALSE
-) %>% 
+metas$acs5 <- vars %>% 
+  as.data.frame() %>% 
+  setNames(c('variable_name')) %>% 
+  mutate(
+    dimension = case_when(
+      str_detect(variable_name, 'Earnings|^womenEarn') ~ 'economics',
+      str_detect(variable_name, 'Housing|^edPerc|^rent|^vacancy') ~ 'health',
+      str_detect(variable_name, 'population') ~ 'utilities',
+      .default = NA
+    ),
+    index = case_when(
+      str_detect(variable_name, 'Earnings|^womenEarn') ~ 'community economy',
+      str_detect(variable_name, '^edPerc') ~ 'education',
+      str_detect(variable_name, '^rent|^vacancy|Housing') ~ 'physical health',
+      str_detect(variable_name, 'population') ~ 'utilities_index',
+      .default = NA
+    ),
+    indicator = case_when(
+      str_detect(index, 'education') ~ 'educational attainment',
+      str_detect(index, 'community economy') ~ 'wealth/income distribution',
+      str_detect(index, 'physical health') ~ 'housing supply and quality',
+      str_detect(variable_name, 'population') ~ 'utilities_indicator',
+      .default = NA
+    ),
+    metric = c(
+      'Percentage with bachelor degree',
+      'Percentage with high school diploma, GED, or equivalent',
+      "Median earnings (dollars) for female, farming, fishing, and forestry occupations",
+      "Median earnings (dollars) for female, food preparation and serving related occupations",
+      'Median housing age',
+      "Median earnings (dollars) for male, farming, fishing, and forestry occupations",
+      "Median earnings (dollars) for male, food preparation and serving related occupations",
+      'Number of occupied housing units',
+      'Number of total housing units',
+      'Number of vacant housing units',
+      'Population',
+      'Median rent',
+      'Median rent, 1br',
+      'Median rent, 4br',
+      'Median rent as a percentage of income',
+      'Rental vacancy rate',
+      'Women\'s earnings as a percentage of mens\', farming, fishing, and forestry occupations',
+      'Women\'s earnings as a percentage of mens\', food preparation and serving occupations'
+    ),
+    definition = c(
+      'Percentage of population age 25 or older with bachelor\'s degree',
+      'Percentage of population age 25 or older with high school diploma, GED, or equivalent',
+      'Median earnings (dollars) for female, Civilian employed population 16 years and over with earnings, farming, fishing, and forestry occupations',
+      'Median earnings (dollars) for female, Civilian employed population 16 years and over with earnings, food preparation and serving related occupations',
+      'Median year in which housing unit was constructed',
+      'Median earnings (dollars) for male, Civilian employed population 16 years and over with earnings, farming, fishing, and forestry occupations',
+      'Median earnings (dollars) for male, Civilian employed population 16 years and over with earnings, food preparation and serving related occupations',
+      'Number of occupied housing units',
+      'Number of total housing units',
+      'Number of vacant housing units',
+      'Population',
+      'Median gross rent, aggregate',
+      'Median gross rent for a 1-bedroom apartment',
+      'Median gross rent for a 4-bedroom apartment',
+      'Median gross rent as a percentage of household income over the last 12 months',
+      'Vacancy rate, rentals',
+      'Womens\' earnings as a percentage of mens\', civilian employed population 16 years and over with earnings, farming, fishing, and forestry occupations',
+      'Womens\' earnings as a percentage of mens\', civilian employed population 16 years and over with earnings, food preparation and serving occupations'
+    ),
+    axis_name = c(
+      'Bachelor degree (%)',
+      'HS or GED (%)',
+      'Median Wage, Female, FFF',
+      'Median Wage, Female, FPS',
+      'Median housing year',
+      'Median Wage, Male, FFF',
+      'Median Wage, Male, FPS',
+      'n Occupied Units',
+      'n Housing Units',
+      'n Vacant Units',
+      'Population',
+      'Median rent',
+      'Median rent 1BR',
+      'Median rent 4BR',
+      'Rent (% of income)',
+      'Vacancy rate',
+      'Womens\' Earnings FFF (% of Mens\')',
+      'Womens\' Earnings FPS (% of Mens\')'
+    ),
+    units = case_when(
+      str_detect(variable_name, 'edPerc|^womenEarn') ~ 'percentage',
+      str_detect(variable_name, 'Earnings|rent') ~ 'usd',
+      str_detect(variable_name, '^n|population') ~ 'count',
+      str_detect(variable_name, 'vacancyRate') ~ 'proportion',
+      str_detect(variable_name, 'Year') ~ 'year',
+      .default = NA
+    ),
+    scope = 'national',
+    resolution = 'county, state',
+    year = get_all_years(results$acs5),
+    latest_year = get_max_year(results$acs5),
+    updates = "5 years",
+    source = 'U.S. Census Bureau, American Community Survey: 5-Year Estimates: Detailed Tables, 2022',
+    url = 'https://www.census.gov/data/developers/data-sets/acs-5year.html',
+    warehouse = FALSE
+  ) %>% 
   add_citation(access_date = '2025-01-08')
-
-  
-get_str(metas$acs5)
+    
+metas$acs5
 
 
 
 # Gini Index --------------------------------------------------------------
 
 
-gini_vars <- c('B19083_001E', "B19083_001M")
+# gini_vars <- c('B19083_001E', "B19083_001M")
+# 
+# # Set parameters
+# years <- as.list(seq(2010, 2022, 1))
+# vars <- paste0(gini_vars, collapse = ',')
+# states <- fips_key %>% 
+#   filter(str_length(fips) == 2 & fips != '00') %>% 
+#   pull(fips) %>% 
+#   paste0(collapse = ',')
+# 
+# # Map over list of years to gather data for each
+# counties_out <- map(years, \(year){
+#   get_census_data(
+#     survey_year = year,
+#     survey = 'acs/acs5',
+#     vars = vars,
+#     county = '*',
+#     state = states
+#   )
+# })
+# get_str(counties_out)
+# 
+# 
+# # Set parameters for state data
+# years <- as.list(seq(2010, 2022, 1))
+# vars <- paste0(gini_vars, collapse = ',')
+# states <- state_codes$state_code %>% 
+#   paste0(collapse = ',')
+# 
+# # Map over list of years to gather data for each
+# states_out <- map(years, \(year){
+#   get_census_data(
+#     survey_year = year,
+#     survey = 'acs/acs5',
+#     vars = vars,
+#     county = NULL,
+#     state = states
+#   )
+# })
+# get_str(states_out)
+# 
+# # Save out files
+# saveRDS(counties_out, '5_objects/api_outs/gini_census_acs5_counties_2010_2022.rds')
+# saveRDS(states_out, '5_objects/api_outs/gini_census_acs5_states_2010_2022.rds')
 
-# Set parameters
-years <- as.list(seq(2010, 2022, 1))
-vars <- paste0(gini_vars, collapse = ',')
-states <- fips_key %>% 
-  filter(str_length(fips) == 2 & fips != '00') %>% 
-  pull(fips) %>% 
-  paste0(collapse = ',')
 
-# Map over list of years to gather data for each
-counties_out <- map(years, \(year){
-  get_census_data(
-    survey_year = year,
-    survey = 'acs/acs5',
-    vars = vars,
-    county = '*',
-    state = states
-  )
-})
-get_str(counties_out)
-
-
-# Set parameters for state data
-years <- as.list(seq(2010, 2022, 1))
-vars <- paste0(gini_vars, collapse = ',')
-states <- state_codes$state_code %>% 
-  paste0(collapse = ',')
-
-# Map over list of years to gather data for each
-states_out <- map(years, \(year){
-  get_census_data(
-    survey_year = year,
-    survey = 'acs/acs5',
-    vars = vars,
-    county = NULL,
-    state = states
-  )
-})
-get_str(states_out)
+# Reload from saved
+counties_out <- readRDS('5_objects/api_outs/gini_census_acs5_counties_2010_2022.rds')
+states_out <- readRDS('5_objects/api_outs/gini_census_acs5_states_2010_2022.rds')
 
 # Clean and combine
 results$gini <- reduce(c(states_out, counties_out), bind_rows) %>% 
@@ -354,6 +398,10 @@ results$gini <- reduce(c(states_out, counties_out), bind_rows) %>%
   ) %>% 
   mutate(variable_name = 'gini')
 get_str(results$gini)
+
+
+
+## Metadata ----------------------------------------------------------------
 
 
 metas$gini <- tibble(
@@ -377,11 +425,6 @@ metas$gini <- tibble(
   add_citation('2025-01-08')
 
 get_str(metas$gini)
-
-
-
-# Wages -------------------------------------------------------------------
-
 
 
 

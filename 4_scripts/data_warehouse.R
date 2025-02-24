@@ -299,12 +299,26 @@ metas$labor <- read_csv(
   )
 
 get_str(metas$labor)
+check <- metas$labor %>% 
+  select(variable_name, metric, definition) %>% 
+  filter(str_detect(variable_name, '^median'))
 
 
 
 # Consolidate ------------------------------------------------------------
 
 
+# Pull out FFF and FPS variables (using the ones from census, not warehouse)
+get_str(results, 3)
+get_str(metas, 3)
+
+results$labor <- results$labor %>% 
+  filter(str_detect(variable_name, 'medianEarn.*(Farm|Food)$', negate = TRUE))
+metas$labor <- metas$labor %>% 
+  filter(str_detect(variable_name, 'medianEarn.*(Farm|Food)$', negate = TRUE))
+
+
+## Aggregate results
 get_str(results)
 map(results, get_str)
 

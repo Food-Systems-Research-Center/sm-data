@@ -47,7 +47,7 @@ source('4_scripts/fda_usdm_apis.R')
 source('4_scripts/county_health_rankings.R')
 
 # Other - EPA, USDA bee surveys, FSA disaster declarations, ERS farm income and
-# wealth
+# wealth, BEA GDP by industry
 source('4_scripts/other_datasets.R')
 
 # Spatial data - MRLC, VT BioD Proj, USFS Treemap (long run time)
