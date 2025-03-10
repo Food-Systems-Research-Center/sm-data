@@ -11,7 +11,8 @@ pacman::p_load(
   purrr,
   stringr,
   stars,
-  sf
+  sf,
+  readr
 )
 
 source('3_functions/pipeline_utilities.R')
