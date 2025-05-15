@@ -22,9 +22,8 @@ pacman::p_load(
   parallelly
 )
 
-# Edit system environment for user or project
-# usethis::edit_r_environ('user')
-# usethis::edit_r_environ('project')
+# Edit system environment for project
+usethis::edit_r_environ('project')
 
 # Check username from user environment
 readRenviron('.Renviron')

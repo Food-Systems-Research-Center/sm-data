@@ -38,6 +38,12 @@ count <- sum(tree$metric == 'NONE')
 tree$metric[tree$metric == 'NONE'] <- paste0('NONE_', 1:count)
 out$refined_tree <- tree
 
+# Also add new tree (reducing metrics for RFPP and Frontiers)
+new_tree <- read.csv('2_clean/trees/new_tree.csv')
+count <- sum(new_tree$metric == 'NONE')
+new_tree$metric[new_tree$metric == 'NONE'] <- paste0('NONE_', 1:count)
+out$new_tree <- new_tree
+
 # Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")
 

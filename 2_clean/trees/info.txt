@@ -1,0 +1,3 @@
+2025-05-06
+- refined_secondary_tree.csv is what we are using to identify the metrics we are actually using and applying to each indicator. It is used in the refined_metadata qmd file to make metrics_df, which are used throughout analysis.
+- new_tree.csv is what we are using to reduce metrics, remove health stuff, prep for RFPP and then on to Frontiers submission

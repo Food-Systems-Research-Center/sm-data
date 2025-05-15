@@ -16,14 +16,35 @@ pacman::p_load(
 )
 
 # Edit system environment for user or project
-usethis::edit_r_environ('user')
-usethis::edit_r_environ('project')
+# usethis::edit_r_environ('user')
+# usethis::edit_r_environ('project')
 
 # Check username from user environment
 readRenviron('~/.Renviron')
-Sys.getenv('MYSQL_USER')
-Sys.getenv('MYSQL_PASSWORD')
-Sys.getenv('MYSQL_HOST')
+# Sys.getenv('MYSQL_USER')
+# Sys.getenv('MYSQL_PASSWORD')
+# Sys.getenv('MYSQL_HOST')
+
+
+
+# OFRN DB on FSRC Silk Test -----------------------------------------------
+
+
+# Sys.getenv('fsrc_reader')
+# Sys.getenv('fsrc_reader_pass')
+# Sys.getenv('webdb_host')
+
+con <- dbConnect(
+  MySQL(),
+  user = Sys.getenv('fsrc_reader'),
+  password = Sys.getenv('fsrc_reader_pass'),
+  host = Sys.getenv('webdb_host'),
+  dbname = 'FSRC_OFRN'
+)
+
+summary(con)
+dbListTables(con)
+# This works
 
 
 

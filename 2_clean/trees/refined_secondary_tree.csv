@@ -252,7 +252,6 @@ health,physical health,access to care,Uninsured,uninsured,county,x,x,infrastruct
 health,physical health,access to care,Uninsured adults,uninsuredAdults,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,access to care,Uninsured children,uninsuredChildren,county,,,infrastructure?,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,access to care,Flu vaccinations,fluVaccinations,county,,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
-health,physical health,access to care,NONE,NONE,,x,,,
 health,physical health,housing supply and quality,Broadband access,broadbandAccess,county,x,,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,housing supply and quality,Homeownership,homeownership,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
 health,physical health,housing supply and quality,Severe housing cost burden,severeHousingCostBurden,county,x,x,,"University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)"
