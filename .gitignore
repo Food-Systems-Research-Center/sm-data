@@ -23,6 +23,7 @@
 # Temp scripts that are not worth saving
 4_scripts/explore.R
 temp/
+webdb/
 
 # Environment files
 .venv
