@@ -1,6 +1,7 @@
-_last updated 2025-05-26_
+> [!NOTE]
+> This project is in development. The framework, metrics, and analyses are all preliminary.
 
-> [!NOTE] This project is in development. The framework, metrics, and analyses are all preliminary.
+_last updated 2025-05-26_
 
 # Sustainability Metrics Data
 
