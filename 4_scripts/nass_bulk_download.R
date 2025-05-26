@@ -122,7 +122,7 @@ get_str(naics_key)
 # Save and Clear ----------------------------------------------------------
 
 
-saveRDS(coa_ne, '1_raw/nass/coa_ne.rds')
+saveRDS(coa_clean, '1_raw/nass/coa_ne.rds')
 saveRDS(naics_key, '5_objects/naics_key.rds')
 
 clear_data()

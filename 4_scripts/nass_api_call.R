@@ -1,7 +1,16 @@
 #' Pull NASS Data
-#' 024-09-09
+#' 2024-09-09
+#' updated 2025-05-26
 
-# Pulling data from USDA NASS for SM secondary data
+#' Pulling data from USDA NASS data through NASS API. Note that county API calls
+#' are currently hinky and require running them individually and stitching 
+#' together manually. API calls are commented out until that is done.
+
+#' To Do:
+#'  Fix county API calls
+#'  Change where API outs are being saved - swap it to 5_objects/api_outs
+#'  Memoize everything
+
 
 
 # Housekeeping ------------------------------------------------------------
@@ -83,16 +92,17 @@ get_str(out)
 
 # Process and save it
 get_str(out)
-dat <- out %>% 
+counties_dat <- out %>% 
   flatten() %>% 
   bind_rows()
-get_str(dat)
+get_str(counties_dat)
 
 # Save into clean folder
-# saveRDS(dat, '1_raw/nass/nass_census_counties_2007-2022.rds')
+# saveRDS(counties_dat, '1_raw/nass/nass_census_counties_2007-2022.rds')
 
 
-# States Only -------------------------------------------------------------
+
+# All States --------------------------------------------------------------
 
 
 # In addition to all NE counties, we want ALL states and DC (51)

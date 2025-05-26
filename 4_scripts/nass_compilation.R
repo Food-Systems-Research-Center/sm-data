@@ -20,8 +20,13 @@ source('3_functions/wrangling/pull_variable.R')
 source('3_functions/metadata_utilities.R')
 
 # Pull Census of Ag data filtered to New England counties (and all states)
-# coa_ne <- readRDS('5_objects/coa_ne.rds')
 # coa_ne <- readRDS('1_raw/nass/nass_census_counties_2007-2022.rds')
+
+# Note that we are no longer using this coa_ne object that was filtered. Instead
+# pulling from the rds below where counties and states were combined. Leaving
+# this here for posterity, or until I get around to changing all the object 
+# names in this script
+
 coa_ne <- readRDS('1_raw/nass/ne_counties_all_states_2007-2022.rds') %>% 
   mutate(fips = paste0(state_fips_code, county_code)) %>% 
   setNames(c(names(.) %>% snakecase::to_snake_case())) %>% 

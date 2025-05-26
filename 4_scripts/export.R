@@ -1,4 +1,4 @@
-# Export data to SMquarto and SMexplorer
+# Export data to sm-docs and sm-explorer
 # 2024-10-14
 
 

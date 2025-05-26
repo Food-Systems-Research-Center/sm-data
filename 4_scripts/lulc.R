@@ -1,8 +1,19 @@
 # LULC
 # 2024-09-13
+# updated 2025-05-26
 
 # Wrangling 2022 VT Open Data Base Land Cover
 # https://geodata.vermont.gov/pages/ba998c98930f474c97aaf3bd44f1f694
+
+# NOTE: Need to rework some of the spatial wrangling here. At least one function
+# needs to be moved into python function. It could also be worth just removing
+# sections from Biofinder - I don't think we are using it for anything anymore.
+# Eventually, we will probably also get rid of TreeMap 2016 and NatureServe, if
+# and when we find better alternatives. 
+
+# VT Biodiversity project is also a slow section with large files - not sure if
+# we will stitch it together with other New England state datasets or abandon it
+
 
 
 # Housekeeping ------------------------------------------------------------

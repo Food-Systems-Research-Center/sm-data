@@ -69,8 +69,7 @@ out <- readRDS('5_objects/api_outs/fda_recalls_ne_2019_2024.rds')
 get_str(out)
 get_str(out$results)
 
-# Make sure we are in US and it is food
-# Select relevant columns
+# Make sure we are in US and it is food. Then select relevant columns
 # Note that we can pull it by zip code and by state, but we will need unique id
 dat <- out$results %>% 
   filter(country == 'United States', product_type == 'Food') %>% 
