@@ -26,6 +26,7 @@ source('3_functions/project_management.R')
 source('4_scripts/spatial_wrangling.R')
 
 # Wrangle bulk download file from NASS 2022 Census of Agriculture
+# This is deprecated
 source('4_scripts/nass_bulk_download.R')
 
 
@@ -86,6 +87,11 @@ source('4_scripts/county_health_rankings.R')
 # Other - EPA, USDA bee surveys, FSA disaster declarations, ERS farm income and
 # wealth, BEA GDP by industry
 source('4_scripts/other_datasets.R')
+
+# Feeding America - Map the Meal Gap
+source('4_scripts/map_meal_gap.R')
+
+
 
 # Spatial data - MRLC, VT BioD Proj, USFS Treemap. Note that this script has a
 # long run time, and needs a rework or two.

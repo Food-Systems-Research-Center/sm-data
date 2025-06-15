@@ -44,6 +44,13 @@ count <- sum(new_tree$metric == 'NONE')
 new_tree$metric[new_tree$metric == 'NONE'] <- paste0('NONE_', 1:count)
 out$new_tree <- new_tree
 
+# And conference tree...
+conference_tree <- read.csv('2_clean/trees/conference_tree.csv')
+count <- sum(conference_tree$metric == 'NONE')
+conference_tree$metric[conference_tree$metric == 'NONE'] <- paste0('NONE_', 1:count)
+out$conf_tree <- conference_tree
+
+
 # Flatten into single layer list
 out <- list_flatten(out, name_spec = "{inner}")
 

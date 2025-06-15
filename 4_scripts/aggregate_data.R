@@ -48,16 +48,15 @@ agg$variable_name %>%
   sort
 # Note that our variable count is fucked now that were have NAICS codes 
 
-# Let's just remove the NAICS variables...
-agg <- agg %>% 
-  filter(str_detect(
-    variable_name,
-    regex('NAICS|^lq|^avgEmpLvl', ignore_case = TRUE),
-    negate = TRUE
-  ))
-agg$variable_name %>% 
-  unique %>% 
-  sort
+# NOTE: we used to remove these, but now let's keep them in. Want them for 
+# income stability and 
+# agg <- agg %>% 
+#   filter(str_detect(
+#     variable_name,
+#     regex('NAICS|^lq|^avgEmpLvl', ignore_case = TRUE),
+#     negate = TRUE
+#   ))
+
 
 
 # Metadata ----------------------------------------------------------------
@@ -90,18 +89,20 @@ meta_agg <- meta_agg %>%
   mutate(axis_name = ifelse(is.na(axis_name), variable_name, axis_name))
 
 # Remove NAICS variables here too
+# JUST KIDDING keep them in
 meta_agg$variable_name %>% 
   unique %>% 
   sort
-meta_agg <- meta_agg %>% 
-  filter(str_detect(
-    variable_name,
-    regex('NAICS|^lq|^avgEmpLvl', ignore_case = TRUE),
-    negate = TRUE
-  ))
-meta_agg$variable_name %>% 
-  unique %>% 
-  sort
+
+# meta_agg <- meta_agg %>% 
+#   filter(str_detect(
+#     variable_name,
+#     regex('NAICS|^lq|^avgEmpLvl', ignore_case = TRUE),
+#     negate = TRUE
+#   ))
+# meta_agg$variable_name %>% 
+#   unique %>% 
+#   sort
 
 
 

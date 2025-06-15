@@ -19,6 +19,9 @@ suppressPackageStartupMessages(
 pacman::p_load(conflicted)
 pacman::p_load_gh('ChrisDonovan307/projecter')
 
+# Set up vim function for kj escape
+try(vim <- function() rstudiovim::rsvim_exec_file())
+
 # Set conflict winners
 conflicts_prefer(
   dplyr::select(),

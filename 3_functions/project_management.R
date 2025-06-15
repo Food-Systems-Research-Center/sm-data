@@ -41,7 +41,6 @@ sm_wrangle <- function() {
 
 sm_aggregate <- function() {
   source('4_scripts/aggregate_data.R')
-  source('4_scripts/export.R')
 }
 
 

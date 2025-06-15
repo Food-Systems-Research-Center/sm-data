@@ -80,10 +80,10 @@ add_citation <- function(df,
 
 # Make this better
 add_citation_2 <- function(df, 
+                           date = format(Sys.Date(), "%B %d, %Y"),
                            source_col = source, 
                            url_col = url,
-                           api_url = NULL
-) {
+                           api_url = NULL) {
   if (is.null(api_url)) {
     out <- df %>%
       mutate(citation = paste0(
@@ -91,7 +91,7 @@ add_citation_2 <- function(df,
         ', ',
         {{ url_col }},
         ', accessed on ',
-        format(Sys.Date(), "%B %d, %Y"),
+        date,
         '.'
       ))
   } else {
@@ -101,11 +101,15 @@ add_citation_2 <- function(df,
         ', <',
         {{ api_url }},
         '>, accessed on ',
-        format(Sys.Date(), "%B %d, %Y"),
+        date,
         '.'
       ))
   }
 }
+
+# Jenky af - map this over onto add_citation for now
+add_citation <- add_citation_2
+
 
 # Make sure the number of variables in results and variables in metadata match
 check_n_records <- function(metric_vars, 
