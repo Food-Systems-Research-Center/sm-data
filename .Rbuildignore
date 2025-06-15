@@ -2,3 +2,16 @@
 ^renv$
 ^renv\.lock$
 ^LICENSE\.md$
+^SMdata\.Rproj$
+^\.Rproj\.user$
+^data-raw$
+^1_raw$
+^2_clean$
+^3_functions$
+^4_scripts$
+^5_objects$
+^6_outputs$
+^9_graveyard$
+^table_of_contents.R$
+^temp$
+^webdb$

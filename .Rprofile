@@ -9,30 +9,34 @@ local({
 })
 
 # Install pacman if not installed already
-suppressPackageStartupMessages(
-  if (!requireNamespace('pacman')) {
-    install.packages('pacman', dependencies = TRUE, quiet = TRUE)
-  }
-)
-
 # Load conflicted for namespace conflicts
-pacman::p_load(conflicted)
-pacman::p_load_gh('ChrisDonovan307/projecter')
-
-# Set up vim function for kj escape
-try(vim <- function() rstudiovim::rsvim_exec_file())
-
-# Set conflict winners
-conflicts_prefer(
-  dplyr::select(),
-  dplyr::filter(),
-  dplyr::rename(),
-  dplyr::summarize(),
-  purrr::flatten(),
-  base::intersect(),
-  base::union(),
-  .quiet = TRUE
-)
+# Load devtools
+if (interactive()) {
+  suppressPackageStartupMessages(
+    if (!requireNamespace('pacman')) {
+      install.packages('pacman', dependencies = TRUE, quiet = TRUE)
+    }
+  )
+  pacman::p_load(conflicted, usethis)
+  pacman::p_load_gh('ChrisDonovan307/projecter')
+  
+  suppressMessages(require(devtools))
+  
+  # Set up vim function for kj escape
+  try(vim <- function() rstudiovim::rsvim_exec_file())
+  
+  # Set conflict winners
+  conflicts_prefer(
+    dplyr::select(),
+    dplyr::filter(),
+    dplyr::rename(),
+    dplyr::summarize(),
+    purrr::flatten(),
+    base::intersect(),
+    base::union(),
+    .quiet = TRUE
+  )
+}
 
 # Set options
 options(
@@ -42,24 +46,8 @@ options(
 )
 
 # Load table of contents script
-if (Sys.info()["sysname"] == "Mac") {
-  tryCatch({
-    system('open "table_of_contents.R"')
-    cat('\nLoading Table of Contents')
-  }, error = function(e) {
-    cat('\nCould not open table of contents.')
-  })
-  
-} else if (Sys.info()["sysname"] == "Windows") {
-  tryCatch({
-    shell.exec('table_of_contents.R')
-    cat('\nLoading Table of Contents')
-  }, error = function(e) {
-    cat('\nCould not open table of contents.')
-  })
-  
-} else {
-  cat('\nCould not open table of contents.')
+if (interactive() && Sys.getenv("RSTUDIO") == "1") {
+	try(shell.exec('table_of_contents.R'))
 }
 
 source("renv/activate.R")
