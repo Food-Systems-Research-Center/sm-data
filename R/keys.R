@@ -4,7 +4,6 @@
 #' @name keys
 
 #' @rdname keys
-#' kjkjg
 #' @format Descriptions of NAICS codes
 #' \describe{
 #'   \item{naics_key}{something}

@@ -9,6 +9,7 @@
 #' Connecticut's old county system and new governance region system. `new` = all counties in New
 #' England, but only Connecticut's new governance region system (n = 68).
 #' `old` = all counties in New England, but only Connecticut's old county system (n = 67).
+#' `ne` = New England states and any New England Counties.
 #' @param fips_col column specifying fips code. 
 #'
 #' @returns A data.frame with filters applied.
@@ -20,7 +21,7 @@
 #' data(metrics_example)
 #' filter_fips(metrics_example, scope = 'all')
 filter_fips <- function(df, 
-                        scope = c('all', 'counties', 'new', 'old', 'states', 'us'),
+                        scope = c('all', 'counties', 'new', 'old', 'states', 'us', 'ne'),
                         fips_col = 'fips') {
   # data(fips_key)
   
@@ -31,12 +32,21 @@ filter_fips <- function(df,
   if (scope == 'all') {
     out <- df %>% 
       dplyr::filter(.data[[fips_col]] %in% fips_key$fips)
+    
+  } else if (scope == 'ne') {
+    subset <- fips_key %>% 
+      dplyr::filter(str_length(fips) == 5 | (!is.na(state_code) & state_code != 'US')) %>% 
+      pull(fips)
+    out <- df %>% 
+      dplyr::filter(.data[[fips_col]] %in% subset) 
+    
   } else if (scope == 'counties') {
     subset <- fips_key %>% 
       dplyr::filter(str_length(fips) == 5) %>% 
       pull(fips)
     out <- df %>% 
       dplyr::filter(.data[[fips_col]] %in% subset)
+    
   } else if (scope == 'new') {
     subset <- fips_key %>% 
       dplyr::filter(

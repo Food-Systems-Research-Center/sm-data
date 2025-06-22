@@ -6,7 +6,7 @@
 \usage{
 filter_fips(
   df,
-  scope = c("all", "counties", "new", "old", "states", "us"),
+  scope = c("all", "counties", "new", "old", "states", "us", "ne"),
   fips_col = "fips"
 )
 }
@@ -17,7 +17,8 @@ filter_fips(
 any county in New England. \code{counties} = any county in New England. This includes
 Connecticut's old county system and new governance region system. \code{new} = all counties in New
 England, but only Connecticut's new governance region system (n = 68).
-\code{old} = all counties in New England, but only Connecticut's old county system (n = 67).}
+\code{old} = all counties in New England, but only Connecticut's old county system (n = 67).
+\code{ne} = New England states and any New England Counties.}
 
 \item{fips_col}{column specifying fips code.}
 }

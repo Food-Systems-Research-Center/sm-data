@@ -38,6 +38,12 @@ count <- sum(tree$metric == 'NONE')
 tree$metric[tree$metric == 'NONE'] <- paste0('NONE_', 1:count)
 out$refined_tree <- tree
 
+# Add fixed refined tree with all the indicators
+fixed_tree <- read.csv('2_clean/trees/fixed_tree.csv')
+count <- sum(fixed_tree$metric == 'NONE')
+fixed_tree$metric[fixed_tree$metric == 'NONE'] <- paste0('NONE_', 1:count)
+out$fixed_tree <- fixed_tree
+
 # Also add new tree (reducing metrics for RFPP and Frontiers)
 new_tree <- read.csv('2_clean/trees/new_tree.csv')
 count <- sum(new_tree$metric == 'NONE')
@@ -94,22 +100,22 @@ get_str(spatial)
 
 # Paths to SMquarto and SMexplorer. Also to SMdata to load into DB
 paths <- c(
-  '../sm-docs/data/sm_data.rds',
-  '../sm-explorer/dev/data/sm_data.rds',
+  '../SMdocs/data/sm_data.rds',
+  '../SMexplorer/dev/data/sm_data.rds',
   '6_outputs/sm_data.rds'
 )
 walk(paths, ~ saveRDS(out, .x))
 
 # Save spatial data in those places also
 spatial_paths <- c(
-  '../sm-docs/data/sm_spatial.rds',
-  '../sm-explorer/dev/data/sm_spatial.rds',
+  '../SMdocs/data/sm_spatial.rds',
+  '../SMexplorer/dev/data/sm_spatial.rds',
   '6_outputs/sm_spatial.rds'
 )
 walk(spatial_paths, ~ saveRDS(spatial, .x))
 
 # Also save a csv of metrics_df only for bulk downloads
-write_csv(out$metrics, '../sm-docs/data/bulk_metrics.csv')
+write_csv(out$metrics, '../SMdocs/data/bulk_metrics.csv')
 
 # Clear, memory, out message
 clear_data()
