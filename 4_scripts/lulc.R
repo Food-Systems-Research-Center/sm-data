@@ -58,19 +58,19 @@ metas <- list()
 #' only provides counts of totals. So we are just saving these to show in the 
 #' map explorer, but can't add to data tables.
 
-hotspots <- st_read(
-  dsn = '1_raw/spatial/vt_bio_project/hotspots/',
-  layer = 'VT_Biodiversity_Project_-_Biological_Hotspots'
-)
-
-atlas <- st_read(
-  dsn = '1_raw/spatial/vt_bio_project/species_atlas/',
-  layer = 'VT_Biodiversity_Project_-_Plant_and_Animal_Species_Atlas'
-)
-
-core <- read_stars(
-  '1_raw/spatial/vt_bio_project/corehab/corehab/w001001.adf'
-)
+# hotspots <- st_read(
+#   dsn = '1_raw/spatial/vt_bio_project/hotspots/',
+#   layer = 'VT_Biodiversity_Project_-_Biological_Hotspots'
+# )
+# 
+# atlas <- st_read(
+#   dsn = '1_raw/spatial/vt_bio_project/species_atlas/',
+#   layer = 'VT_Biodiversity_Project_-_Plant_and_Animal_Species_Atlas'
+# )
+# 
+# core <- read_stars(
+#   '1_raw/spatial/vt_bio_project/corehab/corehab/w001001.adf'
+# )
 
 
 

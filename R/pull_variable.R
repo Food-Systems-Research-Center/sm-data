@@ -1,10 +1,34 @@
-# Pull variable from Census of Ag
-# already filtered to NE only.
-
-pacman::p_load(
-  dplyr,
-  tidyr
-)
+#' Pull NASS Variable
+#'
+#' @description
+#' Internal function to pull a particular variable from a bulk API download from NASS data. Only 
+#' relevant for the `nass_compilation.R` script. Function will filter it, name it, and remove NAs
+#' 
+#' @param df 
+#' @param sector_desc NASS sector description
+#' @param commodity_desc NASS commodity description
+#' @param statisticcat_desc NASS statistic category description
+#' @param domain_desc NASS domain description
+#' @param short_desc NASS short variable description
+#' @param variable_name short, unique, camel-case identifier for variable
+#' @param source_desc NASS source description
+#'
+#' @returns
+#' @import dplyr
+#' @import tidyr
+#' @keywords internal
+#'
+#' @examples
+#' \dontrun{
+#' results$total_income <- pull_variable(
+#'   bulk_nass_df,
+#'   sector_desc = 'ECONOMICS',
+#'   commodity_desc = 'INCOME, FARM-RELATED',
+#'   domain_desc = 'TOTAL',
+#'   short_desc = 'INCOME, FARM-RELATED - RECEIPTS, MEASURED IN $ / OPERATION',
+#'   variable_name = 'farmIncomePF'
+#' )
+#' }
 
 pull_variable <- function(df,
                           sector_desc = NULL,
@@ -24,14 +48,6 @@ pull_variable <- function(df,
   if (!is.null(short_desc)) dat <- filter(dat, short_desc == !!short_desc)
   
   dat %>%
-    # filter(
-    #   is.null(sector_desc) | sector_desc == !!sector_desc,
-    #   is.null(source_desc) | source_desc == !!source_desc,
-    #   is.null(statisticcat_desc) | statisticcat_desc == !!statisticcat_desc,
-    #   is.null(commodity_desc) | commodity_desc == !!commodity_desc,
-    #   is.null(domain_desc) | domain_desc == !!domain_desc,
-    #   is.null(short_desc) | short_desc == !!short_desc
-    # ) %>% 
     mutate(
       variable_name = case_when(
         short_desc == !!short_desc ~ variable_name
@@ -51,11 +67,3 @@ pull_variable <- function(df,
     ))) %>% 
     filter(!is.na(variable_name))
 }
-
-# 
-# # Group by fips and sum
-# get_county_sum <- function(df) {
-#   df %>% 
-#     group_by(fips) %>% 
-#     mutate(value = sum(value))
-# }

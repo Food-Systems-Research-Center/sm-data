@@ -1,4 +1,4 @@
-#' Labor Costs
+#' NASS Compilation
 
 
 # Housekeeping ------------------------------------------------------------
@@ -16,17 +16,10 @@ pacman::p_load(
 )
 
 # Source functions
-source('3_functions/wrangling/pull_variable.R')
-source('3_functions/metadata_utilities.R')
+# source('3_functions/wrangling/pull_variable.R')
+# source('3_functions/metadata_utilities.R')
 
-# Pull Census of Ag data filtered to New England counties (and all states)
-# coa_ne <- readRDS('1_raw/nass/nass_census_counties_2007-2022.rds')
-
-# Note that we are no longer using this coa_ne object that was filtered. Instead
-# pulling from the rds below where counties and states were combined. Leaving
-# this here for posterity, or until I get around to changing all the object 
-# names in this script
-
+# Note to probably change the object name here - ambiguous ne
 coa_ne <- readRDS('1_raw/nass/ne_counties_all_states_2007-2022.rds') %>% 
   mutate(fips = paste0(state_fips_code, county_code)) %>% 
   setNames(c(names(.) %>% snakecase::to_snake_case())) %>% 
@@ -45,7 +38,7 @@ survey <- readRDS('1_raw/nass/nass_survey_2022.rds') %>%
   ))
 get_str(survey)
 
-# Fips keys
+# Fips keys []
 fips_key <- readRDS('5_objects/fips_key.rds')
 state_key <- readRDS('5_objects/state_key.rds')
 all_fips <- readRDS('5_objects/all_fips.rds')

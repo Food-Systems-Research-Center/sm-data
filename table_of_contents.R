@@ -91,8 +91,6 @@ source('4_scripts/other_datasets.R')
 # Feeding America - Map the Meal Gap
 source('4_scripts/map_meal_gap.R')
 
-
-
 # Spatial data - MRLC, VT BioD Proj, USFS Treemap. Note that this script has a
 # long run time, and needs a rework or two.
 source('4_scripts/lulc.R')

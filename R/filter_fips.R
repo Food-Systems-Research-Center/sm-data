@@ -23,8 +23,6 @@
 filter_fips <- function(df, 
                         scope = c('all', 'counties', 'new', 'old', 'states', 'us', 'ne'),
                         fips_col = 'fips') {
-  # data(fips_key)
-  
   # Match to one of arguments if it is a short version
   scope <- match.arg(scope)
   
