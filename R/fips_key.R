@@ -1,9 +1,9 @@
 #' FIPS key
 #'
-#' A `df` with FIPS keys for all states and all counties in New England.
+#' A `df` with FIPS keys for all states and all counties in the Northeast
 #' 
 #' @format ## `fips_key`
-#' A data frame in long format with one value per row. 
+#' A data frame with county and state fips information
 #' \describe{
 #'   \item{fips}{
 #'   FIPS key. Generally 5 digits: first 2 digits represent state, last 3 digits represent county.

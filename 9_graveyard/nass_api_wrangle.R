@@ -17,7 +17,7 @@ out <- readRDS('5_objects/api_outs/nass_census_counties_2007-2022.rds')
 
 get_str(out)
 dat <- out %>% 
-  flatten() %>% 
+  purrr::flatten() %>% 
   bind_rows()
 get_str(dat)
 

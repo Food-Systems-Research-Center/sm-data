@@ -30,13 +30,29 @@ pacman::p_load(
 # FIPS Keys ---------------------------------------------------------------
 
 
-# Vector of New England States
-ne_states <- c('VT', 'NH', 'MA', 'ME', 'CT', 'RI') %>% 
+# Vector of New England states
+neng_st_codes <- c('VT', 'NH', 'MA', 'ME', 'CT', 'RI') %>% 
   sort()
 
-# Get county and state fips, state name, county name
-county <- tidycensus::fips_codes %>% 
-  filter(state %in% ne_states) %>% 
+neast_st_codes <- c(neng_st_codes, 'NY', 'PA', 'NJ') %>% 
+  sort()
+
+# Get county and state fips, state name, county name for New England
+neng_counties <- tidycensus::fips_codes %>% 
+  filter(state %in% neng_st_codes) %>% 
+  unite(
+    "fips", 
+    c(state_code, county_code), 
+    sep = "", 
+    remove = FALSE
+  ) %>% 
+  rename(county_name = county) %>% 
+  select(fips, county_name, state_name) %>% 
+  `rownames<-`(NULL)
+
+# Same for Northeast
+neast_counties <- tidycensus::fips_codes %>% 
+  filter(state %in% neast_st_codes) %>% 
   unite(
     "fips", 
     c(state_code, county_code), 
@@ -47,17 +63,35 @@ county <- tidycensus::fips_codes %>%
   select(fips, county_name, state_name) %>% 
   `rownames<-`(NULL)
   
-state <- tidycensus::fips_codes %>% 
-  filter(state %in% ne_states) %>% 
+# Same for New England states
+neng_states <- tidycensus::fips_codes %>% 
+  filter(state %in% neng_st_codes) %>% 
   select(state_code, state_name) %>% 
   rename(fips = state_code) %>% 
   distinct() %>% 
-  mutate(state_code = ne_states) %>% 
+  mutate(state_code = neng_st_codes) %>% 
+  `rownames<-`(NULL)
+
+# and Northeast states
+neast_states <- tidycensus::fips_codes %>% 
+  filter(state %in% neast_st_codes) %>% 
+  select(state_code, state_name) %>% 
+  rename(fips = state_code) %>% 
+  distinct() %>% 
+  mutate(state_code = neast_st_codes) %>% 
   `rownames<-`(NULL)
 
 # Merge so we have county and state data in one data frame
 # This will be our fips key
-county_state <- bind_rows(county, state) %>%
+# formerly county_state
+neast_county_state <- bind_rows(neast_counties, neast_states) %>%
+  add_row(
+    fips = "00",
+    county_name = NA,
+    state_name = "US",
+    state_code = 'US'
+  )
+neng_county_state <- bind_rows(neng_counties, neng_states) %>%
   add_row(
     fips = "00",
     county_name = NA,
@@ -70,9 +104,9 @@ county_state <- bind_rows(county, state) %>%
 # Spatial Data ------------------------------------------------------------
 
 
-# Import county spatial data frame (before CT changes)
-counties_2021 <- tigris::counties(
-  state = ne_states, 
+# Import northeast county spatial data frame (before CT changes)
+neast_counties_2021 <- tigris::counties(
+  state = neast_st_codes, 
   progress_bar = TRUE,
   year = 2021
 ) %>% 
@@ -81,8 +115,8 @@ counties_2021 <- tigris::counties(
   select(fips, aland, awater, geometry)
 
 # Import county spatial data frame for 2024 (after CT changes)
-counties_2024 <- tigris::counties(
-  state = ne_states, 
+neast_counties_2024 <- tigris::counties(
+  state = neast_st_codes, 
   progress_bar = TRUE,
   year = 2024
 ) %>% 
@@ -110,12 +144,12 @@ all_counties_2024 <- tigris::counties(
   mutate(fips = paste0(statefp, countyfp)) %>% 
   select(fips, aland, awater, geometry)
 
-# Also get spatial files for NE states
+# Also get spatial files for northeast states
 states_2024 <- tigris::states(
   progress_bar = TRUE,
   year = 2024
 ) %>% 
-  filter(STUSPS %in% ne_states) %>% 
+  filter(STUSPS %in% neast_st_codes) %>% 
   setNames(snakecase::to_snake_case(names(.))) %>% 
   select(
     fips = statefp,
@@ -127,7 +161,7 @@ states_2024 <- tigris::states(
     geometry
   )
 
-# And do it again for all states - not just NE
+# And do it again for all states - not just northeast
 all_states_2024 <- tigris::states(
   progress_bar = TRUE,
   year = 2024
@@ -155,11 +189,12 @@ all_state_codes <- fips_codes %>%
   mutate(full_state_code = paste0(state_code, '000'))
 
 # One more vector of ALL relevant fips codes 
-# This includes all NE counties, but also 51 states (not their counties)
+# This includes all northeast counties, but also 51 states (not their counties)
+# also US
 all_fips <- c(
   all_state_codes$full_state_code,
   all_state_codes$state_code,
-  county_state$fips
+  neast_county_state$fips
 ) %>% unique()
 
 
@@ -169,10 +204,10 @@ all_fips <- c(
 
 # creating DF with all county and state fips, and their area
 
-## NE FIPS key
-county_state
-counties_2021
-counties_2024
+## neast FIPS key
+neast_county_state
+neast_counties_2021
+neast_counties_2024
 
 # Take 2024 counties first. Then just add remaining 2021 counties not included
 most_areas <- reduce(list(all_counties_2024, all_states_2024), bind_rows)
@@ -197,33 +232,38 @@ get_str(area_df)
 
 
 # Save everything as RDS and as gpkg where appropriate
-saveRDS(county_state, '5_objects/fips_key.rds')
+
+# Our standard fips key will be for northeast states and counties
+saveRDS(neast_county_state, '5_objects/fips_key.rds')
+
+# Also keeping this legacy new england fips key just in case
+saveRDS(neng_county_state, '5_objects/neng_fips_key.rds')
+
 saveRDS(all_state_codes, '5_objects/state_key.rds')
 saveRDS(all_fips, '5_objects/all_fips.rds')
 
-saveRDS(counties_2021, '2_clean/spatial/ne_counties_2021.RDS')
-st_write(counties_2021, '2_clean/spatial/ne_counties_2021.gpkg', append = FALSE)
+# Northeast counties polygons 2021 (not saving New England shapefiles)
+saveRDS(neast_counties_2021, '2_clean/spatial/neast_counties_2021.RDS')
+st_write(neast_counties_2021, '2_clean/spatial/neast_counties_2021.gpkg', append = FALSE)
 
-saveRDS(counties_2024, '2_clean/spatial/ne_counties_2024.RDS')
-st_write(counties_2024, '2_clean/spatial/ne_counties_2024.gpkg', append = FALSE)
+# Northeast counties polygons 2024
+saveRDS(neast_counties_2024, '2_clean/spatial/neast_counties_2024.RDS')
+st_write(neast_counties_2024, '2_clean/spatial/neast_counties_2024.gpkg', append = FALSE)
 
-saveRDS(states_2024, '2_clean/spatial/ne_states.RDS')
-st_write(states_2024, '2_clean/spatial/ne_states.gpkg', append = FALSE)
+# Same for northeast states
+saveRDS(states_2024, '2_clean/spatial/neast_states.RDS')
+st_write(states_2024, '2_clean/spatial/neast_states.gpkg', append = FALSE)
 
+# All states and counties
 saveRDS(all_states_2024, '2_clean/spatial/all_states.RDS')
 st_write(all_states_2024, '2_clean/spatial/all_states.gpkg', append = FALSE)
-
 saveRDS(all_counties_2021, '2_clean/spatial/all_counties_2021.RDS')
 st_write(all_counties_2021, '2_clean/spatial/all_counties_2021.gpkg', append = FALSE)
-
 saveRDS(all_counties_2024, '2_clean/spatial/all_counties_2024.RDS')
 st_write(all_counties_2024, '2_clean/spatial/all_counties_2024.gpkg', append = FALSE)
 
-# saveRDS(new_england, '2_clean/spatial/new_england.RDS')
-# st_write(new_england, '2_clean/spatial/new_england.gpkg', append = FALSE)
-
+# DF of areas for neast counties and states
 saveRDS(area_df, '5_objects/areas.RDS')
-
 
 # Clear
 clear_data()

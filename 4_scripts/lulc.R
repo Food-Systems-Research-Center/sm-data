@@ -1,18 +1,11 @@
 # LULC
-# 2024-09-13
-# updated 2025-05-26
+# 2025-05-26 update
 
-# Wrangling 2022 VT Open Data Base Land Cover
-# https://geodata.vermont.gov/pages/ba998c98930f474c97aaf3bd44f1f694
+# Land use diversity from MRLC, forest health and complexity from USDS TreeMap,
+# Crop diversity from USDA Cropland Data Layer, biodiversity from NatureServe
 
 # NOTE: Need to rework some of the spatial wrangling here. At least one function
-# needs to be moved into python function. It could also be worth just removing
-# sections from Biofinder - I don't think we are using it for anything anymore.
-# Eventually, we will probably also get rid of TreeMap 2016 and NatureServe, if
-# and when we find better alternatives. 
-
-# VT Biodiversity project is also a slow section with large files - not sure if
-# we will stitch it together with other New England state datasets or abandon it
+# needs to be moved into python function. 
 
 
 
@@ -37,40 +30,11 @@ pacman::p_load(
   readr
 )
 
-source('3_functions/pipeline_utilities.R')
-source('3_functions/metadata_utilities.R')
-
-fips_key <- readRDS('5_objects/fips_key.rds')
-state_key <- readRDS('5_objects/state_key.rds')
 all_states_sf <- readRDS('2_clean/spatial/all_states.RDS')
-ne_counties <- readRDS('2_clean/spatial/ne_counties_2024.RDS')
+ne_counties <- readRDS('2_clean/spatial/neast_counties_2024.RDS')
 
 results <- list()
 metas <- list()
-
-
-# VT Biodiversity Project -------------------------------------------------
-
-
-#' NOTE: Neither of these can be aggregated at county level. Hotspots are just
-#' scattered polygons, and the atlas is at the town level, which cannot be 
-#' aggregated to counties without knowing the species found in each one - it
-#' only provides counts of totals. So we are just saving these to show in the 
-#' map explorer, but can't add to data tables.
-
-hotspots <- st_read(
-  dsn = '1_raw/spatial/vt_bio_project/hotspots/',
-  layer = 'VT_Biodiversity_Project_-_Biological_Hotspots'
-)
-
-atlas <- st_read(
-  dsn = '1_raw/spatial/vt_bio_project/species_atlas/',
-  layer = 'VT_Biodiversity_Project_-_Plant_and_Animal_Species_Atlas'
-)
-
-core <- read_stars(
-  '1_raw/spatial/vt_bio_project/corehab/corehab/w001001.adf'
-)
 
 
 
@@ -200,7 +164,7 @@ results$lulc <- all_lulc_metrics
 
 
 
-## Metadata ----------------------------------------------------------
+## Metadata ---------------------------------------------------------------
 
 
 (vars <- get_vars(results$lulc))
@@ -463,25 +427,27 @@ get_str(metas$treemap)
 # Biofinder ---------------------------------------------------------------
 
 
-# Explore layers
-gdb_path <- '1_raw/spatial/biofinder/VCD2024.gdb'
-(layers <- st_layers(gdb_path))
+# Not using this - removing to save space for now
 
-# Pull out all at once
-bio_layers <- map(layers$name, ~ st_read(gdb_path, layer = .x)) %>% 
-  setNames(c(layers$name))
-
-# Take these two and save directly as map layers
-saveRDS(
-  bio_layers$Bio4_UncommonSpecies_Priority, 
-  '2_clean/spatial/map_layers/biofinder_uncommon_spp.rds'
-)
-saveRDS(
-  bio_layers$Bio4_RTESpecies_HP,
-  '2_clean/spatial/map_layers/biofinder_rte_spp.rds'
-)
-
-rm(bio_layers)
+# # Explore layers
+# gdb_path <- '1_raw/spatial/biofinder/VCD2024.gdb'
+# (layers <- st_layers(gdb_path))
+# 
+# # Pull out all at once
+# bio_layers <- map(layers$name, ~ st_read(gdb_path, layer = .x)) %>% 
+#   setNames(c(layers$name))
+# 
+# # Take these two and save directly as map layers
+# saveRDS(
+#   bio_layers$Bio4_UncommonSpecies_Priority, 
+#   '2_clean/spatial/map_layers/biofinder_uncommon_spp.rds'
+# )
+# saveRDS(
+#   bio_layers$Bio4_RTESpecies_HP,
+#   '2_clean/spatial/map_layers/biofinder_rte_spp.rds'
+# )
+# 
+# rm(bio_layers)
 
 
 

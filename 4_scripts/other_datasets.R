@@ -393,24 +393,6 @@ results$rivers <- results$rivers %>%
 
 
 
-# USDA Bees ---------------------------------------------------------------
-
-
-# Just want colonies for April 1st, 2024
-raw <- read_csv('1_raw/usda/hcny0824/hcny_p08_t022.csv', skip = 5)
-
-# Start on row 10, end on row 57
-# Only want columns 3 (state), 4 (colony count)
-# Then filter to NE states
-bees <- raw[4:(nrow(raw) - 10), 3:4] %>% 
-  setNames(c('state', 'colonies')) %>% 
-  filter(state %in% unique(fips_key$state_name))
-
-bees$state %>% unique
-# Only have four states represented here. Not that useful, not including for now
-
-
-
 # FSA Disaster Declarations -----------------------------------------------
 ## Secretary ---------------------------------------------------------------
 
@@ -649,362 +631,6 @@ metas$fsa <- data.frame(
 
 metas$fsa
 
-
-
-# ERS State Ag Data -------------------------------------------------------
-
-
-# Imports and exports by state
-# https://www.ers.usda.gov/data-products/state-agricultural-trade-data/
-
-
-
-## Imports -----------------------------------------------------------------
-
-
-imports_raw <- read_csv('1_raw/usda/ers_state_trade/top_5_ag_imports_by_state.csv') %>% 
-  setNames(c(snakecase::to_snake_case(names(.))))
-get_str(imports_raw)
-get_str(state_key)
-
-# Filter down to New England
-# Only keep world totals of top 5 imports, not each individual one
-# Also only keeping fiscal year total, not quarterly
-imports <- state_key %>%
-  select(state, state_code) %>%
-  inner_join(imports_raw) %>% 
-  filter(country == 'World', fiscal_quarter == '0') %>%
-  select(
-    fips = state_code, 
-    year = fiscal_year, 
-    variable_name = commodity_name, 
-    value = dollar_value
-  )
-get_str(imports)
-# Note that this is pretty interesting, but not sure what we can really do with
-# the product-specific data. It would be hard to organize into 5 metrics because
-# they are not the same across each state. For now I guess we're just taking the
-# world total?
-
-# Group by state and year to get total world imports for top 5 products
-# Also pivot to fit format 
-imports <- imports %>% 
-  group_by(fips, year) %>% 
-  summarize(importsTopFive = sum(value)) %>% 
-  pivot_longer(
-    cols = importsTopFive,
-    values_to = 'value',
-    names_to = 'variable_name'
-  ) %>% 
-  mutate(value = value / 1e6)
-get_str(imports)
-
-# Save it
-results$imports <- imports
-
-
-
-## Exports -----------------------------------------------------------------
-
-
-exports_raw <- read_csv('1_raw/usda/ers_state_trade/state_exports.csv') %>% 
-  setNames(c(snakecase::to_snake_case(names(.))))
-get_str(exports_raw)
-get_str(state_key)
-
-# Filter to New England and clean
-exports <- state_key %>% 
-  select(state, state_code, state_name) %>% 
-  inner_join(exports_raw, by = join_by(state_name == state)) %>% 
-  select(-state_name, -state, -units) %>% 
-  mutate(
-    variable_name = paste0('exports', snakecase::to_upper_camel_case(commodity)) %>% 
-      str_remove('Exports$'),
-    .keep = 'unused'
-  ) %>% 
-  rename(fips = state_code)
-get_str(exports)
-
-# Save 
-results$exports <- exports
-
-
-
-## Metadata ----------------------------------------------------------------
-
-
-# Check vars for exports. do imports separately
-(vars <- get_vars(results$exports))
-
-# Plain text versions of vars to use in definition
-plain_vars <- vars %>% 
-  str_remove('exports') %>% 
-  snakecase::to_sentence_case() %>% 
-  str_to_lower() %>% 
-  case_when(
-    . == 'total' ~ 'total exports',
-    .default = .
-  )
-plain_vars
-
-metas$import_export <- data.frame(
-  variable_name = c(vars, 'importsTopFive'),
-  definition = c(
-    paste(
-      'Value (in millions) of',
-      plain_vars,
-      'exports'
-    ),
-    'Value (in millions) of imports for top five agricultural commodity groups from outside of the United States. Note that this is not total imports, nor does it include imports from other states.'
-  ),
-  axis_name = c(
-    paste(
-      c(
-        'Beef',
-        'Broiler Meat', 
-        'Corn',
-        'Cotton',
-        'Dairy',
-        'Feed',
-        'Fresh Fruit',
-        'Processed Fruit',
-        'Grain',
-        'Hide and Skin',
-        'Other Livestock',
-        'Other Oilseed',
-        'Other Plant',
-        'Other Poultry',
-        'Pork',
-        'Rice',
-        'Soybean Mean',
-        'Soybean',
-        'Tobacco',
-        'Total Agricultural',
-        'Total Animal',
-        'Total Plant',
-        'Tree Nut',
-        'Vegetable Oil',
-        'Fresh Vegetable',
-        'Processed Vegetable',
-        'Wheat'
-      ),
-      'Exports (million usd)'
-    ),
-    'Top Five Imports (million usd)'
-  ),
-  dimension = "production",
-  index = 'imports vs exports',
-  indicator = c(
-    rep('total quantity exported', length(plain_vars)),
-    'total quantity imported'
-  ),
-  units = 'million usd',
-  scope = 'national',
-  resolution = 'state',
-  year = c(
-    get_all_years(results$exports),
-    get_all_years(results$imports)
-  ),
-  latest_year = c(
-    get_max_year(results$exports),
-    get_max_year(results$imports)
-  ),
-  updates = "annual",
-  source = c(
-    rep('US Department of Agriculture, Economic Research Service, State Agricultural Trade Data, State Exports', length(plain_vars)),
-    'US Department of Agriculture, Economic Research Service, State Agricultural Trade Data, State Trade by Country of Origin and Destination'
-  ),
-  url = 'https://www.ers.usda.gov/data-products/state-agricultural-trade-data/',
-  citation = paste0(
-    'USDA ERS (2023). State Agricultural Trade Data. Accessed from ',
-    'https://www.ers.usda.gov/data-products/state-agricultural-trade-data/, ',
-    'December 16th, 2024.'
-  )
-) %>% 
-  
-  # Build metrics out of variable_names 
-  # Second step because we need to finish data frame first
-  mutate(
-    metric = variable_name %>% 
-      str_remove('^exports|^imports') %>% 
-      snakecase::to_sentence_case() %>% 
-      str_to_lower(),
-    metric = case_when(
-      metric == 'top five' ~ 'value of top five imports',
-      .default = paste(
-        'Value of', metric, 'exports'
-      )
-    )
-  )
-
-metas$import_export
-
-
-
-# ERS Income and Wealth ---------------------------------------------------
-
-
-# https://www.ers.usda.gov/data-products/farm-income-and-wealth-statistics/data-files-us-and-state-level-farm-income-and-wealth-statistics
-# 'Download all data in CSV file'
-
-# Load csv file from ERS
-raw <- read_csv('1_raw/usda/ers_wealth_and_income/FarmIncome_WealthStatisticsData_February2025.csv') %>% 
-  janitor::clean_names()
-get_str(raw)
-
-# Explore variables available at state level (some only at US aggregate)
-vars <- raw %>% 
-  filter(state != 'US') %>%
-  pull(variable_description_total) %>% 
-  unique()
-vars
-
-# Subset by a few keywords we are interested in
-relevant_vars <- vars %>% 
-  str_subset(
-    regex(
-      'Interest|Capital|emergency|indemnit|risk|dairy margin|milk|loss|forest',
-      ignore_case = TRUE
-    )
-  )
-relevant_vars
-
-# Check years
-get_table(raw$year)
-# Goes back to 1910, but scant data
-# Looks like 2024 and 2025 are still incomplete
-
-# Check 2024
-raw %>% 
-  filter(year == 2024) %>% 
-  pull(state) %>% 
-  unique
-# 2024 and 2025 are ONLY for US. No good. So just take up to 2023
-
-# Pull relevant vars for years going back to 2000, and up to 2023
-# Then ditch irrelevant columns
-get_str(raw)
-ers_dat <- raw %>% 
-  filter(
-    year > 2000, 
-    year <= 2023, 
-    variable_description_total %in% relevant_vars
-  ) %>% 
-  select(
-    year,
-    fips = state,
-    metric = variable_description_total,
-    value = amount
-  )
-get_str(ers_dat)
-
-# Recode states to fips codes. First add US to state codes
-get_str(state_key)
-states_and_us <- state_key %>% 
-  select(state, state_code) %>% 
-  add_row(state = 'US', state_code = '00')
-
-# Recode two letter state names with 2 digit fips codes
-ers_dat <- ers_dat %>% 
-  mutate(fips = states_and_us$state_code[match(ers_dat$fips, states_and_us$state)])
-get_str(ers_dat)
-
-# DF of metric names and variable names
-(metric_names <- get_vars(ers_dat, 'metric'))
-ers_crosswalk <- data.frame(
-  metric = metric_names,
-  variable_name = c(
-    'totalCapConsNoDwellings',
-    'totalCapConsWithDwellings',
-    'totalCapExpNoDwellings',
-    'totalCapExpWithDwellings',
-    'totalCapExpBldgs',
-    'totalCapExpBldgsLandNoDwellings',
-    'totalCapExpBldgsLandWithDwellings',
-    'totalCapExpBldgsLandDwellingsOnly',
-    'totalCapExpCars',
-    'totalCapExpTractors',
-    'totalCapExpTrucks',
-    'totalCapExpLandImprovements',
-    'totalCapExpMisc',
-    'totalCapExpVehiclesTractors',
-    'totalCapExpOtherMachinery',
-    'totalCapExpVehiclesMachinery',
-    'totalReceiptsAllForestProducts',
-    'totalIntExpNoDwellings',
-    'totalIntExpWithDwellings',
-    'totalIntExpNomRealEstateAll',
-    'totalIntExpRealEstateNoDwellings',
-    'totalIntExpRealEstateWithDwellings',
-    'totalRentNoCapCons',
-    'totalRentNonOpLandLordNoCapCons',
-    'totalRentNonOpLandLordWithCapCons',
-    'totalRentOpLandLordNoCapCons',
-    'totalIncomeInsuranceIndemnities',
-    'totalIncomeInsuranceIndemnitiesFederal',
-    'totalValueEmergPayments',
-    'totalValueAgRiskCoveragePayments',
-    'totalValueOtherAdHocEmergPayments',
-    'totalValueDairyMarginProtPayments',
-    'totalValueMilkLossPayments',
-    'totalValueAllLossCoveragePayments',
-    'totalValueServicesAndForestry'
-  )
-)
-ers_crosswalk
-
-# Recode ers_dat to swap out the metric names for variable names
-ers_dat <- ers_dat %>% 
-  mutate(variable_name = ers_crosswalk$variable_name[match(metric, ers_crosswalk$metric)]) %>% 
-  select(-metric)
-get_str(ers_dat)
-ers_dat$variable_name %>% unique
-
-# Save to results list
-results$ers_income_wealth <- ers_dat
-
-
-
-## Metadata ----------------------------------------------------------------
-
-
-(vars <- get_vars(ers_dat))
-ers_crosswalk
-
-# Check units for our variables
-unique(raw$unit_desc[raw$variable_description_total %in% ers_crosswalk$metric])
-# All 1000 usd
-
-metas$ers_income_wealth <- ers_crosswalk %>% 
-  mutate(
-    definition = metric,
-    axis_name = variable_name,
-    dimension = case_when(
-      str_detect(metric, 'Capital|Interest|Net rent') ~ 'economics',
-      .default = 'production'
-    ),
-    index = case_when(
-      str_detect(metric, regex('forest', ignore_case = TRUE)) ~ 'production margins',
-      str_detect(metric, 'Capital|Interest|Net rent') ~ 'access to capital/credit',
-      .default = 'waste and losses'
-    ),
-    indicator = case_when(
-      str_detect(metric, 'forest') ~ 'total quantity non-food agricultural products',
-      str_detect(metric, 'Capital|Interest|Net rent') ~ 'access to land',
-      .default = 'crop failure'
-    ),
-    units = '$1,000 usd',
-    scope = 'national',
-    resolution = 'state',
-    year = get_all_years(ers_dat),
-    latest_year = get_max_year(ers_dat),
-    updates = "annual",
-    source = 'U.S. Department of Agriculture, Economic Research Service. (2025, February 6). Farm Income and Wealth Statistics.',
-    url = 'https://www.ers.usda.gov/data-products/farm-income-and-wealth-statistics/data-files-us-and-state-level-farm-income-and-wealth-statistics'
-) %>%  
-  add_citation(access_date = '2025-02-12')
-
-metas$ers_income_wealth
 
 
 
@@ -1297,6 +923,297 @@ metas$gdp <- gdp_meta %>%
   ) %>% 
   add_citation(access_date = '2025-02-24')
 metas$gdp
+
+
+
+# FDA ---------------------------------------------------------------------
+
+
+# Load API output
+out <- readRDS('5_objects/api_outs/fda_recalls_ne_2019_2024.rds')
+get_str(out)
+get_str(out$results)
+
+# Make sure we are in US and it is food. Then select relevant columns
+# Note that we can pull it by zip code and by state, but we will need unique id
+dat <- out$results %>% 
+  filter(country == 'United States', product_type == 'Food') %>% 
+  select(
+    state, 
+    postal_code, 
+    recall_number, 
+    date = recall_initiation_date
+  ) %>% 
+  mutate(
+    zip = str_sub(postal_code, end = 5), 
+    year = str_sub(date, end = 4),
+    .keep = 'unused'
+  )
+get_str(dat)
+
+# Swap out state for fips key
+dat <- fips_key %>% 
+  select(fips, state_code) %>% 
+  right_join(dat, by = join_by(state_code == state)) %>% 
+  select(-state_code)
+get_str(dat)
+
+# Here is where we split if we want to keep zip code
+zip_level <- dat %>% 
+  select(-fips) %>% 
+  group_by(zip, year) %>% 
+  summarize(nFoodRecallsZip = n()) %>% 
+  pivot_longer(
+    cols = nFoodRecallsZip,
+    values_to = 'value',
+    names_to = 'variable_name'
+  )
+get_str(zip_level)
+
+# Save it
+results$food_recall_zip <- zip_level
+
+# Now aggregate at state level
+state_level <- dat %>% 
+  select(-zip) %>% 
+  group_by(fips, year) %>% 
+  summarize(nFoodRecallsState = n()) %>% 
+  pivot_longer(
+    cols = nFoodRecallsState,
+    values_to = 'value',
+    names_to = 'variable_name'
+  )
+get_str(state_level)
+
+# Save it
+results$food_recall_state <- state_level
+
+# Let's just do all of new england while we're at it
+ne_level <- dat %>% 
+  select(-zip, -fips) %>% 
+  group_by(year) %>% 
+  summarize(nFoodRecallsNE = n()) %>% 
+  pivot_longer(
+    cols = nFoodRecallsNE,
+    values_to = 'value',
+    names_to = 'variable_name'
+  )
+get_str(ne_level)
+
+# Save it
+results$food_recall_ne <- ne_level
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+# Check vars
+vars <- map_chr(results, ~ {
+  .x$variable_name %>% 
+    unique
+}) %>% 
+  sort
+vars
+
+all_years <- map_chr(results, ~ {
+  .x$year %>% 
+    unique %>% 
+    paste0(collapse = ', ')
+}) %>% 
+  sort
+
+latest_years <- map_chr(results, ~ {
+  .x$year %>%
+    unique() %>% 
+    str_split(', ') %>% 
+    as.character() %>% 
+    max()
+}) %>% 
+  unname()
+
+metas$unemp <- data.frame(
+  variable_name = vars,
+  dimension = 'production',
+  index = 'product quality',
+  indicator = 'product safety (not livestock)',
+  axis_name = c(
+    'Food Recalls, New England',
+    'Food Recalls by State',
+    'Food Recalls by ZIP'
+  ),
+  metric = 'FDA food recalls',
+  definition = rep('Number of food recall enforcement reports documented in the FDA Recall Enterprise System', 3),
+  units = 'count',
+  annotation = NA,
+  scope = 'national',
+  resolution = c(
+    'New England',
+    'state',
+    'ZIP code'
+  ),
+  year = all_years,
+  latest_year = latest_years,
+  updates = 'weekly',
+  warehouse = FALSE,
+  source = 'U.S. Food and Drug Administration, Recall Enterprise System (2024)',
+  url = 'https://open.fda.gov/apis/food/enforcement/'
+) %>% 
+  add_citation(access_date = '2024-12-16')
+
+get_str(metas$unemp)
+
+
+
+# USDM --------------------------------------------------------------------
+## Non-Consecutive Drought -------------------------------------------------
+
+
+# Pull drought monitor data that was just saved
+dm <- readRDS('5_objects/api_outs/usdm_weeks_drought_2019_2023.rds')
+get_str(dm)
+# Looks like no data for 2019 or 2023?
+
+# Remove those years
+dm <- dm[!names(dm) %in% c('y2019', 'y2023')]
+get_str(dm, 4)
+
+# Combine DFs
+usdm <- imap(dm, \(year, year_name) {
+  map(year, \(state) {
+    
+    not_null_dfs <- state %>% 
+      keep(\(x) length(x) > 0)
+    
+    len <- length(not_null_dfs)
+    if (len > 1) {
+      out <- reduce(not_null_dfs, full_join)
+    } else if (len == 1) {
+      out <- not_null_dfs[[1]]
+    } else {
+      out <- NULL
+    }
+    return(out)
+    
+  }) %>% 
+    keep(\(x) length(x) > 0) %>% 
+    bind_rows() %>% 
+    mutate(year = str_remove(year_name, 'y'))
+}) %>% 
+  bind_rows()
+get_str(usdm)
+
+# Mutate so we can weeks at 2 or more, and weeks at 3 or more
+usdm[is.na(usdm)] <- 0
+usdm <- usdm %>% 
+  rename(
+    droughtWeeksSevere = cat_2_weeks,
+    droughtWeeksExtreme = cat_3_weeks
+  ) %>% 
+  mutate(
+    droughtWeeksSevere = rowSums(select(., starts_with('drought')))
+  ) %>% 
+  pivot_longer(
+    cols = starts_with('drought'),
+    names_to = 'variable_name',
+    values_to = 'value'
+  )
+get_str(usdm)
+
+# Make sure that all zeroes are accounted for, even implicit
+grid <- expand.grid(
+  fips = fips_key$fips[str_length(fips_key$fips) == 5 & 
+                         str_detect(fips_key$fips, '^09\\d{2}0$', negate = TRUE)],
+  year = as.character(2020:2022),
+  variable_name = c('droughtWeeksSevere', 'droughtWeeksExtreme')
+)
+usdm_clean <- full_join(grid, usdm)
+usdm_clean[is.na(usdm_clean)] <- 0
+get_str(usdm_clean)
+
+# Save
+results$usdm <- usdm_clean
+
+
+
+## Avg Perc Drought --------------------------------------------------------
+
+
+# We can just take 100 - none, which will give us percent in drought for each week
+# Then take average of every week, giving one value per year per state
+out <- readRDS('5_objects/api_outs/usdm_perc_area_drought_2020_2024.rds')
+get_str(out)
+perc_area_drought <- imap(out, ~ {
+  .x %>% 
+    left_join(
+      select(state_key, state, state_code), 
+      by = join_by(stateAbbreviation == state)
+    ) %>% 
+    mutate(perc_drought = 100 - none) %>% 
+    select(fips = state_code, perc_drought) %>% 
+    group_by(fips) %>% 
+    summarize(droughtMeanPercArea = mean(perc_drought, na.rm = TRUE)) %>% 
+    mutate(year = str_sub(.y, start = 2)) %>% 
+    pivot_longer(
+      cols = droughtMeanPercArea,
+      names_to = 'variable_name',
+      values_to = 'value'
+    )
+}) %>% 
+  bind_rows()
+get_str(perc_area_drought)
+
+# Add it onto USDM DF
+results$usdm <- bind_rows(results$usdm, perc_area_drought)
+get_str(results$usdm)
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+vars <- get_vars(results$usdm)
+
+metas$usdm <- data.frame(
+  variable_name = vars,
+  dimension = 'environment',
+  index = 'water',
+  indicator = 'quantity',
+  axis_name = c(
+    'Mean % Area in Drought',
+    'Weeks of Severe Drought',
+    'Weeks of Extreme Drought'
+  ),
+  metric = c(
+    'Mean percent area in drought',
+    'Weeks of severe drought',
+    'Weeks of extreme drought'
+  ),
+  definition = c(
+    'Mean of weekly percentages of area that under a drought, as defined by the US Drought Monitor (below 20th percentile for most indicators)',
+    'Weeks in the year in which there were severe droughts or worse, as defined by the US Drought Monitor (below 10th percentile for most indicators)',
+    'Weeks in the year in which there were extreme droughts or worse, as defined by the US Drought Monitor (below 5th percentile for most indicators)'
+  ),
+  units = c(
+    'percentage',
+    rep('count', 2)
+  ),
+  annotation = NA,
+  scope = 'national',
+  resolution = c(
+    'state',
+    rep('county', 2)
+  ),
+  year = get_all_years(results$usdm),
+  latest_year = get_max_year(results$usdm),
+  updates = 'weekly',
+  warehouse = FALSE,
+  source = 'U.S. Department of Agriculture, U.S. Drought Monitor. (2024).',
+  url = 'https://droughtmonitor.unl.edu/DmData/DataDownload.aspx'
+) %>% 
+  add_citation(access_date = '2024-12-17')
+
+get_str(metas$usdm)
 
 
 

@@ -27,8 +27,9 @@ pacman::p_load(
   tidyr
 )
 
-source('3_functions/metadata_utilities.R')
-today <- 
+# source('3_functions/metadata_utilities.R')
+
+
 
 # Load and Wrangle --------------------------------------------------------
 

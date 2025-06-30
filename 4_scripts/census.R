@@ -9,10 +9,6 @@
 
 pacman::p_load(
   dplyr,
-  httr,
-  jsonlite,
-  glue,
-  memoise,
   purrr,
   readr,
   tibble,
@@ -22,16 +18,11 @@ pacman::p_load(
 )
 
 # Load Census API Key
-census_key <- Sys.getenv('ARMS_API_KEY')
+# census_key <- Sys.getenv('ARMS_API_KEY')
 
-# Function to pull from Census API, and filter by fips
-source('3_functions/api/get_census_data.R')
-source('3_functions/pipeline_utilities.R')
-source('3_functions/metadata_utilities.R')
-
-# county fips for New England (differences for CT restructuring)
-fips_key <- readRDS('5_objects/fips_key.rds')
-state_codes <- readRDS('5_objects/state_key.rds')
+# Crosswalk of variable_names and census codes for relevant variables
+# defined in 4_scripts/census_api.R
+crosswalk <- readRDS('5_objects/census_acs5_crosswalk.rds')
 
 # lists of results
 results <- list()
@@ -40,133 +31,6 @@ metas <- list()
 
 
 # ACS 5-year --------------------------------------------------------------
-## Variables ---------------------------------------------------------------
-
-
-#' NOTE
-#' _000E is the estimate
-#' _000M is the margin of error
-#' _000EA and _000MA are annotations for both. Not always there though
-
-# All relevant variables for American Community Survey data
-variables <- list(
-  # Population
-  'population' = 'B01003_001E',
-  
-  # Education
-  'edTotal' = 'B15003_001E',
-  'edTotalHS' = 'B15003_017E',
-  'edTotalGED' = 'B15003_018E',
-  'edTotalBS' = 'B15003_022E',
-  
-  # Housing
-  'nHousingUnits' = 'B25001_001E',
-  'nHousingOccupied' = 'B25002_002E',
-  'nHousingVacant' = 'B25002_003E',
-  
-  # Rent by bedrooms
-  'rentMedian1BR' = 'B25031_003E',
-  'rentMedian4BR' = 'B25031_006E',
-  
-  # Housing age
-  'medianHousingYear' = 'B25035_001E',
-   
-  # More rent
-  'rentMedian' = 'B25064_001E',
-  'rentMedianPercHH' = 'B25071_001E',
-  
-  # Wages in FFF
-  'medianFemaleEarningsFFF' = 'B24022_067E',
-  'medianMaleEarningsFFF' = 'B24022_031E',
-  'medianFemaleEarningsFPS' = 'B24022_060E',
-  'medianMaleEarningsFPS' = 'B24022_024E'
-)
-
-# B15003_001E educational attainment total
-# B15003_017E high school diploma
-# B15003_018E ged or equivalent
-# B15003_022E bachelors
-
-# B25001_001E is total housing units
-# B25002_001E is total occupancy status (used to calculate vacancy)
-# B25002_002E is estimated occupied
-# B25002_003E is estimated vacant
-
-# B25031_003E median gross rent for 1-bedroom
-# B25031_006E median gross rent for 4-bedroom
-# B25034_001E through B25045_011E year structure built by bin
-#   This would be a nice way to get an age demographic on housing
-# B25035_001E is median age structure built
-
-# B25064_001E median gross rent
-# B25071_001E median gross rent as percentage of household income in last year
-
-
-# Also turn it into a DF
-crosswalk <- setNames(names(variables), variables)
-
-
-
-## Pull County Data --------------------------------------------------------
-
-
-# # Set parameters
-# years <- c(2012:2022)
-# vars <- paste0(variables, collapse = ',')
-# states <- fips_key %>% 
-#   filter(str_length(fips) == 2 & fips != '00') %>% 
-#   pull(fips) %>% 
-#   paste0(collapse = ',')
-# 
-# # Map over list of years to gather data for each
-# counties_out <- map(years, \(year){
-#   get_census_data(
-#     survey_year = year,
-#     survey = 'acs/acs5',
-#     vars = vars,
-#     county = '*',
-#     state = states
-#   )
-# })
-# # Note that the first five years didn't come through. Only have 2015 to 2022
-# # So we only have 9?
-# get_str(counties_out)
-# 
-# # Save raw output
-# saveRDS(counties_out, '5_objects/api_outs/census_counties_2015_2022.rds')
-
-
-
-## Pull State Data ---------------------------------------------------------
-
-
-# # Now all state data, but not counties.
-# # Set parameters
-# years <- seq(2015, 2022)
-# vars <- paste0(variables, collapse = ',')
-# states <- state_codes$state_code %>% 
-#   paste0(collapse = ',')
-# 
-# # Map over list of years to gather data for each
-# states_out <- map(years, \(year){
-#   get_census_data(
-#     survey_year = year,
-#     survey = 'acs/acs5',
-#     vars = vars,
-#     county = NULL,
-#     state = states
-#   )
-# })
-# # Note that the first five years didn't come through. Only have 2015 to 2022
-# # So we only have 9?
-# get_str(states_out)
-# 
-# # Save raw output
-# saveRDS(states_out, '5_objects/api_outs/census_states_2015_2022.rds')
-
-
-
-# Wrangle -----------------------------------------------------------------
 
 
 # Reload raw outputs from API calls
@@ -329,60 +193,13 @@ metas$acs5 <- vars %>%
     url = 'https://www.census.gov/data/developers/data-sets/acs-5year.html',
     warehouse = FALSE
   ) %>% 
-  add_citation(access_date = '2025-01-08')
+  add_citation(date = '2025-01-08')
     
 metas$acs5
 
 
 
 # Gini Index --------------------------------------------------------------
-
-
-# gini_vars <- c('B19083_001E', "B19083_001M")
-# 
-# # Set parameters
-# years <- as.list(seq(2010, 2022, 1))
-# vars <- paste0(gini_vars, collapse = ',')
-# states <- fips_key %>% 
-#   filter(str_length(fips) == 2 & fips != '00') %>% 
-#   pull(fips) %>% 
-#   paste0(collapse = ',')
-# 
-# # Map over list of years to gather data for each
-# counties_out <- map(years, \(year){
-#   get_census_data(
-#     survey_year = year,
-#     survey = 'acs/acs5',
-#     vars = vars,
-#     county = '*',
-#     state = states
-#   )
-# })
-# get_str(counties_out)
-# 
-# 
-# # Set parameters for state data
-# years <- as.list(seq(2010, 2022, 1))
-# vars <- paste0(gini_vars, collapse = ',')
-# states <- state_codes$state_code %>% 
-#   paste0(collapse = ',')
-# 
-# # Map over list of years to gather data for each
-# states_out <- map(years, \(year){
-#   get_census_data(
-#     survey_year = year,
-#     survey = 'acs/acs5',
-#     vars = vars,
-#     county = NULL,
-#     state = states
-#   )
-# })
-# get_str(states_out)
-# 
-# # Save out files
-# saveRDS(counties_out, '5_objects/api_outs/gini_census_acs5_counties_2010_2022.rds')
-# saveRDS(states_out, '5_objects/api_outs/gini_census_acs5_states_2010_2022.rds')
-
 
 # Reload from saved
 counties_out <- readRDS('5_objects/api_outs/gini_census_acs5_counties_2010_2022.rds')

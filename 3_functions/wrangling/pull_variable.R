@@ -52,10 +52,10 @@ pull_variable <- function(df,
     filter(!is.na(variable_name))
 }
 
-
-# Group by fips and sum
-get_county_sum <- function(df) {
-  df %>% 
-    group_by(fips) %>% 
-    mutate(value = sum(value))
-}
+# 
+# # Group by fips and sum
+# get_county_sum <- function(df) {
+#   df %>% 
+#     group_by(fips) %>% 
+#     mutate(value = sum(value))
+# }

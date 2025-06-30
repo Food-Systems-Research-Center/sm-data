@@ -17,14 +17,14 @@ pacman::p_load(
   stringr
 )
 
-# Function to pull from Census API, and filter by fips
-source('3_functions/api/get_census_data.R')
-source('3_functions/pipeline_utilities.R')
-source('3_functions/metadata_utilities.R')
-
-# county fips for New England (differences for CT restructuring)
-fips_key <- readRDS('5_objects/fips_key.rds')
-state_codes <- readRDS('5_objects/state_key.rds')
+# # Function to pull from Census API, and filter by fips
+# source('3_functions/api/get_census_data.R')
+# source('3_functions/pipeline_utilities.R')
+# source('3_functions/metadata_utilities.R')
+# 
+# # county fips for New England (differences for CT restructuring)
+# fips_key <- readRDS('5_objects/fips_key.rds')
+# state_codes <- readRDS('5_objects/state_key.rds')
 
 # lists of results
 results <- list()

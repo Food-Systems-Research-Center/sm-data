@@ -1,4 +1,9 @@
-#' Labor Costs
+#' NASS Compilation
+#' 2025-06-30 update
+
+# This script could use some substantial refactoring. Worked through it in 
+# sections to keep the metadata feasible. But maybe that will get reworked too
+# when we move to excel.
 
 
 # Housekeeping ------------------------------------------------------------
@@ -15,18 +20,7 @@ pacman::p_load(
   vegan
 )
 
-# Source functions
-source('3_functions/wrangling/pull_variable.R')
-source('3_functions/metadata_utilities.R')
-
-# Pull Census of Ag data filtered to New England counties (and all states)
-# coa_ne <- readRDS('1_raw/nass/nass_census_counties_2007-2022.rds')
-
-# Note that we are no longer using this coa_ne object that was filtered. Instead
-# pulling from the rds below where counties and states were combined. Leaving
-# this here for posterity, or until I get around to changing all the object 
-# names in this script
-
+# Note to probably change the object name here - ambiguous ne
 coa_ne <- readRDS('1_raw/nass/ne_counties_all_states_2007-2022.rds') %>% 
   mutate(fips = paste0(state_fips_code, county_code)) %>% 
   setNames(c(names(.) %>% snakecase::to_snake_case())) %>% 
@@ -45,11 +39,6 @@ survey <- readRDS('1_raw/nass/nass_survey_2022.rds') %>%
   ))
 get_str(survey)
 
-# Fips keys
-fips_key <- readRDS('5_objects/fips_key.rds')
-state_key <- readRDS('5_objects/state_key.rds')
-all_fips <- readRDS('5_objects/all_fips.rds')
-
 # Initialize results lists
 results <- list()
 metas <- list()
@@ -66,8 +55,6 @@ survey_access_date <- '2025-02-14'
 
 # Check labor
 labor_vars <- coa_ne$short_desc %>% str_subset('^LABOR') %>% unique() %>% sort
-
-
 
 results$labor_costs <- coa_ne %>% 
   filter(
@@ -218,7 +205,7 @@ metas$labor_costs <- data.frame(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation(access_date = access_date)
+  add_citation(date = access_date)
 
 metas$labor_costs
 
@@ -278,7 +265,7 @@ metas$total_costs <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation(access_date = access_date)
+  add_citation(date = access_date)
 
 
 
@@ -319,7 +306,7 @@ metas$total_income <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation(access_date = access_date)
+  add_citation(date = access_date)
 
 
 
@@ -394,7 +381,7 @@ metas$acres_operated <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation(access_date = access_date)
+  add_citation(date = access_date)
 
 
 
@@ -455,7 +442,7 @@ metas$assets <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation(access_date = '2025-01-07')
+  add_citation(date = '2025-01-07')
 
 
 
@@ -537,7 +524,7 @@ metas$production_inputs <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation(access_date = access_date)
+  add_citation(date = access_date)
 
 
 
@@ -573,32 +560,6 @@ results$animal_sales_pct <- pull_variable(
   variable_name = 'salesAnimalPctSales'
 )
 get_str(results$animal_sales_pct)
-
-# # Get sum of animal and crop
-# # Calculate expenses per operation
-# total_animal_and_crop_sales <- bind_rows(
-#   results$total_animal_sales, 
-#   results$total_crop_sales
-# ) %>% 
-#   pivot_wider(
-#     id_cols = 'fips',
-#     names_from = 'variable_name', 
-#     values_from = 'value'
-#   ) %>%  
-#   mutate(
-#     salesAnimalCrop = salesAnimal + salesCrop,
-#     .keep = 'unused'
-#   )
-# 
-# # Remake the last one with it...
-# results$total_animal_and_crop_sales <- results$total_crop_sales %>% 
-#   full_join(total_animal_and_crop_sales, by = 'fips') %>% 
-#   mutate(
-#     value = salesAnimalCrop,
-#     variable_name = 'salesAnimalCrop',
-#     .keep = 'unused'
-#   )
-# get_str(results$total_animal_and_crop_sales)
 
 # Metadata
 metas$total_animal_and_crop_sales <- tibble(
@@ -641,7 +602,7 @@ metas$total_animal_and_crop_sales <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation(access_date = '2025-01-07')
+  add_citation(date = '2025-01-07')
 
 
 
@@ -686,7 +647,7 @@ metas$total_forest_product_income <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation(access_date = access_date)
+  add_citation(date = access_date)
 
 
 
@@ -790,7 +751,7 @@ metas$yield <- survey_meta %>%
     url = 'https://quickstats.nass.usda.gov/',
     warehouse = FALSE
   ) %>%
-  add_citation(access_date = survey_access_date)
+  add_citation(date = survey_access_date)
 get_str(metas$yield)
 
 
@@ -1008,7 +969,7 @@ metas$social <- tibble(
   ),
   url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/'
 ) %>% 
-  add_citation(access_date = '2024-11-13') %>% 
+  add_citation(date = '2024-11-13') %>% 
   mutate(definition = case_when(
     variable_name == 'producerRacialDiversity' ~ 'Shannon index of NASS producer race statistics',
     .default = definition
@@ -1322,14 +1283,14 @@ env$water <- water_df
 
 
 get_str(env)
-test <- list(flatten(env[setdiff(names(env), 'water')]), env$water)
+test <- list(purrr::flatten(env[setdiff(names(env), 'water')]), env$water)
 get_str(test)
 
 # Remove water because it is already good to go
 no_water <- env[!names(env) %in% 'water']
 get_str(no_water)
 
-env_df <- flatten(no_water) %>% 
+env_df <- purrr::flatten(no_water) %>% 
   map(\(x) mutate(x, value = as.character(value))) %>% 
   bind_rows() %>% 
   bind_rows(env$water) %>% 
@@ -1474,7 +1435,7 @@ metas$env <- starter %>%
     url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/',
     warehouse = FALSE
   ) %>%
-  add_citation(access_date = access_date) %>% 
+  add_citation(date = access_date) %>% 
   select(-fips_length)
 
 metas$env

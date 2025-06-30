@@ -6,28 +6,24 @@
 #' script, use `F2` or `CTRL + LEFT CLICK` on the path to use the definition
 #' function.
 
-#' Note that all scripts use the projecter package. It should be automatically
-#' installed in the .Rprofile script, but can be finicky. If it is not loaded,
-#' use the following to download from GitHub:
-
-# if (!require('remotes')) install.packages('remotes')
-# remotes::install_github('ChrisDonovan307/projecter')
-# library('projecter')
+#' Note that the `setup.R` script must be run before anything else in the 
+#' project, as it loads the projecter package with convenience functions use
+#' throughout the project, as well as the SMdata package, which provides 
+#' utility functions.
 
 
 
 # Housekeeping ------------------------------------------------------------
 
 
-# Load some project management functions
-source('3_functions/project_management.R')
+# Load SMdata project, 
+source('3_functions/setup.R')
 
 # Prep keys to NE state and county fips codes, also county spatial layers
 source('4_scripts/spatial_wrangling.R')
 
-# Wrangle bulk download file from NASS 2022 Census of Agriculture
-# This is deprecated
-source('4_scripts/nass_bulk_download.R')
+# Make a key for NAICS codes used in NASS and BLS
+source('4_scripts/naics_key.R')
 
 
 
@@ -35,15 +31,20 @@ source('4_scripts/nass_bulk_download.R')
 ## API Calls ---------------------------------------------------------------
 
 
-# Note that some API calls are in scripts with cleaning. 
-# To Do: pull them out and compile them here.
+# Note that some API calls are still in scripts with wrangling
 
 # Eventually this will house all the API calls separately. Raw API responses
 # will be kept in 5_objects/api_outs/, then the wrangle scripts will take those
 # responses and clean them and save them properly. 
 
-# Pulling NASS data from API
-'4_scripts/nass_api_call.R'
+# Removing source() call to prevent accidental runs. Will add sm_api() function
+# to call all APIs eventually
+
+'4_scripts/api_calls/nass_api_call.R'
+'4_scripts/api_calls/bls_api.R'
+'4_scripts/api_calls/census_api.R'
+'4_scripts/api_calls/fda_api.R'
+'4_scripts/api_calls/usdm_api.R'
 
 
 
@@ -60,38 +61,22 @@ source('4_scripts/nass_bulk_download.R')
 # Cleaning and compiling NASS data from API
 source('4_scripts/nass_compilation.R')
 
-
-# Pull existing data from USDA ARMS Data Warehouse. Note that while we started
-# out leaning on this data source, we have since moved on to pulling from the
-# raw data sources, as it is not clear if or when the data warehouse will be
-# updated.
-source('4_scripts/data_warehouse.R')
-
-# Pull census data (ACS5). [Switching from bulk download to API calls]
-# Note - need to move API calls in different script, save raw outputs
-# Note: Separate API calls
+# Pull census data (ACS5)
 source('4_scripts/census.R')
 
-# BLS QCEW - https://www.bls.gov/cew/
-# Note: Separate API calls
-source('4_scripts/bls_api.R')
-
-# FDA API for recalls, USDM api for droughts. Note to separate API calls
-# Note: Separate API calls
-source('4_scripts/fda_usdm_apis.R')
+# BLS QCEW and ERS farm and income statistics
+source('4_scripts/bls_ers.R')
 
 # County health rankings from University of Wisconsin
 # https://www.countyhealthrankings.org/
 source('4_scripts/county_health_rankings.R')
 
-# Other - EPA, USDA bee surveys, FSA disaster declarations, ERS farm income and
-# wealth, BEA GDP by industry
-source('4_scripts/other_datasets.R')
-
 # Feeding America - Map the Meal Gap
 source('4_scripts/map_meal_gap.R')
 
-
+# Other - EPA, USDA bee surveys, FSA disaster declarations, BEA GDP by industry,
+# FDA recall enforcement, USDM drought
+source('4_scripts/other_datasets.R')
 
 # Spatial data - MRLC, VT BioD Proj, USFS Treemap. Note that this script has a
 # long run time, and needs a rework or two.
@@ -122,9 +107,6 @@ source('4_scripts/export.R')
 # Miscellany --------------------------------------------------------------
 
 
-# Explore refined framework resolution
-'4_scripts/refined_framework.R'
-
 # Get parameter values for NASS API - saved into object for reference.
 '4_scripts/get_param_options.R'
 
@@ -134,9 +116,9 @@ source('4_scripts/export.R')
 # USDA ERS Food Environment Atlas
 '4_scripts/usda_food_environment_atlas.R'
 
-# Frontiers framework things
-'4_scripts/frontiers.R'
-
 # Sandbox for temporary work
 '4_scripts/sandbox.R'
 
+
+## Random scripts for working on trees for data paper
+'4_scripts/pull_from_excel.R'

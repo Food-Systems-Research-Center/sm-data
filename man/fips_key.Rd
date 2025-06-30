@@ -7,7 +7,7 @@
 \format{
 \subsection{\code{fips_key}}{
 
-A data frame in long format with one value per row.
+A data frame with county and state fips information
 \describe{
 \item{fips}{
 FIPS key. Generally 5 digits: first 2 digits represent state, last 3 digits represent county.
@@ -25,6 +25,6 @@ If \code{fips} refers to a state, the 2-character state code is shown here (e.g.
 fips_key
 }
 \description{
-A \code{df} with FIPS keys for all states and all counties in New England.
+A \code{df} with FIPS keys for all states and all counties in the Northeast
 }
 \keyword{datasets}

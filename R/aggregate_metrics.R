@@ -10,6 +10,8 @@
 #'
 #' @returns A list containing 1 aggregated metrics df and 1 aggregasted metadata
 #'   df
+#' @import dplyr
+#' @importFrom purrr map
 #' @keywords internal
 aggregate_metrics <- function(metrics = results,
                               metadata = metas) {
