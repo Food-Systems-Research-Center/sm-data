@@ -1,7 +1,7 @@
 > [!NOTE]
 > This project is in development. The framework, metrics, and analyses are all preliminary.
 
-_last updated 2025-05-26_
+_last updated 2025-07-01_
 
 # Sustainability Metrics Data
 
@@ -22,7 +22,6 @@ Created On October 15th, 2024
   - [Data and Licensing](#data-and-licensing)
 
 ## About
-
 
 The Sustainability Metrics project is a collaborative effort to measure food system sustainability in New England led by the University of Vermont (UVM) UVM Food Systems Research Center (FSRC). We work with five teams of investigators conducting primary research in vital aspects of local and regional food systems. To support this work, we are also exploring secondary data sources.
 
@@ -63,15 +62,7 @@ Note that the project requires around 45GB of tabular and spatial data to run. T
 
 There are also various API calls in the project, some of which require an API key to run, primarily from USDA NASS. To run these calls, [request an API key from NASS](https://quickstats.nass.usda.gov/api) and include it in the `.Renviron` file so that it will be called in the appropriate script.
 
-One last note is that the project uses several functions from the projecter package, which is loaded in the `.Rprofile` file but not explicitly called in any scripts. If it does not automatically download on opening the project, download it with:
-
-```r
-if (!require('remotes')) install.packages('remotes')
-remotes::install_github('ChrisDonovan307/projecter')
-library('projecter')
-```
-
-One actual last note, there are some Python functions used in the geoprocessing. To reproduce the virtual environment, use:
+One last note, there are some Python functions used in the geoprocessing. To reproduce the virtual environment, use:
 
 ```bash
 python -m venv .venv

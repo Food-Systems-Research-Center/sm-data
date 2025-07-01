@@ -161,6 +161,9 @@ states_2024 <- tigris::states(
     geometry
   )
 
+# Make a combined single polygon of neast states - use as bbox later
+neast_mask <- st_union(states_2024)
+  
 # And do it again for all states - not just northeast
 all_states_2024 <- tigris::states(
   progress_bar = TRUE,
@@ -253,6 +256,11 @@ st_write(neast_counties_2024, '2_clean/spatial/neast_counties_2024.gpkg', append
 # Same for northeast states
 saveRDS(states_2024, '2_clean/spatial/neast_states.RDS')
 st_write(states_2024, '2_clean/spatial/neast_states.gpkg', append = FALSE)
+
+# Mask for all neast states
+saveRDS(neast_mask, '2_clean/spatial/neast_mask.RDS')
+st_write(neast_mask, '2_clean/spatial/neast_mask.gpkg', append = FALSE)
+
 
 # All states and counties
 saveRDS(all_states_2024, '2_clean/spatial/all_states.RDS')

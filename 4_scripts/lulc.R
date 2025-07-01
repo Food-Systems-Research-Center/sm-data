@@ -28,10 +28,11 @@ pacman::p_load(
   reticulate,
   tidyr,
   readr
+  # FedData
 )
 
-all_states_sf <- readRDS('2_clean/spatial/all_states.RDS')
-ne_counties <- readRDS('2_clean/spatial/neast_counties_2024.RDS')
+# all_states_sf <- readRDS('2_clean/spatial/all_states.RDS')
+# neast_counties <- readRDS('2_clean/spatial/neast_counties_2024.RDS')
 
 results <- list()
 metas <- list()
@@ -40,34 +41,192 @@ metas <- list()
 
 # LULC --------------------------------------------------------------------
 
+# 
+# # Trying to get land use diversity
+# lulc <- read_stars('1_raw/spatial/mrlc_lulc/Annual_NLCD_LndCov_2023_CU_C1V0.tif')
+# 
+# # Crop by New England, but first reproject our counties
+# ne_counties_prj <- st_transform(ne_counties, st_crs(lulc))
+# crop <- st_crop(lulc, ne_counties_prj)
+# 
+# # Save a copy to include straight into docs. Also as R object, see if faster
+# saveRDS(crop, '2_clean/spatial/map_layers/mrlc_lulc_ne.rds')
+# 
+# 
+# ## Get cell counts of each category for each county
+# county_path <- '2_clean/spatial/ne_counties_2024.gpkg'
+# state_path <- '2_clean/spatial/all_states.gpkg'
+# raster_path <- '1_raw/spatial/mrlc_lulc/Annual_NLCD_LndCov_2023_CU_C1V0.tif'
+# 
+# # Load python function, get cell counts for county and state
+# reticulate::source_python('3_functions/spatial/cat_zonal_stats.py')
+# tic()
+# out <- map(list(county_path, state_path), ~ cat_zonal_stats(raster_path, .x))
+# toc()
+# get_str(out)
+# # ~ 6 minutes
+# 
+# # Save intermediate outputs
+# saveRDS(out, '5_objects/spatial/processing/lulc_zonal_stats_out.rds')
+# out <- readRDS('5_objects/spatial/processing/lulc_zonal_stats_out.rds')
+# 
+# # Get unique levels. Use later to make sure we are not missing any
+# all_levels <- map(out, names) %>% 
+#   unlist() %>% 
+#   unique() %>% 
+#   sort() %>% 
+#   str_subset('fips', negate = TRUE)
+# 
+# # Descriptions of LULC codes. Removing perennial ice/snow (12) - none here
+# codes <- data.frame(
+#   lulc_code = all_levels,
+#   metric = c(
+#     'LULC, proportion, open water',
+#     'LULC, proportion, perennial ice/snow',
+#     'LULC, proportion, developed, open space',
+#     'LULC, proportion, developed, low intensity',
+#     'LULC, proportion, developed, medium intensity',
+#     'LULC, proportion, developed, high intensity',
+#     'LULC, proportion, barren land',
+#     'LULC, proportion, deciduous forest',
+#     'LULC, proportion, evergreen forest',
+#     'LULC, proportion, mixed forest',
+#     'LULC, proportion, shrub/scrub',
+#     'LULC, proportion, grassland/herbaceous',
+#     'LULC, proportion, pasture/hay',
+#     'LULC, proportion, cultivated crops',
+#     'LULC, proportion, woody wetlands',
+#     'LULC, proportion, emergent herbaceous wetlands'
+#     # 'LULC, proportion, no data'
+#   ),
+#   definition = c(
+#     'Areas of open water, generally with less than 25% cover of vegetation or soil',
+#     'Areas characterized by a perennial cover of ice and/or snow',
+#     'Areas with a mixture of some constructed materials, but mostly vegetation in the form of lawn grasses. Impervious surfaces account for less than 20% of total cover. These areas most commonly include large-lot single-family housing units, parks, golf courses, and vegetation planted in developed settings for recreation, erosion control, or aeshetic purposes',
+#     'Areas with a mixture of constructed materials and vegetation. Impervious surfaces account for 20% to 49% percent of total cover. Thesea reas most commonly include single-family housing units.',
+#     'Areas with a mixture of constructed materials and vegetation. Impervious surfaces account for 50 % to 79% of the total cover. These areas most commonly include single - family housing units.',
+#     'Highly developed areas where people reside or work in high numbers. Examples include apartment complexes, row houses and commercial/industrial. Impervious surfaces account for 80% to 100% of the total cover.',
+#     'Areas of bedrock, desert pavement, scarps, talus, slides, volcanic material, glacial debris, sand dunes, strip mines, gravel pits and other accumulations of earthen material. Generally, vegetation accounts for less than 15% of total cover.',
+#     'Areas dominated by trees generally greater than 5 meters tall, and greater than 20% of total vegetation cover. More than 75% of the tree species shed foliage simultaneously in response to seasonal change.',
+#     'Areas dominated by trees generally greater than 5 meters tall, and greater than 20% of total vegetation cover. More than 75% of the tree species maintain their leaves all year. Canopy is never without green foliage.',
+#     'Areas dominated by trees generally greater than 5 meters tall, and greater than 20% of total vegetation cover. Neither deciduous nor evergreen species are greater than 75% of total tree cover.',
+#     'Areas dominated by shrubs; less than 5 meters tall with shrub canopy typically greater than 20% of total vegetation. This class includes true shrubs, young trees in an early successional stage or trees stunted from environmental conditions.',
+#     'Areas dominated by graminoid or herbaceous vegetation, generally greater than 80% of total vegetation. These areas are not subject to intensive management such as tilling but can be utilized for grazing.',
+#     'Areas of grasses, legumes, or grass-legume mixtures planted for livestock grazing or the production of seed or hay crops, typically on a perennial cycle. Pasture/hay vegetation accounts for greater than 20% of total vegetation.',
+#     'Areas used to produce annual crops, such as corn, soybeans, vegetables, tobacco, and cotton, and perennial woody crops such as orchards and vineyards. Crop vegetation accounts for greater than 20% of total vegetation. This class also includes all land being actively tilled.',
+#     'Areas where forest or shrubland vegetation accounts for greater than 20% of vegetative cover and the soil or substrate is periodically saturated with or covered with water.',
+#     'Areas where perennial herbaceous vegetation accounts for greater than 80% of vegetative cover and the soil or substrate is periodically saturated with or covered with water.'
+#     # 'No data.'
+#   )
+# )
+# 
+# # Make variable names based on metrics
+# removals <- c(',', 'ortion', 'eloped', 'ensity', '/scrub', 'aceous', 'emergent', '/hay', 'ium', 'iduous', 'ivated')
+# codes$variable_name <- reduce(removals, ~ str_remove_all(.x, .y), .init = codes$metric) %>% 
+#   str_replace_all('/', ' ') %>% 
+#   snakecase::to_lower_camel_case()
+# get_str(codes)
+# 
+# # rowSums to get proportions of each LULC type. Each will be a different metric
+# # Also turn NAs into 0s - there is only one, no cropland in that cell
+# all_lulc <- map(out, ~ {
+#   .x %>% 
+#     mutate(
+#       across(everything(), ~ ifelse(is.na(.x), 0, .x)),
+#       total_cells = rowSums(select(., -fips), na.rm = TRUE),
+#       across(c('11':'95'), ~ round(.x / total_cells, 3))
+#     ) %>% 
+#     select(-total_cells) %>% 
+#     
+#     # Rename columns based on codes df
+#     setNames(c(
+#       codes$variable_name[match(names(.)[-length(names(.))], codes$lulc_code)],
+#       names(.)[length(names(.))]
+#     ))
+# })
+# get_str(all_lulc)
+# # Saving this here because we will use it for LULC Diversity
+# 
+# # Continue getting our metrics in long format
+# all_lulc_metrics <- map(all_lulc, ~ {
+#   .x %>% 
+#     pivot_longer(
+#       cols = !fips,
+#       names_to = 'variable_name',
+#       values_to = 'value'
+#     )
+# }) %>% 
+#   bind_rows() %>% 
+#   mutate(year = '2023')
+# get_str(all_lulc_metrics)
+# 
+# # Save this to results
+# results$lulc <- all_lulc_metrics
 
-# Trying to get land use diversity
-lulc <- read_stars('1_raw/spatial/mrlc_lulc/Annual_NLCD_LndCov_2023_CU_C1V0.tif')
 
-# Crop by New England, but first reproject our counties
-ne_counties_prj <- st_transform(ne_counties, st_crs(lulc))
-crop <- st_crop(lulc, ne_counties_prj)
 
-# Save a copy to include straight into docs. Also as R object, see if faster
-saveRDS(crop, '2_clean/spatial/map_layers/mrlc_lulc_ne.rds')
+# Rework ------------------------------------------------------------------
+## 1. Download -------------------------------------------------------------
 
+
+# Use shell script to download land use rasters by year
+# THIS TAKES TIME TO RUN - only use it to refresh when needed
+
+# system("bash 1_raw/spatial/mrlc_lulc/conus/curl_nlcd.sh")
+
+
+
+## 2. Reduce ---------------------------------------------------------------
+
+
+# Reduce them in size to neast, remove conus layers to save space
+# This is also slow enough that we will comment it out until needed
+
+# reticulate::source_python('3_functions/spatial/mask_rasters.py')
+# mask_rasters(
+#   input_dir = '1_raw/spatial/mrlc_lulc/conus',
+#   output_dir = '1_raw/spatial/mrlc_lulc/neast',
+#   aoi_path = '2_clean/spatial/neast_mask.gpkg'
+# )
+
+
+
+## 3. Calculate ------------------------------------------------------------
+
+
+# Calculate stats by county in neast
 
 ## Get cell counts of each category for each county
-county_path <- '2_clean/spatial/ne_counties_2024.gpkg'
+county_path <- '2_clean/spatial/neast_counties_2024.gpkg'
 state_path <- '2_clean/spatial/all_states.gpkg'
-raster_path <- '1_raw/spatial/mrlc_lulc/Annual_NLCD_LndCov_2023_CU_C1V0.tif'
+raster_paths <- list.files(
+  path = '1_raw/spatial/mrlc_lulc/conus',
+  pattern = '.tif$',
+  full.names = TRUE
+)
 
 # Load python function, get cell counts for county and state
 reticulate::source_python('3_functions/spatial/cat_zonal_stats.py')
-tic()
-out <- map(list(county_path, state_path), ~ cat_zonal_stats(raster_path, .x))
-toc()
+out <- map(raster_paths, ~ cat_zonal_stats(.x, county_path))
 get_str(out)
-# ~ 6 minutes
+# ~ 6 minutes for county + state, but only 20 seconds for county. Let's just do 
+# counties and ditch state then.
 
 # Save intermediate outputs
-saveRDS(out, '5_objects/spatial/processing/lulc_zonal_stats_out.rds')
-out <- readRDS('5_objects/spatial/processing/lulc_zonal_stats_out.rds')
+saveRDS(out, '5_objects/spatial/processing/neast_counties_zonal_out.rds')
+
+
+
+## 4. Wrangle --------------------------------------------------------------
+
+
+# Pull from intermediate outputs
+out <- readRDS('5_objects/spatial/processing/neast_counties_zonal_out.rds')
+
+# Get years onto them
+out <- out %>% 
+  setNames(c(paste0('y', 2015:2024)))
+get_str(out)
 
 # Get unique levels. Use later to make sure we are not missing any
 all_levels <- map(out, names) %>% 
@@ -81,7 +240,7 @@ codes <- data.frame(
   lulc_code = all_levels,
   metric = c(
     'LULC, proportion, open water',
-    'LULC, proportion, perennial ice/snow',
+    # 'LULC, proportion, perennial ice/snow',
     'LULC, proportion, developed, open space',
     'LULC, proportion, developed, low intensity',
     'LULC, proportion, developed, medium intensity',
@@ -100,7 +259,7 @@ codes <- data.frame(
   ),
   definition = c(
     'Areas of open water, generally with less than 25% cover of vegetation or soil',
-    'Areas characterized by a perennial cover of ice and/or snow',
+    # 'Areas characterized by a perennial cover of ice and/or snow',
     'Areas with a mixture of some constructed materials, but mostly vegetation in the form of lawn grasses. Impervious surfaces account for less than 20% of total cover. These areas most commonly include large-lot single-family housing units, parks, golf courses, and vegetation planted in developed settings for recreation, erosion control, or aeshetic purposes',
     'Areas with a mixture of constructed materials and vegetation. Impervious surfaces account for 20% to 49% percent of total cover. Thesea reas most commonly include single-family housing units.',
     'Areas with a mixture of constructed materials and vegetation. Impervious surfaces account for 50 % to 79% of the total cover. These areas most commonly include single - family housing units.',
@@ -163,7 +322,6 @@ get_str(all_lulc_metrics)
 results$lulc <- all_lulc_metrics
 
 
-
 ## Metadata ---------------------------------------------------------------
 
 
@@ -203,7 +361,8 @@ get_str(metas$lulc_prop)
 # LULC Diversity ---------------------------------------------------------------
 
 
-# Shannon diversity of LULC by group
+# Shannon diversity of LULC by group 
+# [] have to combine them differently here
 get_str(all_lulc)
 div <- map(all_lulc, ~ {
   .x %>% 
@@ -422,32 +581,6 @@ metas$treemap <- data.frame(
 )
 
 get_str(metas$treemap)
-
-
-# Biofinder ---------------------------------------------------------------
-
-
-# Not using this - removing to save space for now
-
-# # Explore layers
-# gdb_path <- '1_raw/spatial/biofinder/VCD2024.gdb'
-# (layers <- st_layers(gdb_path))
-# 
-# # Pull out all at once
-# bio_layers <- map(layers$name, ~ st_read(gdb_path, layer = .x)) %>% 
-#   setNames(c(layers$name))
-# 
-# # Take these two and save directly as map layers
-# saveRDS(
-#   bio_layers$Bio4_UncommonSpecies_Priority, 
-#   '2_clean/spatial/map_layers/biofinder_uncommon_spp.rds'
-# )
-# saveRDS(
-#   bio_layers$Bio4_RTESpecies_HP,
-#   '2_clean/spatial/map_layers/biofinder_rte_spp.rds'
-# )
-# 
-# rm(bio_layers)
 
 
 

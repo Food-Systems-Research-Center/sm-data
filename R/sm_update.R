@@ -17,7 +17,8 @@ sm_update <- function() {
     'all_states',
     'neast_states',
     'neast_counties_2021',
-    'neast_counties_2024'
+    'neast_counties_2024',
+    'neast_mask'
   )
   walk(vars, ~ {
     assign(.x, sm_spatial[[.x]])
