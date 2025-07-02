@@ -4,12 +4,12 @@
 #' Conveniently filter a long-format metrics df by FIPS code.
 #' 
 #' @param df A long-format metrics df.
-#' @param scope Method by which FIPS codes are filtered. `all` = all states and 
-#' any county in New England. `counties` = any county in New England. This includes
-#' Connecticut's old county system and new governance region system. `new` = all counties in New
-#' England, but only Connecticut's new governance region system (n = 68).
-#' `old` = all counties in New England, but only Connecticut's old county system (n = 67).
-#' `ne` = New England states and any New England Counties.
+#' @param scope Method by which FIPS codes are filtered. `all` = all states nationally and 
+#' any county in Northeast. `counties` = any county in Northeast. This includes
+#' Connecticut's old county system and new governance region system. `new` = all counties in Northeast,
+#' but only Connecticut's new governance region system (n = 68).
+#' `old` = all counties in Northeast, but only Connecticut's old county system (n = 67).
+#' `neast` = Northeast states and Counties.
 #' @param fips_col column specifying fips code. 
 #'
 #' @returns A data.frame with filters applied.

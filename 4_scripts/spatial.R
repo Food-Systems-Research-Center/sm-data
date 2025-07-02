@@ -4,8 +4,8 @@
 # Land use diversity from MRLC, forest health and complexity from USDS TreeMap,
 # Crop diversity from USDA Cropland Data Layer, biodiversity from NatureServe
 
-# NOTE: Need to rework some of the spatial wrangling here. At least one function
-# needs to be moved into python function. 
+# NOTE: we are dropping TreeMap2016 data for now. Hopefully getting newer 
+# datasets soon.
 
 
 
@@ -209,8 +209,8 @@ raster_paths <- list.files(
 reticulate::source_python('3_functions/spatial/cat_zonal_stats.py')
 out <- map(raster_paths, ~ cat_zonal_stats(.x, county_path))
 get_str(out)
-# ~ 6 minutes for county + state, but only 20 seconds for county. Let's just do 
-# counties and ditch state then.
+# ~ 6 minutes for county + state, but only 20 seconds for county in a single
+# year. Let's just do counties and ditch state then.
 
 # Save intermediate outputs
 saveRDS(out, '5_objects/spatial/processing/neast_counties_zonal_out.rds')
@@ -325,7 +325,7 @@ results$lulc <- all_lulc_metrics
 ## Metadata ---------------------------------------------------------------
 
 
-(vars <- get_vars(results$lulc))
+(vars <- meta_vars(results$lulc))
 
 metas$lulc_prop <- codes %>% 
   mutate(
@@ -351,7 +351,7 @@ metas$lulc_prop <- codes %>%
     ),
     url = 'https://www.mrlc.gov/data/type/land-cover'
   ) %>% 
-  add_citation(access_date = '2024-11-15') %>% 
+  meta_citation(date = '2024-11-15') %>% 
   select(-lulc_code)
 
 get_str(metas$lulc_prop)
@@ -361,57 +361,68 @@ get_str(metas$lulc_prop)
 # LULC Diversity ---------------------------------------------------------------
 
 
-# Shannon diversity of LULC by group 
-# [] have to combine them differently here
+# Shannon diversity of LULC by group. Lumping some categories into meaningful
+# groups before getting LULC diversity. Groups:
+#   all forest types together
+#   grassland, pasture, and shrub
+#   woody wetlands and herb wetlands
+#   Development from 4 to 2: open space + low dev, medium + high dev
 get_str(all_lulc)
-div <- map(all_lulc, ~ {
+lumped <- map(all_lulc, ~ {
+  .x %>% 
+    mutate(
+      lulcForestLump = rowSums(across(contains('forest'))),
+      lulcGrassLump = rowSums(across(contains('shrub|grassland|pasture'))),
+      lulcWetlandLump = rowSums(across(contains('Wetlands'))),
+      lulcDevLowLump = rowSums(across(contains('DevOpen|DevLow'))),
+      lulcDevHighLump = rowSums(across(contains('DevMed|DevHigh'))),
+    ) %>% 
+    select(
+      -matches('lulcPropDev|lulc.*forest$|PropShrub|PropGrass|PropPasture|Wetlands$')
+    )
+})
+get_str(lumped)
+
+div <- imap(lumped, ~ {
+  data_year <- str_sub(.y, start = 2)
   .x %>% 
     column_to_rownames('fips') %>% 
-    select(-c(matches('Dev|Barren'))) %>% 
     diversity() %>% 
     round(3) %>% 
     format(nsmall = 3) %>% 
     as.data.frame() %>% 
     rownames_to_column() %>% 
-    setNames(c('fips', 'lulcDiversity')) %>% 
+    setNames(c('fips', 'lulcDiversity')) %>%
     pivot_longer(
       cols = !fips,
       names_to = 'variable_name',
       values_to = 'value'
-    ) %>% 
-    mutate(year = '2023')
+    ) %>%
+    mutate(year = data_year)
 }) %>% 
   bind_rows()
-div
-
-# Filter down to 51 states we are working with to get rid of NAs (most of them)
-div <- div %>% 
-  filter(fips %in% c(fips_key$fips, state_key$state_code)) %>% 
-  mutate(value = ifelse(str_detect(value, 'NA'), NA, value))
 div
 
 # Save
 results$lulc_div <- div
 
 
-## Save a map layer for Quarto also
-ne_counties %>% 
-  right_join(div, by = 'fips') %>% 
-  left_join(fips_key, by = 'fips') %>% 
-  select(fips, county_name, lulc_div = value, geometry) %>% 
-  saveRDS('2_clean/spatial/map_layers/lulc_div.rds')
-
-
 
 ### Metadata --------------------------------------------------------------
 
+#   all forest types together
+#   grassland, pasture, and shrub
+#   woody wetlands and herb wetlands
+#   Development from 4 to 2: open space + low dev, medium + high dev
 
 metas$lulc_div <- data.frame(
   variable_name = 'lulcDiversity',
   metric = 'Land Use Diversity',
   definition = paste(
-    'Shannon diversity of LULC codes from MRLC Land Use Land Cover 30m layer by county.',
-    'LULC Codes grouped by category: developed, barren, forest, shrubland, herbaceous, cultivated, and wetlands.',
+    'Shannon diversity of LULC proportions from MRLC Land Use Land Cover 30m layer by county.',
+    'LULC Codes grouped into categories: developed low (dev open, dev low int), developed high (dev med int, dev high int),',
+    'forest (mixed, evergreen, deciduous), grasslands (grassland, pasture, shrub),',
+    'wetlands (herbaceous, woody), and the remaining categories: barren, open water, cultivated crops, barren.',
     'Larger numbers represent greater diversity of LULC.'
   ),
   axis_name = 'LULC Diversity',
@@ -420,9 +431,9 @@ metas$lulc_div <- data.frame(
   indicator = 'land use diversity',
   units = 'index',
   scope = 'national',
-  resolution = 'county, state',
-  year = '2023',
-  latest_year = '2023',
+  resolution = '30m',
+  year = meta_years(results$lulc_div),
+  latest_year = meta_latest_year(results$lulc_div),
   updates = "annual",
   source = paste(
     'U.S. Geological Survey, Multi-Resolution Land Characteristics Consortium (2024).',
@@ -430,7 +441,7 @@ metas$lulc_div <- data.frame(
   ),
   url = 'https://www.mrlc.gov/data/type/land-cover'
 ) %>% 
-  add_citation(access_date = '2024-11-15')
+  meta_citation(date = '2025-07-01')
 
 get_str(metas$lulc_div)
 
@@ -439,21 +450,25 @@ get_str(metas$lulc_div)
 # TreeMap 2016 ------------------------------------------------------------
 
 
-# This is just live carbon layer. Doing more below
-# https://www.fs.usda.gov/rds/archive/catalog/RDS-2021-0074
-treemap <- read_stars('1_raw/spatial/usfs_treemap/TreeMap2016_CARBON_L.tif')
+# NOTE: Dropping this for now - waiting on newer datasets
 
-# Crop
-ne_counties_prj <- st_transform(ne_counties, st_crs(treemap))
-treemap_crop <- st_crop(treemap, ne_counties_prj)
-
-# Saving this raster to use straight up in Quarto
-saveRDS(treemap_crop, '2_clean/spatial/map_layers/treemap_biomass.rds')
+# # This is just live carbon layer. Doing more below
+# # https://www.fs.usda.gov/rds/archive/catalog/RDS-2021-0074
+# treemap <- read_stars('1_raw/spatial/usfs_treemap/TreeMap2016_CARBON_L.tif')
+# 
+# # Crop
+# ne_counties_prj <- st_transform(ne_counties, st_crs(treemap))
+# treemap_crop <- st_crop(treemap, ne_counties_prj)
+# 
+# # Saving this raster to use straight up in Quarto
+# # saveRDS(treemap_crop, '2_clean/spatial/map_layers/treemap_biomass.rds')
 
 
 
 # Redo TreeMap ------------------------------------------------------------
 
+
+# NOTE: dropping this for now, waiting on newer datasets
 
 # # Run python script to aggregate TreeMap2016 data by counties
 # path_list <- dir(
@@ -487,107 +502,108 @@ saveRDS(treemap_crop, '2_clean/spatial/map_layers/treemap_biomass.rds')
 
 
 
-# Pick up saved dataset, then combine, rename, put in variable format
-treemap_agg <- readRDS('5_objects/spatial/processing/treemap_aggregation_out.RDS')
-treemap_dat <- map(treemap_agg, ~ {
-  .x %>% 
-    purrr::reduce(inner_join) %>% 
-    setNames(c(
-      'fips',
-      'forestCarbonLive',
-      'forestCarbonDeadStanding',
-      'forestCarbonDeadDown',
-      'forestCanopyCover',
-      'forestLiveTreeVolume',
-      'forestLiveTrees',
-      'forestDeadTrees',
-      'forestStandHeight'
-    )) %>% 
-    pivot_longer(
-      cols = !fips,
-      names_to = 'variable_name',
-      values_to = 'value'
-    ) %>% 
-    mutate(year = '2016')
-}) %>% 
-  bind_rows()
-get_str(treemap_dat)
-
-# Save to results
-results$treemap <- treemap_dat
+# # Pick up saved dataset, then combine, rename, put in variable format
+# treemap_agg <- readRDS('5_objects/spatial/processing/treemap_aggregation_out.RDS')
+# treemap_dat <- map(treemap_agg, ~ {
+#   .x %>% 
+#     purrr::reduce(inner_join) %>% 
+#     setNames(c(
+#       'fips',
+#       'forestCarbonLive',
+#       'forestCarbonDeadStanding',
+#       'forestCarbonDeadDown',
+#       'forestCanopyCover',
+#       'forestLiveTreeVolume',
+#       'forestLiveTrees',
+#       'forestDeadTrees',
+#       'forestStandHeight'
+#     )) %>% 
+#     pivot_longer(
+#       cols = !fips,
+#       names_to = 'variable_name',
+#       values_to = 'value'
+#     ) %>% 
+#     mutate(year = '2016')
+# }) %>% 
+#   bind_rows()
+# get_str(treemap_dat)
+# 
+# # Save to results
+# results$treemap <- treemap_dat
 
 
 
 ## Metadata ----------------------------------------------------------------
 
 
-get_str(treemap_dat)
-(vars <- get_vars(treemap_dat))
-
-metas$treemap <- data.frame(
-  variable_name = vars,
-  metric = c(
-    'Forest canopy cover',
-    'Forest carbon - dead and down',
-    'Forest carbon - standing dead',
-    'Forest carbon - live standing',
-    'Dead trees per forested acre',
-    'Live trees per forested acre',
-    'Forest live tree volume per acre',
-    'Forest stand height'
-  ),
-  definition = c(
-    'Mean live Canopy cover percentage derived from the Forest Vegatation Simulator',
-    'Mean carbon (tons per acre) of woody material greater than 3 inches in diameter on the ground, and stumps and their roots greater than 3 inches in diameter. Estimated from models based on geographic area, forest type, and live tree carbon density (Smith and Heath 2008).',
-    'Mean carbon, standing dead (tons per acre).',
-    'Mean carbon, live above ground (tons per acre).',
-    'Number of live trees (diamater > 5 inches) per acre',
-    'Number of standing dead trees (diamater > 5 inches) per acre',
-    'Mean volume, live, cubic feet per acre.',
-    'Height of dominant trees, in feet, derivedf from the Forest Vegatation Simulator'
-  ),
-  axis_name = c(
-    'Canopy Cover (%)',
-    'Dead Down Carbon (tons / acre)',
-    'Dead Standing Carbon (tons / acre)',
-    'Live Standing (tons / acre)',
-    'Live Trees / acre',
-    'Dead Trees / acre',
-    'Live Tree Volume (ft^3 / acre)',
-    'Stand Height (ft)'
-  ),
-  dimension = "environment",
-  index = 'biodiversity',
-  indicator = c(
-    'tree vigor',
-    rep('above ground biomass', 3),
-    rep('tree vigor', 4)
-  ),
-  units = c(
-    'percentage',
-    rep('tons / acre', 3),
-    rep('number / acre', 2),
-    'cubic feet / acre',
-    'feet'
-  ),
-  scope = 'national',
-  resolution = 'county, state',
-  year = '2016',
-  latest_year = '2016',
-  updates = "8 years",
-  source = 'TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016',
-  url = 'https://data.fs.usda.gov/geodata/rastergateway/treemap/index.php',
-  citation = 'Riley, Karin L.; Grenfell, Isaac C.; Finney, Mark A.; Shaw, John D. 2021. TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016. Fort Collins, CO: Forest Service Research Data Archive. https://doi.org/10.2737/RDS-2021-0074'
-)
-
-get_str(metas$treemap)
-
-
-
-# Cropland Data Layer - CSV ----------------------------------------------
+# get_str(treemap_dat)
+# (vars <- get_vars(treemap_dat))
+# 
+# metas$treemap <- data.frame(
+#   variable_name = vars,
+#   metric = c(
+#     'Forest canopy cover',
+#     'Forest carbon - dead and down',
+#     'Forest carbon - standing dead',
+#     'Forest carbon - live standing',
+#     'Dead trees per forested acre',
+#     'Live trees per forested acre',
+#     'Forest live tree volume per acre',
+#     'Forest stand height'
+#   ),
+#   definition = c(
+#     'Mean live Canopy cover percentage derived from the Forest Vegatation Simulator',
+#     'Mean carbon (tons per acre) of woody material greater than 3 inches in diameter on the ground, and stumps and their roots greater than 3 inches in diameter. Estimated from models based on geographic area, forest type, and live tree carbon density (Smith and Heath 2008).',
+#     'Mean carbon, standing dead (tons per acre).',
+#     'Mean carbon, live above ground (tons per acre).',
+#     'Number of live trees (diamater > 5 inches) per acre',
+#     'Number of standing dead trees (diamater > 5 inches) per acre',
+#     'Mean volume, live, cubic feet per acre.',
+#     'Height of dominant trees, in feet, derivedf from the Forest Vegatation Simulator'
+#   ),
+#   axis_name = c(
+#     'Canopy Cover (%)',
+#     'Dead Down Carbon (tons / acre)',
+#     'Dead Standing Carbon (tons / acre)',
+#     'Live Standing (tons / acre)',
+#     'Live Trees / acre',
+#     'Dead Trees / acre',
+#     'Live Tree Volume (ft^3 / acre)',
+#     'Stand Height (ft)'
+#   ),
+#   dimension = "environment",
+#   index = 'biodiversity',
+#   indicator = c(
+#     'tree vigor',
+#     rep('above ground biomass', 3),
+#     rep('tree vigor', 4)
+#   ),
+#   units = c(
+#     'percentage',
+#     rep('tons / acre', 3),
+#     rep('number / acre', 2),
+#     'cubic feet / acre',
+#     'feet'
+#   ),
+#   scope = 'national',
+#   resolution = 'county, state',
+#   year = '2016',
+#   latest_year = '2016',
+#   updates = "8 years",
+#   source = 'TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016',
+#   url = 'https://data.fs.usda.gov/geodata/rastergateway/treemap/index.php',
+#   citation = 'Riley, Karin L.; Grenfell, Isaac C.; Finney, Mark A.; Shaw, John D. 2021. TreeMap 2016: A tree-level model of the forests of the conterminous United States circa 2016. Fort Collins, CO: Forest Service Research Data Archive. https://doi.org/10.2737/RDS-2021-0074'
+# )
+# 
+# get_str(metas$treemap)
 
 
-# Here we can get multiple years, diversity across years?
+
+# Cropland Data Layer -----------------------------------------------------
+
+
+# Rather than downloading rasters, we can just download a CSV from NASS where
+# values have already been aggregated:
 # https://www.nass.usda.gov/Research_and_Science/Cropland/sarsfaqs2.php#common.5
 paths <- dir(
   '1_raw/nass/cropland_data_layer/County_Pixel_Count/',
@@ -597,6 +613,8 @@ paths <- dir(
 year_name <- str_extract(paths, '[0-9]{4}')
 dat <- map(paths, read_csv) %>% 
   setNames(c(year_name))
+get_str(dat)
+get_str(dat[[1]])
 
 # Pull in cdl_key to rename columns. Add leading zeroes to match column names
 cdl_key <- read_csv(
@@ -605,10 +623,11 @@ cdl_key <- read_csv(
 ) %>% 
   mutate(code = sprintf("%03d", code))
 
-# Pull in fips key to filter to New England
-fips_key <- readRDS('5_objects/fips_key.rds')
-
 # Rename and clean
+# Dropping the *_all categories to avoid double counting. Downside is that 
+# it means the double crop acres will look like new species.
+# Some columns are not covered by our key, so they have NA names. We are also 
+# giving these random letter names so we can continue to calculate diversity
 cdl_clean <- map(dat, ~ {
   df <- .x %>% 
     select(fips = Fips, starts_with('Category')) %>% 
@@ -621,19 +640,24 @@ cdl_clean <- map(dat, ~ {
 }) %>% 
   keep(~ nrow(.x) > 1)
 get_str(cdl_clean)
+get_str(cdl_clean[['2024']])
 
-# Now get diversity for each NE county for each year
-# First have to remove non-crop classes
+# Now get diversity for each Northeast county for each year
+# First have to remove non-crop classes. Matching pattern to find those:
 pattern <- c('Developed|Forest|Shrubland|Grassland|Wetland|Barren|Missing|Water')
+
+# Map through each year
 cdl_div_counties <- imap(cdl_clean, ~ {
+  # Reduce to Northeast counties
   df <- .x %>% 
     filter_fips(scope = 'counties')
   
+  # Another check to make sure this doesn't break - give NULL if not in fips key
   if (any(df$fips %in% fips_key$fips)) {
     out <- df %>% 
       column_to_rownames('fips') %>% 
-      select(!matches(pattern)) %>% 
-      diversity() %>% 
+      select(!matches(pattern)) %>% # Remove non-crop codes
+      diversity(index = 'shannon') %>%
       as.data.frame() %>% 
       rownames_to_column() %>% 
       setNames(c('fips', 'cropDiversity')) %>% 
@@ -651,64 +675,119 @@ cdl_div_counties <- imap(cdl_clean, ~ {
   bind_rows()
 get_str(cdl_div_counties)
 
-# Group by state (first two letters of fips) and get diversity for each state
-cdl_div_states <- imap(cdl_clean, ~ {
-  .x %>% 
-    mutate(fips = str_sub(fips, end = 2)) %>% 
-    group_by(fips) %>% 
-    summarize(across(everything(), sum)) %>% 
-    column_to_rownames('fips') %>%
-    select(!matches(pattern)) %>%
-    diversity() %>%
-    as.data.frame() %>%
-    rownames_to_column() %>%
-    setNames(c('fips', 'cropDiversity')) %>%
-    mutate(year = .y) %>%
-    pivot_longer(
-      cols = cropDiversity,
-      names_to = 'variable_name',
-      values_to = 'value'
-    )
+# NOTE: dropping CDL div by state for now - not using it
+# # Group by state (first two letters of fips) and get diversity for each state
+# cdl_div_states <- imap(cdl_clean, ~ {
+#   .x %>% 
+#     mutate(fips = str_sub(fips, end = 2)) %>% 
+#     group_by(fips) %>% 
+#     summarize(across(everything(), sum)) %>% 
+#     column_to_rownames('fips') %>%
+#     select(!matches(pattern)) %>%
+#     diversity() %>%
+#     as.data.frame() %>%
+#     rownames_to_column() %>%
+#     setNames(c('fips', 'cropDiversity')) %>%
+#     mutate(year = .y) %>%
+#     pivot_longer(
+#       cols = cropDiversity,
+#       names_to = 'variable_name',
+#       values_to = 'value'
+#     )
+#   }) %>% 
+#   bind_rows()
+# get_str(cdl_div_states)
+
+# # Combine counties and states, save to results
+# results$crop_div <- bind_rows(cdl_div_counties, cdl_div_states)
+# get_str(results$crop_div)
+
+
+
+## CDL Area ----------------------------------------------------------------
+
+
+# Adding another variable to be a utility metric that is just the sum of acres
+# in each county, to be used as a weighting variable. Here, we need to remove
+# all *_all variables as well as the Dbl crop variables to prevent double
+# counting of acres. Still removing non-crop categories as well
+get_str(cdl_clean)
+get_str(cdl_clean[[1]])
+
+test <- cdl_clean[[17]] %>% 
+  filter_fips(scope = 'counties')
+get_str(test)
+
+# Map through each year
+cdl_area <- imap(cdl_clean, ~ {
+  # Reduce to Northeast counties
+  df <- .x %>% 
+    filter_fips(scope = 'counties')
+  
+  # Process if at least some fips in Northeast
+  if (any(df$fips %in% fips_key$fips)) {
+    # Remove non-crops, dbl crops
+    out <- df %>% 
+      column_to_rownames('fips') %>% 
+      select(!matches(pattern)) %>% 
+      select(!starts_with('Dbl'))
+  
+    # Sum total acres in CDL model
+    out <- out %>% 
+      mutate(acres = rowSums(., na.rm = TRUE)) %>% 
+      rownames_to_column('fips') %>% 
+      select(fips, acres) %>% 
+      setNames(c('fips', 'cdlAgAcres')) %>% 
+      mutate(year = .y) %>% 
+      pivot_longer(
+        cols = cdlAgAcres,
+        names_to = 'variable_name',
+        values_to = 'value'
+      )
+  } else {
+    out <- NULL
+  }
+  return(out)
   }) %>% 
   bind_rows()
-get_str(cdl_div_states)
+get_str(cdl_area)
 
-# Combine counties and states, save to results
-results$crop_div <- bind_rows(cdl_div_counties, cdl_div_states)
-get_str(results$crop_div)
+# Combine with above
+results$cdl <- bind_rows(cdl_div_counties, cdl_area)
 
 
 
 ## Metadata ----------------------------------------------------------------
 
 
-get_str(results$crop_div)
+get_str(results$cdl)
+meta_vars(results$cdl)
 
-metas$crop_div <- data.frame(
-  variable_name = 'cropDiversity',
-  metric = 'Crop diversity',
-  definition = 'Shannon diversity index of crop types based on USDA Cropland Data Layer. Forests, grasslands, developed areas and open water were removed before calculations.',
-  axis_name = 'Crop Diversity',
-  dimension = 'production',
-  index = 'production diversity',
-  indicator = 'crop diversity',
-  units = 'index',
+metas$cdl <- data.frame(
+  variable_name = meta_vars(results$cdl),
+  metric = c(
+    'Acres under agriculture (CDL)',
+    'Crop diversity'
+  ),
+  definition = c(
+    'Sum total of agricultural acres per county from NASS Cropland Data Layer. Non-agricultural codes and double crops have been removed.',
+    'Shannon diversity index on the NASS Cropland Data Layer after non-agricultural acres and double crops have been removed.'
+  ),
+  axis_name = c('Ag Acres', 'Crop Diversity'),
+  dimension = c('util_dimension', 'production'),
+  index = c('util_index', 'production diversity'),
+  indicator = c('util_indicator', 'production species diversity'),
+  units = c('acres', 'index'),
   scope = 'national',
-  resolution = 'county, state',
-  year = get_all_years(results$crop_div),
-  latest_year = get_max_year(results$crop_div),
+  resolution = '30m',
+  year = meta_years(results$cdl),
+  latest_year = meta_latest_year(results$cdl),
   updates = "annual",
   source = 'U.S. Department of Agriculture, National Agricultural Statistics Service, Cropland Data Layer',
-  url = 'https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php',
-  citation = paste(
-    'U.S. Department of Agriculture, National Agricultural Statistics Service, Cropland Data Layer: USDA NASS, USDA NASS Marketing and Information Services Office, Washington, D.C.',
-    'Retrieved from:', 
-    'https://www.nass.usda.gov/Research_and_Science/Cropland/Release/index.php',
-    'December 14th, 2024'
-  )
-)
-
-get_str(metas$crop_div)
+  url = 'https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php'
+) %>% 
+  meta_citation(date = '2025-07-02')
+get_str(metas$cdl)
 
 
 
@@ -777,10 +856,10 @@ results$nature_serve <- ns
 
 
 get_str(results$nature_serve)
-get_vars(results$nature_serve)
+meta_vars(results$nature_serve)
 
 metas$nature_serve <- data.frame(
-  variable_name = get_vars(results$nature_serve),
+  variable_name = meta_vars(results$nature_serve),
   metric = c(
     'Total number of ecosystems',
     'Percentage of animal species at risk',
@@ -826,13 +905,13 @@ metas$nature_serve <- data.frame(
   ),
   scope = 'national',
   resolution = 'state',
-  year = get_all_years(results$nature_serve),
-  latest_year = get_max_year(results$nature_serve),
+  year = meta_years(results$nature_serve),
+  latest_year = meta_latest_year(results$nature_serve),
   updates = "annual",
   source = 'NatureServe Network. (2023). Biodiversity in Focus: United States Edition. Arlington, VA.',
   url = 'https://geohub-natureserve.opendata.arcgis.com/datasets/Natureserve::natureserve-biodiversity-in-focus-total-ecosystems/about'
 ) %>% 
-  add_citation(access_date = '2025-02-13') %>% 
+  meta_citation(date = '2025-02-13') %>% 
   mutate(indicator = case_when(
     str_detect(variable_name, 'Ecosystem') ~ 'sensitive or rare habitats',
     .default = 'biodiversity'
@@ -849,15 +928,9 @@ get_str(metas$nature_serve)
 out <- aggregate_metrics(results, metas)
 
 # Check record counts
-check_n_records(out$result, out$meta, 'lulc')
+check_n_records(out$result, out$meta, 'spatial')
 
 saveRDS(out$result, '5_objects/metrics/lulc.RDS')
 saveRDS(out$meta, '5_objects/metadata/lulc_meta.RDS')
 
-# Also save spatial files as is
-saveRDS(div, '5_objects/spatial/county_lulc_tables.rds')
-saveRDS(hotspots, '2_clean/spatial/map_layers/hotspots.rds')
-saveRDS(atlas, '2_clean/spatial/map_layers/atlas.rds')
-
-clear_data()
-gc()
+clear_data(gc = TRUE)

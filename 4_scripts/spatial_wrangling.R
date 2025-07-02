@@ -1,6 +1,6 @@
 #' Spatial Wrangling
-#' 2024-10-22
-#' 
+#' 2025-07-02 update
+
 #' Getting spatial features, counties, fips and states codes sorted out and 
 #' saved to be used throughout project. Original script from USDA FAME warehouse
 
@@ -22,7 +22,8 @@ pacman::p_load(
   skimr,
   tidyr,
   tidycensus,
-  sf
+  sf,
+  rmapshaper
 )
 
 
@@ -112,7 +113,8 @@ neast_counties_2021 <- tigris::counties(
 ) %>% 
   clean_names() %>% 
   mutate(fips = paste0(statefp, countyfp)) %>% 
-  select(fips, aland, awater, geometry)
+  select(fips, aland, awater, geometry) %>% 
+  ms_simplify(keep = 0.05)
 
 # Import county spatial data frame for 2024 (after CT changes)
 neast_counties_2024 <- tigris::counties(
@@ -122,7 +124,8 @@ neast_counties_2024 <- tigris::counties(
 ) %>% 
   clean_names() %>% 
   mutate(fips = paste0(statefp, countyfp)) %>% 
-  select(fips, aland, awater, geometry)
+  select(fips, aland, awater, geometry) %>% 
+  ms_simplify(keep = 0.05)
 
 # Get spatial data for all counties (using this for area later)
 all_counties_2021 <- tigris::counties(
@@ -132,7 +135,9 @@ all_counties_2021 <- tigris::counties(
 ) %>% 
   clean_names() %>% 
   mutate(fips = paste0(statefp, countyfp)) %>% 
-  select(fips, aland, awater, geometry)
+  select(fips, aland, awater, geometry) %>% 
+  ms_simplify(keep = 0.05)
+  
 
 # Get spatial data for all counties (using this for area later)
 all_counties_2024 <- tigris::counties(
@@ -142,7 +147,8 @@ all_counties_2024 <- tigris::counties(
 ) %>% 
   clean_names() %>% 
   mutate(fips = paste0(statefp, countyfp)) %>% 
-  select(fips, aland, awater, geometry)
+  select(fips, aland, awater, geometry) %>% 
+  ms_simplify(keep = 0.05)
 
 # Also get spatial files for northeast states
 states_2024 <- tigris::states(
@@ -159,7 +165,8 @@ states_2024 <- tigris::states(
     intptlat,
     intptlon,
     geometry
-  )
+  ) %>% 
+  ms_simplify(keep = 0.05)
 
 # Make a combined single polygon of neast states - use as bbox later
 neast_mask <- st_union(states_2024)
@@ -178,7 +185,8 @@ all_states_2024 <- tigris::states(
     intptlat,
     intptlon,
     geometry
-  )
+  ) %>% 
+  ms_simplify(keep = 0.05)
 
 # Also just get fips codes for all states - keep these separate
 all_state_codes <- fips_codes %>% 
@@ -274,5 +282,4 @@ st_write(all_counties_2024, '2_clean/spatial/all_counties_2024.gpkg', append = F
 saveRDS(area_df, '5_objects/areas.RDS')
 
 # Clear
-clear_data()
-gc()
+clear_data(gc = TRUE)

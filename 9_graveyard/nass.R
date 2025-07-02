@@ -1208,7 +1208,7 @@ var_crosswalk <- data.frame(
     'WATER, IRRIGATION, SOURCE = OFF FARM - EXPENSE, MEASURED IN $ / ACRE FOOT',
     'WATER, IRRIGATION, SOURCE = OFF FARM - EXPENSE, MEASURED IN $ / ACRE IRRIGATED',
     'WATER, IRRIGATION, SOURCE = OFF FARM - OPERATIONS WITH EXPENSE'
-    ),
+  ),
   variable_name = c(
     'waterIrrReclaimedAcreFt',
     'waterIrrReclaimedOpenAcres',

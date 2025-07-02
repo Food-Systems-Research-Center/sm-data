@@ -29,7 +29,6 @@
 #'   variable_name = 'farmIncomePF'
 #' )
 #' }
-
 pull_variable <- function(df,
                           sector_desc = NULL,
                           commodity_desc = NULL, 

@@ -13,12 +13,12 @@ filter_fips(
 \arguments{
 \item{df}{A long-format metrics df.}
 
-\item{scope}{Method by which FIPS codes are filtered. \code{all} = all states and
-any county in New England. \code{counties} = any county in New England. This includes
-Connecticut's old county system and new governance region system. \code{new} = all counties in New
-England, but only Connecticut's new governance region system (n = 68).
-\code{old} = all counties in New England, but only Connecticut's old county system (n = 67).
-\code{ne} = New England states and any New England Counties.}
+\item{scope}{Method by which FIPS codes are filtered. \code{all} = all states nationally and
+any county in Northeast. \code{counties} = any county in Northeast. This includes
+Connecticut's old county system and new governance region system. \code{new} = all counties in Northeast,
+but only Connecticut's new governance region system (n = 68).
+\code{old} = all counties in Northeast, but only Connecticut's old county system (n = 67).
+\code{neast} = Northeast states and Counties.}
 
 \item{fips_col}{column specifying fips code.}
 }

@@ -31,7 +31,7 @@ meta_citation <- function(df,
         {{ source_col }},
         ', ',
         {{ url_col }},
-        ', accessed on ',
+        '. Accessed on ',
         date,
         '.'
       ))
@@ -41,7 +41,7 @@ meta_citation <- function(df,
         {{ source_col }},
         ', <',
         {{ api_url }},
-        '>, accessed on ',
+        '>. Accessed on ',
         date,
         '.'
       ))

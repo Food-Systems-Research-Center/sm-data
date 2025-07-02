@@ -17,6 +17,7 @@
 
 # Housekeeping ------------------------------------------------------------
 
+# Install package manager and load critical packages
 if (!require('pacman')) install.packages('pacman')
 pacman::p_load(
   dplyr,
@@ -24,9 +25,36 @@ pacman::p_load(
   devtools
 )
 
+# Load package of convenience functions used throughout project
 pacman::p_load_gh('ChrisDonovan307/projecter')
 
+# Load SMdata package, making functions and datasets available
+# this includes internal functions for use in data wrangling
 devtools::load_all()
+
+
+# sm_call_apis ------------------------------------------------------------
+
+# Function that calls api scripts. Can call one at a time or all at once.
+sm_call_apis <- function(nass = FALSE,
+                         bls = FALSE,
+                         census = FALSE,
+                         fda = FALSE,
+                         usdm = FALSE,
+                         all = FALSE) {
+  if (all) {
+    nass <- TRUE
+    bls <- TRUE
+    census <- TRUE
+    fda <- TRUE
+    usdm <- TRUE
+  }
+  if (nass) source('4_scripts/api_calls/nass_api.R')
+  if (bls) source('4_scripts/api_calls/bls_api.R')
+  if (census) source('4_scripts/api_calls/census_api.R')
+  if (fda) source('4_scripts/api_calls/fda_api.R')
+  if (usdm) source('4_scripts/api_calls/usdm_api.R')
+}
 
 
 # sm_wrangle --------------------------------------------------------------

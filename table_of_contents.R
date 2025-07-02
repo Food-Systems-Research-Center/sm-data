@@ -16,7 +16,7 @@
 # Housekeeping ------------------------------------------------------------
 
 
-# Load SMdata project, 
+# Load SMdata project, essential packages
 source('3_functions/setup.R')
 
 # Prep keys to NE state and county fips codes, also county spatial layers
@@ -31,16 +31,12 @@ source('4_scripts/naics_key.R')
 ## API Calls ---------------------------------------------------------------
 
 
-# Note that some API calls are still in scripts with wrangling
+# Scripts with API calls are kept here. Raw API responses are in
+# 5_objects/api_outs/, then the wrangle scripts below will take those responses
+# and clean them and save them properly.
 
-# Eventually this will house all the API calls separately. Raw API responses
-# will be kept in 5_objects/api_outs/, then the wrangle scripts will take those
-# responses and clean them and save them properly. 
-
-# Removing source() call to prevent accidental runs. Will add sm_api() function
-# to call all APIs eventually
-
-'4_scripts/api_calls/nass_api_call.R'
+# Removing source() call to prevent accidental runs. Call using sm_call_api()
+'4_scripts/api_calls/nass_api.R'
 '4_scripts/api_calls/bls_api.R'
 '4_scripts/api_calls/census_api.R'
 '4_scripts/api_calls/fda_api.R'
@@ -59,7 +55,7 @@ source('4_scripts/naics_key.R')
 # appropriate at the time, even though it might no longer be appropriate.
 
 # Cleaning and compiling NASS data from API
-source('4_scripts/nass_compilation.R')
+source('4_scripts/nass.R')
 
 # Pull census data (ACS5)
 source('4_scripts/census.R')
@@ -68,7 +64,6 @@ source('4_scripts/census.R')
 source('4_scripts/bls_ers.R')
 
 # County health rankings from University of Wisconsin
-# https://www.countyhealthrankings.org/
 source('4_scripts/county_health_rankings.R')
 
 # Feeding America - Map the Meal Gap
@@ -78,9 +73,9 @@ source('4_scripts/map_meal_gap.R')
 # FDA recall enforcement, USDM drought
 source('4_scripts/other_datasets.R')
 
-# Spatial data - MRLC, VT BioD Proj, USFS Treemap. Note that this script has a
-# long run time, and needs a rework or two.
-source('4_scripts/lulc.R')
+# Spatial data - MRLC LULC, USFS Treemap. Note that this script has a long run
+# time
+source('4_scripts/spatial.R')
 
 
 

@@ -25,8 +25,110 @@ pacman::p_load(
   censusapi
 )
 
-census_meta <- listCensusMetadata('acs/acs5', vintage = 2022)
-get_str(census_meta)
+
+
+# Rework ------------------------------------------------------------------
+## Testing -----------------------------------------------------------------
+
+# Try out censusapi
+apis <- listCensusApis()
+get_str(apis)
+
+# Specifics about acs5
+acs_apis <- listCensusApis(name = 'acs/acs5', vintage = 2022)
+
+# Metadata for acs5
+meta <- listCensusMetadata('acs/acs5', vintage = 2022)
+get_str(meta)
+
+
+
+## Prep --------------------------------------------------------------------
+
+
+# Get vector of northeast states
+state_codes <- fips_key %>% 
+  filter(str_length(fips) == 2, fips != '00') %>% 
+  pull(fips)
+
+vars <- list(
+  # Population
+  'population' = 'B01003_001E',
+  
+  # Education
+  'edTotal' = 'B15003_001E',
+  'edTotalHS' = 'B15003_017E',
+  'edTotalGED' = 'B15003_018E',
+  'edTotalBS' = 'B15003_022E',
+  
+  # Housing
+  'nHousingUnits' = 'B25001_001E',
+  'nHousingOccupied' = 'B25002_002E',
+  'nHousingVacant' = 'B25002_003E',
+  
+  # Rent by bedrooms
+  'rentMedian1BR' = 'B25031_003E',
+  'rentMedian4BR' = 'B25031_006E',
+  
+  # Housing age
+  'medianHousingYear' = 'B25035_001E',
+   
+  # More rent
+  'rentMedian' = 'B25064_001E',
+  'rentMedianPercHH' = 'B25071_001E',
+  
+  # Wages in FFF
+  'medianFemaleEarningsFFF' = 'B24022_067E',
+  'medianMaleEarningsFFF' = 'B24022_031E',
+  'medianFemaleEarningsFPS' = 'B24022_060E',
+  'medianMaleEarningsFPS' = 'B24022_024E'
+)
+
+
+
+## Try It ------------------------------------------------------------------
+
+
+# Map over states, get data from counties in each
+# one year only
+out <- map(state_codes, \(state_code) {
+  cat(
+    '\nDownloading year ', yr, ' (', which(years == yr), ' of ', length(years), ')\n\n',
+    sep = ''
+  )
+  Sys.sleep(2)
+  getCensus(
+    name = "acs/acs5",
+    vintage = 2023,
+    vars = vars,
+    region = "county:*",
+    regionin = paste0("state:", state_code)
+  )
+})
+get_str(out)
+
+# Now map over multiple years (few states to test)
+years <- c(2018, 2023)
+out <- map(state_codes[1:2], \(state_code) {
+  map(years, \(yr) {
+    Sys.sleep(2)
+    getCensus(
+      name = "acs/acs5",
+      vintage = yr,
+      vars = vars,
+      region = "county:*",
+      regionin = paste0("state:", state_code)
+    ) %>% 
+      mutate(year = yr)
+  }) %>%
+    bind_rows()
+}) %>% 
+  bind_rows()
+get_str(out)
+# [] this all works - ready to do it all at once
+# remember to grab gini from below while we're at it
+# Consider combining with the state data below too... ideally one call
+# also could clean up our fucking variable list down there man
 
 
 
