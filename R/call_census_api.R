@@ -1,85 +1,85 @@
 #' Call Census API
 #'
-#' @description Call Census API by year. For multiple years, loop the function
-#'   over a vector of years. Note that we still need to add a Sys.time() so that
-#'   we don't get rate limited. Also, consider the `censusapi` package, which
-#'   might have been a better way to do this from the beginning.
-#' @param survey_year Year as integer. Note that ACS5 is conducted on 5-year
-#'   cycle, last one in 2022.
-#' @param survey String describing which Census survey to pull from (e.g.,
-#'   'acs/acs5')
-#' @param vars String containing one or more variable codes separated by commas
-#'   (e.g., "B01003_001E,B15003_001R")
-#' @param county String containing one or more county FIPS codes separated by
-#'   commas (e.g., "50001,50002")
-#' @param state String containing one or more state FIPS codes separated by
-#'   commas (e.g., "50,25")
+#' @description Download US Census data through API using censusapi package.
+#'   Note that instead of conveniently batching variables in calls, we are
+#'   calling each iteration of region, year, and variables separately.
+#'   Otherwise, if we hit a single error because a variable does not exist in a
+#'   certain year, we lose the whole call's worth of data.
+#' @param state_codes Character vector of 2-digit state codes (e.g. Vermont =
+#'   50)
+#' @param years Numeric vector of 4-digit years
+#' @param vars Character vector of census variables
+#' @param census_key Census API key
+#' @param region Character string, one of c('county', 'state')
+#' @param sleep_time Rest between API calls at state/year level (not variable)
+#' @param survey_name Name of census survey to pull from
 #'
-#' @returns List of API outputs for the given year
-#' @import  dplyr
-#' @importFrom  jsonlite fromJSON
-#' @import  glue
-#' @import  stringr
-#' @import  janitor
+#' @returns Data frame of results
+#' @importFrom purrr map keep reduce
+#' @importFrom dplyr mutate full_join bind_rows
+#' @importFrom glue glue
+#' @import censusapi
 #' @keywords internal
-#'
-#' @examples
-call_census_api <- function(survey_year,
-                            survey,
+call_census_api <- function(state_codes,
+                            years,
                             vars,
-                            county = '*',
-                            state) {
-  
-  # Get URL
-  url <- glue(
-    'https://api.census.gov/data/{survey_year}/{survey}',
-    '?get=GEO_ID,NAME,{vars}',
-    '&for=county:{county}',
-    '&in=state:{state}'
-  )
-  
-  # Print to check
-  cat(paste0('\nQuery:\n', url, '\n'))
-  
-  # Make request with error handling
-  out <- tryCatch({
+                            census_key,
+                            region = c('state', 'county'),
+                            sleep_time = 1,
+                            survey_name = 'acs/acs5') {
+  map(state_codes, \(state_code) {
     
-    # Make request    
-    response <- GET(url)
+    cat(glue("\n\nStarting state: {state_code} ({which(state_codes == state_code)} of {length(state_codes)})\n"))
     
-    # Check if the status code is not 200 (success)
-    if (http_status(response)$category != "Success") {
-      cat("\nFailed request with status: ", http_status(response)$message)
-      return(
-        list(
-          status = http_status(response)$message,
-          query = url
-        )
-      )
+    # Set region based on state or county data
+    if (region == 'state') {
+      region_var <- paste0('state:', state_code)
+      regionin_var <- NULL
+    }
+    else if (region == 'county') {
+      region_var <- "county:*"
+      regionin_var <- paste0("state:", state_code)
     }
     
-    # If success, wrangle data
-    content(response, as = 'text') %>%
-      fromJSON() %>%
-      as.data.frame() %>%
-      # Var names come out in first row. Make them column names
-      row_to_names(1) %>%
-      mutate(
-        # Create 5 digit fips code from state and county codes
-        fips = paste0(state, county),
-        # Add survey year as column because it is not recorded anywhere else
-        year = survey_year
-      )
-  }, error = function(e) {
-    # Error message in case of failure
-    cat("Error: ", e$message, "\n")
-    return(
-      list(
-        error_message = e$message,
-        query = url
-      )
-    )
-  })
-  
-  return(out)
+    # For given state, map over all years
+    map(years, \(yr) {
+      cat('\nState:', state_code, '\nStarting year:', yr, '\n')
+      Sys.sleep(sleep_time)
+      
+      # For given state and year, map over all variables and pull data
+      vars_out <- map(vars, \(var) {
+        tryCatch(
+          {
+            getCensus(
+              name = survey_name,
+              vintage = yr,
+              key = census_key,
+              vars = var,
+              region = region_var,
+              regionin = regionin_var
+            ) %>% 
+              mutate(year = yr)  
+          },
+          error = function(e) {
+            message(glue("Error for state {state_code}, year {yr}: {e$message}"))
+            data.frame()
+          }
+        )
+      }) %>% 
+        purrr::keep(~ is.data.frame(.x) && nrow(.x) > 0)
+      
+      if (length(vars_out) > 1) {
+        purrr::reduce(vars_out, full_join)
+      } else if (length(vars_out) == 1) {
+        vars_out[[1]]
+      } else {
+        NULL
+      }
+      
+    }) %>% 
+      purrr::keep(~ !is.null(.x)) %>% 
+      bind_rows()
+  }) %>% 
+    purrr::keep(~ !is.null(.x)) %>% 
+    bind_rows()
 }

@@ -13,9 +13,6 @@ pacman::p_load(
   readr
 )
 
-source('3_functions/pipeline_utilities.R')
-source('3_functions/metadata_utilities.R')
-
 # Load datasets
 dat <- read_all_rds('5_objects/metrics/')  
 get_str(dat)
@@ -88,22 +85,6 @@ meta_agg$year
 meta_agg <- meta_agg %>% 
   mutate(axis_name = ifelse(is.na(axis_name), variable_name, axis_name))
 
-# Remove NAICS variables here too
-# JUST KIDDING keep them in
-meta_agg$variable_name %>% 
-  unique %>% 
-  sort
-
-# meta_agg <- meta_agg %>% 
-#   filter(str_detect(
-#     variable_name,
-#     regex('NAICS|^lq|^avgEmpLvl', ignore_case = TRUE),
-#     negate = TRUE
-#   ))
-# meta_agg$variable_name %>% 
-#   unique %>% 
-#   sort
-
 
 
 # Check and save ----------------------------------------------------------
@@ -120,7 +101,6 @@ write_csv(agg, '6_outputs/metrics.csv')
 saveRDS(meta_agg, '2_clean/metadata.rds')
 write_csv(meta_agg, '6_outputs/metadata.csv')
 
-clear_data()
-gc()
+clear_data(gc = TRUE)
 
 cat('\n*Aggregation complete*')

@@ -15,8 +15,6 @@ pacman::p_load(
   readr
 )
 
-source('3_functions/pipeline_utilities.R')
-
 
 
 # Load Data ---------------------------------------------------------------

@@ -124,7 +124,7 @@ meta <- meta %>%
   # Fresh calculated variables
   mutate(
     latest_year = meta_latest_year(dat),
-    all_years = meta_years(dat),
+    year = meta_years(dat),
     resolution = meta_resolution(dat),
     scope = 'national',
     updates = '5 years',

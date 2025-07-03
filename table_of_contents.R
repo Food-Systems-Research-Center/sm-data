@@ -1,4 +1,3 @@
-# Table of Contents
 # last update 2025-06-15
 
 #' This ToC links to all code used in SM data collection, wrangling, metadata 
@@ -34,11 +33,9 @@ source('4_scripts/naics_key.R')
 # Scripts with API calls are kept here. Raw API responses are in
 # 5_objects/api_outs/, then the wrangle scripts below will take those responses
 # and clean them and save them properly.
-
-# Removing source() call to prevent accidental runs. Call using sm_call_api()
 '4_scripts/api_calls/nass_api.R'
-'4_scripts/api_calls/bls_api.R'
 '4_scripts/api_calls/census_api.R'
+'4_scripts/api_calls/bls_api.R'
 '4_scripts/api_calls/fda_api.R'
 '4_scripts/api_calls/usdm_api.R'
 
@@ -54,16 +51,17 @@ source('4_scripts/naics_key.R')
 # organized somewhat thematically, or sometimes functionally as seemed 
 # appropriate at the time, even though it might no longer be appropriate.
 
-# Cleaning and compiling NASS data from API
+# USDA National Agriculural Statistics Service
 source('4_scripts/nass.R')
 
-# Pull census data (ACS5)
+# American Community Survey (ACS5)
 source('4_scripts/census.R')
 
-# BLS QCEW and ERS farm and income statistics
+# BLS Quarterly Census of Employment and Wages
+# ERS Farm and Income Wealth Statistics
 source('4_scripts/bls_ers.R')
 
-# County health rankings from University of Wisconsin
+# University of Wisconsin - County Health Rankings
 source('4_scripts/county_health_rankings.R')
 
 # Feeding America - Map the Meal Gap
@@ -73,8 +71,8 @@ source('4_scripts/map_meal_gap.R')
 # FDA recall enforcement, USDM drought
 source('4_scripts/other_datasets.R')
 
-# Spatial data - MRLC LULC, USFS Treemap. Note that this script has a long run
-# time
+# Spatial data - MRLC LULC, other spatial data. Note that this script has a long
+# run time
 source('4_scripts/spatial.R')
 
 
@@ -89,10 +87,10 @@ source('4_scripts/spatial.R')
 # those to sm-docs and sm-explorer
 
 # Combine metrics, metadata, run some checks
-source('4_scripts/aggregate_data.R')
+source('4_scripts/project/aggregate_data.R')
 
 # Export data to sm-docs and sm-explorer
-source('4_scripts/export.R')
+source('4_scripts/project/export.R')
 
 # Explore aggregated data
 '4_scripts/explore.R'

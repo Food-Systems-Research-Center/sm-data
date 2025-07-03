@@ -1,11 +1,7 @@
 # BLS and ERS
 # 2025-06-30 update
 
-# Pulling QCEW data from BLS API. This is source of NAICS variables that are
-# used in FAME data warehouse.
-
-# Also pulling ERS data from bulk downloads. Need to rework this into API calls
-
+# Note that the first section
 
 # Housekeeping ------------------------------------------------------------
 
@@ -162,11 +158,93 @@ metas$qcew <- metas$qcew %>%
     source = 'U.S. Bureau of Labor Statistics, Quarterly Census of Employment and Wages (2023)',
     url = 'https://www.bls.gov/cew/'
   ) %>% 
-  add_citation(date = '2024-11-05') %>%
+  meta_citation(date = '2024-11-05') %>%
   select(-og_variable_name)
   
 get_str(metas$qcew)
 try(check_n_records(results$qcew, metas$qcew, 'QCEW'))
+
+
+
+
+# BLS Bulk ----------------------------------------------------------------
+
+
+# Is this actually better than using API?
+# https://www.bls.gov/cew/downloadable-data-files.htm
+# Download CSVs by industry. Then just took the ones for 11 - agriculture
+file_paths <- list.files(
+  path = '1_raw/bls/bls_naics_11/',
+  pattern = '*.csv',
+  full.names = TRUE
+)
+dat <- map(file_paths, ~ read_csv(.x)) %>% 
+  bind_rows()
+get_str(dat)
+
+# Filter to private sector only, make sure it is annual, filter to neast states
+dat <- dat %>% 
+  filter(
+    area_fips %in% fips_key$fips,
+    qtr == 'A',
+    own_code == '5'
+  )
+get_str(dat)
+
+# Select relevant variables
+dat <- dat %>% 
+  select(
+    fips = area_fips,
+    year,
+    matches('^annual|^total|^taxable|^oty')
+  )
+get_str(dat)
+
+# Fix names
+names(dat)[3:length(names(dat))] <- names(dat)[3:length(names(dat))] %>% 
+  snakecase::to_lower_camel_case() %>% 
+  paste0('NAICS11')
+get_str(dat)
+
+# Pivot longer
+dat <- dat %>%
+  mutate(across(everything(), as.character)) %>%
+  pivot_longer(
+    cols = !c(fips, year),
+    names_to = 'variable_name',
+    values_to = 'value'
+  )
+get_str(dat)
+
+results$qcew <- dat
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+meta_vars(dat)
+metas$qcew <- data.frame(variable_name = meta_vars(results$qcew)) %>% 
+  mutate(
+    dimension = 'economics',
+    index = 'community economy',
+    indicator = case_when(
+      str_detect(variable_name, 'estabs') ~ 'business failure rate of food business',
+      .default = 'wealth/income distribution'
+    ),
+    metric = variable_name,
+    axis_name = variable_name,
+    definition = NA,
+    resolution = meta_resolution(dat),
+    scope = 'national',
+    updates = 'annual',
+    latest_year = meta_latest_year(dat),
+    year = meta_years(dat),
+    source = 'U.S. Bureau of Labor Statistics, Quarterly Census of Employment and Wages (2023)',
+    url = 'https://www.bls.gov/cew/'
+  ) %>% 
+  meta_citation(date = '2025-07-03')
+get_str(metas$qcew)
 
 
 
@@ -223,7 +301,7 @@ get_str(results$unemp)
 
 
 # Unique variable names
-(vars <- get_vars(results$unemp))
+(vars <- meta_vars(results$unemp))
 
 metas$unemp <- data.frame(
   dimension = c(
@@ -306,9 +384,9 @@ metas$unemp <- data.frame(
   ),
   annotation = rep(NA, 9),
   scope = rep('national', 9),
-  resolution = get_resolution(results$unemp),
-  year = get_all_years(results$unemp),
-  latest_year = get_max_year(results$unemp),
+  resolution = meta_resolution(results$unemp),
+  year = meta_years(results$unemp),
+  latest_year = meta_latest_year(results$unemp),
   updates = c(
     rep('annual', 4),
     rep(NA, 2),
@@ -331,7 +409,7 @@ metas$unemp <- data.frame(
     'https://www.ers.usda.gov/topics/rural-economy-population/rural-classifications/'
   )
 ) %>% 
-  add_citation(date = '2024-11-05')
+  meta_citation(date = '2024-11-05')
 
 get_str(metas$unemp)
 metas$unemp
@@ -421,7 +499,7 @@ results$exports <- exports
 
 
 # Check vars for exports. do imports separately
-(vars <- get_vars(results$exports))
+(vars <- meta_vars(results$exports))
 
 # Plain text versions of vars to use in definition
 plain_vars <- vars %>% 
@@ -489,12 +567,12 @@ metas$import_export <- data.frame(
   scope = 'national',
   resolution = 'state',
   year = c(
-    get_all_years(results$exports),
-    get_all_years(results$imports)
+    meta_years(results$exports),
+    meta_years(results$imports)
   ),
   latest_year = c(
-    get_max_year(results$exports),
-    get_max_year(results$imports)
+    meta_latest_year(results$exports),
+    meta_latest_year(results$imports)
   ),
   updates = "annual",
   source = c(
@@ -598,7 +676,7 @@ ers_dat <- ers_dat %>%
 get_str(ers_dat)
 
 # DF of metric names and variable names
-(metric_names <- get_vars(ers_dat, 'metric'))
+(metric_names <- meta_vars(ers_dat, 'metric'))
 ers_crosswalk <- data.frame(
   metric = metric_names,
   variable_name = c(
@@ -666,7 +744,7 @@ results$ers_income_wealth <- ers_dat
 ## Metadata ----------------------------------------------------------------
 
 
-(vars <- get_vars(ers_dat))
+(vars <- meta_vars(ers_dat))
 ers_crosswalk
 
 # Check units for our variables
@@ -696,13 +774,13 @@ metas$ers_income_wealth <- ers_crosswalk %>%
     units = '$1,000 usd',
     scope = 'national',
     resolution = 'state',
-    year = get_all_years(ers_dat),
-    latest_year = get_max_year(ers_dat),
+    year = meta_years(ers_dat),
+    latest_year = meta_latest_year(ers_dat),
     updates = "annual",
     source = 'U.S. Department of Agriculture, Economic Research Service. (2025, February 6). Farm Income and Wealth Statistics.',
     url = 'https://www.ers.usda.gov/data-products/farm-income-and-wealth-statistics/data-files-us-and-state-level-farm-income-and-wealth-statistics'
 ) %>%  
-  add_citation(date = '2025-02-12')
+  meta_citation(date = '2025-02-12')
 
 metas$ers_income_wealth
 
@@ -720,5 +798,4 @@ check_n_records(out$result, out$meta, 'other')
 saveRDS(out$result, '5_objects/metrics/bls_ers.RDS')
 saveRDS(out$meta, '5_objects/metadata/bls_ers_meta.RDS')
 
-clear_data()
-gc()
+clear_data(gc = TRUE)

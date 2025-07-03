@@ -4,31 +4,40 @@
 \alias{call_census_api}
 \title{Call Census API}
 \usage{
-call_census_api(survey_year, survey, vars, county = "*", state)
+call_census_api(
+  state_codes,
+  years,
+  vars,
+  census_key,
+  region = c("state", "county"),
+  sleep_time = 1,
+  survey_name = "acs/acs5"
+)
 }
 \arguments{
-\item{survey_year}{Year as integer. Note that ACS5 is conducted on 5-year
-cycle, last one in 2022.}
+\item{state_codes}{Character vector of 2-digit state codes (e.g. Vermont =
+50)}
 
-\item{survey}{String describing which Census survey to pull from (e.g.,
-'acs/acs5')}
+\item{years}{Numeric vector of 4-digit years}
 
-\item{vars}{String containing one or more variable codes separated by commas
-(e.g., "B01003_001E,B15003_001R")}
+\item{vars}{Character vector of census variables}
 
-\item{county}{String containing one or more county FIPS codes separated by
-commas (e.g., "50001,50002")}
+\item{census_key}{Census API key}
 
-\item{state}{String containing one or more state FIPS codes separated by
-commas (e.g., "50,25")}
+\item{region}{Character string, one of c('county', 'state')}
+
+\item{sleep_time}{Rest between API calls at state/year level (not variable)}
+
+\item{survey_name}{Name of census survey to pull from}
 }
 \value{
-List of API outputs for the given year
+Data frame of results
 }
 \description{
-Call Census API by year. For multiple years, loop the function
-over a vector of years. Note that we still need to add a Sys.time() so that
-we don't get rate limited. Also, consider the \code{censusapi} package, which
-might have been a better way to do this from the beginning.
+Download US Census data through API using censusapi package.
+Note that instead of conveniently batching variables in calls, we are
+calling each iteration of region, year, and variables separately.
+Otherwise, if we hit a single error because a variable does not exist in a
+certain year, we lose the whole call's worth of data.
 }
 \keyword{internal}
