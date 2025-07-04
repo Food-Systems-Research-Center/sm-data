@@ -16,7 +16,7 @@
 
 
 # Load SMdata project, essential packages
-source('3_functions/setup.R')
+source('4_scripts/setup.R')
 
 # Prep keys to NE state and county fips codes, also county spatial layers
 source('4_scripts/spatial_wrangling.R')
@@ -36,8 +36,8 @@ source('4_scripts/naics_key.R')
 '4_scripts/api_calls/nass_api.R'
 '4_scripts/api_calls/census_api.R'
 '4_scripts/api_calls/bls_api.R'
-'4_scripts/api_calls/fda_api.R'
 '4_scripts/api_calls/usdm_api.R'
+'4_scripts/api_calls/fda_api.R'
 
 
 
@@ -86,19 +86,16 @@ source('4_scripts/spatial.R')
 # them all together into two rds list objects. Then the export script sends 
 # those to sm-docs and sm-explorer
 
-# Combine metrics, metadata, run some checks
-source('4_scripts/project/aggregate_data.R')
-
-# Export data to sm-docs and sm-explorer
-source('4_scripts/project/export.R')
-
-# Explore aggregated data
-'4_scripts/explore.R'
+# Combine metrics, metadata, run some checks, and export data
+source('4_scripts/export_data.R')
 
 
 
 # Miscellany --------------------------------------------------------------
 
+
+# Explore exported data
+'4_scripts/explore.R'
 
 # Get parameter values for NASS API - saved into object for reference.
 '4_scripts/get_param_options.R'
@@ -113,5 +110,5 @@ source('4_scripts/project/export.R')
 '4_scripts/sandbox.R'
 
 
-## Random scripts for working on trees for data paper
-'4_scripts/pull_from_excel.R'
+## Secondary paper scripts
+'dev/pull_from_excel.R'

@@ -19,7 +19,6 @@ pacman::p_load(
   readxl,
   tidyr
 )
-devtools::load_all()
 
 
 
@@ -27,15 +26,15 @@ devtools::load_all()
 
 
 # Copy it locally
-path <- 'C:/Users/cdonov12/OneDrive - University of Vermont/Food Systems Research Center/Sustainability Metrics/Frontiers in Sustainable Food Systems/Metrics/frontiers_metrics.xlsx'
-new_xl <- '2_clean/frontiers_metrics.xlsx'
+path <- 'C:/Users/cdonov12/OneDrive - University of Vermont/Food Systems Research Center/Sustainability Metrics/Sustainability Metrics Manuscript/Metrics/secondary_metrics.xlsx'
+new_xl <- '2_clean/secondary_metrics.xlsx'
 file.copy(path, new_xl, overwrite = TRUE)
 
 # Pull the working excel from OneDrive to yoink variable names and figure out
 # what we need to do
 sheets <- excel_sheets(new_xl)[1:5]
 tab <- map(sheets, ~ {
-  read_excel('2_clean/frontiers_metrics.xlsx', sheet = .x) %>% 
+  read_excel('2_clean/secondary_metrics.xlsx', sheet = .x) %>% 
     mutate(dimension = str_to_lower(.x), .before = 'index') %>% 
     fill(c(index, indicator), .direction = 'down')
 }) %>% 
@@ -59,10 +58,16 @@ sum <- existing %>%
   summarize(
     n_states = length(unique(fips[nchar(fips) == 2])),
     n_counties = length(unique(fips[nchar(fips) == 5])),
+    n_years = length(unique(sort(year))),
     years = paste0(unique(sort(year)), collapse = ', ')
   )
 sum
-# Noice
+
+# Checking
+metadata %>% 
+  filter(variable_name == 'censusParticipation') %>% 
+  pull(source)
+
 
 # Notes
 # the oty NAICS variables are not in all counties. also, only 2023. Let's get more years
@@ -145,4 +150,4 @@ fixed <- fixed %>%
   )
 get_str(fixed)
 
-write.csv(fixed, '2_clean/trees/fixed_tree.csv')
+# write.csv(fixed, '2_clean/trees/fixed_tree.csv')

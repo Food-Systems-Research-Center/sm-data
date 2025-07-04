@@ -28,6 +28,6 @@ sm_call_apis <- function(nass = FALSE,
   if (nass) source('4_scripts/api_calls/nass_api.R')
   if (bls) source('4_scripts/api_calls/bls_api.R')
   if (census) source('4_scripts/api_calls/census_api.R')
-  if (fda) source('4_scripts/api_calls/fda_api.R')
+  # if (fda) source('4_scripts/api_calls/fda_api.R') # Not using this currently
   if (usdm) source('4_scripts/api_calls/usdm_api.R')
 }

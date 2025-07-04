@@ -8,7 +8,8 @@ sm_update()
 }
 \description{
 Internal function that updates the .rda files exported by the package. This
-should come after using the \code{sm_aggregate()} and \code{sm_export()} functions
-which update the .rds files in the outputs folder.
+should come after using the \code{sm_export()} function which updates the .rds
+files in the outputs folder. Updates only the essentials from the spatial
+data, including counties, states, and the mask for the Northeast region.
 }
 \keyword{internal}

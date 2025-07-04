@@ -1,5 +1,14 @@
 # EPA GHG data
-# 2024-09-10
+# 2025-07-04 update
+
+
+# Description -------------------------------------------------------------
+
+
+# Note we are temporarily dropping some pieces here:
+# FSA - replace with indemnities
+# FDA - not in framework? might come back though.
+# Happiness - not reliable
 
 
 
@@ -15,10 +24,7 @@ pacman::p_load(
   readxl
 )
 
-source('3_functions/metadata_utilities.R')
-source('3_functions/pipeline_utilities.R')
-fips_key <- readRDS('5_objects/fips_key.rds')
-state_key <- readRDS('5_objects/state_key.rds')
+# Get areas of each county - used in FSA calculations
 areas <- readRDS('5_objects/areas.rds')
 
 results <- list()
@@ -185,7 +191,7 @@ results$ghgs <- un_metrics
 
 
 # Check vars
-(vars <- get_vars(un_metrics))
+(vars <- meta_vars(un_metrics))
 
 # Reformat the definitions and metrics into wide for metadata
 get_str(un_definitions)
@@ -209,7 +215,7 @@ metas$ghgs <- un_definitions %>%
     url = 'https://www.epa.gov/ghgemissions/state-ghg-emissions-and-removals',
     warehouse = FALSE
   ) %>% 
-  add_citation(access_date = '2024-12-18')
+  meta_citation(date = '2024-12-18')
 
 metas$ghgs
 
@@ -234,9 +240,10 @@ get_str(lakes_meta)
 lakes_meta %>% 
   filter(str_detect(COLUMN_NAME, 'COND$')) %>% 
   select(COLUMN_NAME, LEGAL_VALUES)
-
+# Condition variables are ordinal
 
 ## Clean
+# Using condition variables, recoding them as integers
 lake_dat <- lakes %>% 
   select(
     PSTL_CODE,
@@ -245,8 +252,9 @@ lake_dat <- lakes %>%
   ) %>% 
   mutate(
     across(matches('^ACID|^CHLA|^LITCVR|^LITRIPCVR|^NTL|^PTL|^RDIS|^RVEG'), ~ case_when(
-      .x %in% c('Good', 'Fair') ~ 1,
-      .x %in% c('Poor', 'Not Assessed') ~ 0,
+      .x == 'Good' ~ 3,
+      .x == 'Fair' ~ 2,
+      .x == 'Poor' ~ 1,
       .default = NA
     )),
     across(matches('^CYLSPER|^ENT_|MICX_'), ~ case_when(
@@ -255,6 +263,8 @@ lake_dat <- lakes %>%
       .default = NA
     ))
   ) %>% 
+  
+  # Group by geography and take mean of condition scores
   group_by(PSTL_CODE) %>% 
   summarize(across(matches('COND$'), ~ mean(.x, na.rm = TRUE))) %>% 
   pivot_longer(
@@ -262,7 +272,6 @@ lake_dat <- lakes %>%
     names_to = 'variable_name',
     values_to = 'value'
   ) %>% 
-  # inner_join(fips_key, by = join_by(PSTL_CODE == state_code)) %>% 
   inner_join(state_key, by = join_by(PSTL_CODE == state)) %>% 
   select(fips = state_code, variable_name, value) %>% 
   mutate(year = '2022') %>% 
@@ -278,7 +287,6 @@ results$lakes <- lake_dat
 
 get_str(results$lakes)
 
-
 metas$lakes <- lakes_meta %>%
   filter(COLUMN_NAME %in% unique(results$lakes$variable_name)) %>% 
   rename(variable_name = COLUMN_NAME, metric = LABEL) %>% 
@@ -290,12 +298,12 @@ metas$lakes <- lakes_meta %>%
     ), 
     definition = case_when(
       str_detect(LEGAL_VALUES, 'Benchmark') ~ 'Qualitative ratings (Above Benchmark, At or Below Benchmark) recoded to (1, 0) and averaged by state',
-      .default = 'Qualitative ratings recoded to 1 (Good, Fair) and 0 (Poor) and averaged by state'
+      .default = 'Qualitative ratings recoded to 3 (Good), 2 (Fair), and 1 (Poor) and averaged by state'
     ),
     dimension = "environment",
     axis_name = variable_name,
-    index = 'water quality',
-    indicator = 'quantity / quality of surface and shallow subsurface water',
+    index = 'water',
+    indicator = 'quality',
     units = 'proportion',
     scope = 'national',
     resolution = 'state',
@@ -305,9 +313,8 @@ metas$lakes <- lakes_meta %>%
     source = 'U.S. Environmental Protection Agency, National Aquatic Resource Surveys, 2022',
     url = 'https://www.epa.gov/national-aquatic-resource-surveys/data-national-aquatic-resource-surveys'
   ) %>% 
-  add_citation(access_date = '2024-11-14') %>% 
+  meta_citation(date = '2024-11-14') %>% 
   select(-LEGAL_VALUES)
-
 metas$lakes  
 
 # Go back and fix variable names from dataset
@@ -338,9 +345,23 @@ river_vars
 
 river_dat <- rivers %>% 
   inner_join(state_key, by = join_by(PSTL_CODE == state)) %>% 
-  select(fips = state_code, all_of(river_vars)) %>% 
+  select(fips = state_code, all_of(river_vars))
+get_str(river_dat)
+
+river_dat <- river_dat %>% 
   group_by(fips) %>% 
-  summarize(across(everything(), ~ mean(.x %in% c('Good', 'Fair')))) %>% 
+  # summarize(across(everything(), ~ mean(.x %in% c('Good', 'Fair')))) %>% 
+  summarize(
+    across(
+      everything(), 
+      ~ case_when(
+        .x == 'Good' ~ 3,
+        .x == 'Fair' ~ 2,
+        .x == 'Poor' ~ 1,
+        .default = NA
+      ) %>% mean(na.rm = TRUE)
+    )
+  ) %>% 
   pivot_longer(
     cols = !fips,
     values_to = 'value',
@@ -358,7 +379,6 @@ results$rivers <- river_dat
 
 get_str(results$rivers)
 
-
 metas$rivers <- rivers_meta %>%
   filter(COLUMN_NAME %in% unique(results$rivers$variable_name)) %>% 
   rename(variable_name = COLUMN_NAME, metric = LABEL) %>% 
@@ -366,13 +386,13 @@ metas$rivers <- rivers_meta %>%
     variable_name = paste0('rivers', snakecase::to_upper_camel_case(variable_name)),
     definition = case_when(
       str_detect(LEGAL_VALUES, 'Benchmark') ~ 'Qualitative ratings (Above Benchmark, At or Below Benchmark) recoded to (1, 0) and averaged by state',
-      .default = 'Qualitative ratings recoded to 1 (Good, Fair) and 0 (Poor) and averaged by state'
+      .default = 'Qualitative ratings recoded to 3 (Good), 2 (Fair), and 1 (Poor) and averaged by state'
     ),
     axis_name = variable_name,
     dimension = "environment",
-    index = 'water quality',
-    indicator = 'quantity / quality of surface and shallow subsurface water',
-    units = 'proportion',
+    index = 'water',
+    indicator = 'quality',
+    units = 'index',
     scope = 'national',
     resolution = 'state',
     year = '2019',
@@ -381,7 +401,7 @@ metas$rivers <- rivers_meta %>%
     source = 'U.S. Environmental Protection Agency, National Aquatic Resource Surveys, 2022',
     url = 'https://www.epa.gov/national-aquatic-resource-surveys/data-national-aquatic-resource-surveys'
   ) %>% 
-  add_citation(access_date = '2024-11-14') %>% 
+  meta_citation(date = '2024-11-14') %>% 
   select(-LEGAL_VALUES)
 
 metas$rivers
@@ -397,239 +417,241 @@ results$rivers <- results$rivers %>%
 ## Secretary ---------------------------------------------------------------
 
 
-# Secretary of Ag disaster declarations - load all
-paths <- list.files(
-  '1_raw/usda/fsa/disaster_declarations/sec/',
-  full.names = TRUE
-)
-ag_raw <- map(paths, read_excel)
-  
+# NOTE: taking this out for now - replacing with indemnities data hopefully
 
-# Select cols 1, 5, and last, filter by fips to NE, combine all years
-# Note that we are not keeping info on what kind of events they are. May regret
-ag_all <- map(ag_raw, ~ {
-  .x %>% 
-    select(1, 5, contains('YEAR')) %>% 
-    setNames(c('fips', 'des', 'year')) %>% 
-    mutate(
-      across(everything(), as.character),
-      year = ifelse(year == '2011, 2012', '2012', year)
-    ) 
-}) %>% 
-  bind_rows()
-get_str(ag_all)
-
-
-# Want variables by county, state, whole system
-# county first - number of unique events in each year
-ag_county <- ag_all %>% 
-  filter(fips %in% fips_key$fips) %>% 
-  group_by(fips, year) %>% 
-  summarize(n_des = length(unique(des))) %>% 
-  arrange(fips)
-get_str(ag_county)
-
-# Get grid of all possibilities of counties and years - make sure no missing
-old_fips <- fips_key %>% 
-  filter_fips('old') %>% 
-  pull(fips)
-all_years <- c(2012:2020, 2022:2023)
-grid <- expand.grid(fips = old_fips, year = all_years) %>% 
-  mutate(across(everything(), as.character))
-
-# Join back to grid, turn NA into 0
-ag_county <- left_join(grid, ag_county) %>% 
-  mutate(across(everything(), ~ ifelse(is.na(.x), '0', .x)))
-get_str(ag_county)
-
-# Arrange like a regular variable
-ag_county <- ag_county %>% 
-  rename(nFsaSecDisasters = n_des) %>% 
-  pivot_longer(
-    cols = nFsaSecDisasters,
-    values_to = 'value',
-    names_to = 'variable_name'
-  )
-get_str(ag_county)
-
-# Save it
-results$fsa_sec <- ag_county
-
-
-
+# # Secretary of Ag disaster declarations - load all
+# paths <- list.files(
+#   '1_raw/usda/fsa/disaster_declarations/sec/',
+#   full.names = TRUE
+# )
+# ag_raw <- map(paths, read_excel)
+#   
+# 
+# # Select cols 1, 5, and last, filter by fips to NE, combine all years
+# # Note that we are not keeping info on what kind of events they are. May regret
+# ag_all <- map(ag_raw, ~ {
+#   .x %>% 
+#     select(1, 5, contains('YEAR')) %>% 
+#     setNames(c('fips', 'des', 'year')) %>% 
+#     mutate(
+#       across(everything(), as.character),
+#       year = ifelse(year == '2011, 2012', '2012', year)
+#     ) 
+# }) %>% 
+#   bind_rows()
+# get_str(ag_all)
+# 
+# 
+# # Want variables by county, state, whole system
+# # county first - number of unique events in each year
+# ag_county <- ag_all %>% 
+#   filter(fips %in% fips_key$fips) %>% 
+#   group_by(fips, year) %>% 
+#   summarize(n_des = length(unique(des))) %>% 
+#   arrange(fips)
+# get_str(ag_county)
+# 
+# # Get grid of all possibilities of counties and years - make sure no missing
+# old_fips <- fips_key %>% 
+#   filter_fips('old') %>% 
+#   pull(fips)
+# all_years <- c(2012:2020, 2022:2023)
+# grid <- expand.grid(fips = old_fips, year = all_years) %>% 
+#   mutate(across(everything(), as.character))
+# 
+# # Join back to grid, turn NA into 0
+# ag_county <- left_join(grid, ag_county) %>% 
+#   mutate(across(everything(), ~ ifelse(is.na(.x), '0', .x)))
+# get_str(ag_county)
+# 
+# # Arrange like a regular variable
+# ag_county <- ag_county %>% 
+#   rename(nFsaSecDisasters = n_des) %>% 
+#   pivot_longer(
+#     cols = nFsaSecDisasters,
+#     values_to = 'value',
+#     names_to = 'variable_name'
+#   )
+# get_str(ag_county)
+# 
+# # Save it
+# results$fsa_sec <- ag_county
+# 
+# 
+# 
 ### State -------------------------------------------------------------------
-
-
-# Different metric for state, because data only exists at county level
-# For state, do proportion of area of state that had a declaration per year
-# So we need to combine all the counties per state per year, get area, then
-# divide by total area in that state
-get_str(ag_all)
-get_str(areas)
-
-# Get unique counties with a declaration in each year
-by_state_year <- ag_all %>% 
-  mutate(state_fips = str_sub(fips, end = 2)) %>% 
-  group_by(state_fips, year) %>% 
-  distinct(fips) %>% 
-  ungroup()
-get_str(by_state_year)
-
-# Now add areas, get total affected per state per year
-area_per_state <- by_state_year %>% 
-  left_join(select(areas, fips, area_sqkm)) %>% 
-  group_by(state_fips, year) %>% 
-  summarize(area_affected = sum(area_sqkm))
-get_str(area_per_state)
-
-# Add area of each state, and get proportion affected
-prop_by_state <- area_per_state %>% 
-  left_join(
-    select(areas, fips, total_area = area_sqkm), 
-    by = join_by(state_fips == fips)
-  ) %>% 
-  mutate(
-    propAreaFsaSecDisasters = (area_affected / total_area) %>% 
-      ifelse(is.na(.), 0, .) %>% 
-      round(3) %>% 
-      format(nsmall = 3),
-    .keep = 'unused'
-  )
-get_str(prop_by_state)
-
-# Clean it up into long format
-prop_area_fsa_sec <- prop_by_state %>% 
-  rename(fips = state_fips) %>% 
-  pivot_longer(
-    cols = propAreaFsaSecDisasters,
-    values_to = 'value',
-    names_to = 'variable_name'
-  )
-get_str(prop_area_fsa_sec)
-
-# Save this to results
-results$prop_area_fsa_sec <- prop_area_fsa_sec
-
-
-
+# 
+# 
+# # Different metric for state, because data only exists at county level
+# # For state, do proportion of area of state that had a declaration per year
+# # So we need to combine all the counties per state per year, get area, then
+# # divide by total area in that state
+# get_str(ag_all)
+# get_str(areas)
+# 
+# # Get unique counties with a declaration in each year
+# by_state_year <- ag_all %>% 
+#   mutate(state_fips = str_sub(fips, end = 2)) %>% 
+#   group_by(state_fips, year) %>% 
+#   distinct(fips) %>% 
+#   ungroup()
+# get_str(by_state_year)
+# 
+# # Now add areas, get total affected per state per year
+# area_per_state <- by_state_year %>% 
+#   left_join(select(areas, fips, area_sqkm)) %>% 
+#   group_by(state_fips, year) %>% 
+#   summarize(area_affected = sum(area_sqkm))
+# get_str(area_per_state)
+# 
+# # Add area of each state, and get proportion affected
+# prop_by_state <- area_per_state %>% 
+#   left_join(
+#     select(areas, fips, total_area = area_sqkm), 
+#     by = join_by(state_fips == fips)
+#   ) %>% 
+#   mutate(
+#     propAreaFsaSecDisasters = (area_affected / total_area) %>% 
+#       ifelse(is.na(.), 0, .) %>% 
+#       round(3) %>% 
+#       format(nsmall = 3),
+#     .keep = 'unused'
+#   )
+# get_str(prop_by_state)
+# 
+# # Clean it up into long format
+# prop_area_fsa_sec <- prop_by_state %>% 
+#   rename(fips = state_fips) %>% 
+#   pivot_longer(
+#     cols = propAreaFsaSecDisasters,
+#     values_to = 'value',
+#     names_to = 'variable_name'
+#   )
+# get_str(prop_area_fsa_sec)
+# 
+# # Save this to results
+# results$prop_area_fsa_sec <- prop_area_fsa_sec
+# 
+# 
+# 
 ## Presidential ------------------------------------------------------------
-
-
-# Presidential disaster declarations
-paths <- list.files(
-  '1_raw/usda/fsa/disaster_declarations/pres/',
-  full.names = TRUE
-)
-pres_raw <- map(paths, read_excel)
-map(pres_raw, get_str)  
-# Select cols 1, 5, and last, filter by fips to NE, combine all years
-# Note that we are not keeping info on what kind of events they are. May regret
-pres <- map(pres_raw, ~ {
-  .x %>% 
-    select(1, 5, contains('YEAR')) %>% 
-    setNames(c('fips', 'des', 'year')) %>% 
-    mutate(
-      across(everything(), as.character)
-    ) %>% 
-    filter(fips %in% fips_key$fips)
-}) %>% 
-  bind_rows()
-get_str(pres)
-
-
-# Want variables by county, state, whole system
-# county first - number of unique events in each year
-pres_county <- pres %>% 
-  group_by(fips, year) %>% 
-  summarize(n_des = length(unique(des))) %>% 
-  arrange(fips)
-get_str(pres_county)
-
-# Get grid of all possibilities of counties and years - make sure no missing
-old_fips <- fips_key %>% 
-  filter_fips('old') %>% 
-  pull(fips)
-all_years <- c(2017:2020, 2023)
-grid <- expand.grid(fips = old_fips, year = all_years) %>% 
-  mutate(across(everything(), as.character))
-
-# Join back to grid, turn NA into 0
-pres_county <- left_join(grid, pres_county) %>% 
-  mutate(across(everything(), ~ ifelse(is.na(.x), '0', .x)))
-get_str(pres_county)
-
-# Arrange like a regular variable
-pres_county <- pres_county %>% 
-  rename(nFsaPresDisasters = n_des) %>% 
-  pivot_longer(
-    cols = nFsaPresDisasters,
-    values_to = 'value',
-    names_to = 'variable_name'
-  ) %>% 
-  arrange(year)
-get_str(pres_county)
-
-# Save
-results$fsa_pres <- pres_county
-
-
-
+# 
+# 
+# # Presidential disaster declarations
+# paths <- list.files(
+#   '1_raw/usda/fsa/disaster_declarations/pres/',
+#   full.names = TRUE
+# )
+# pres_raw <- map(paths, read_excel)
+# map(pres_raw, get_str)  
+# # Select cols 1, 5, and last, filter by fips to NE, combine all years
+# # Note that we are not keeping info on what kind of events they are. May regret
+# pres <- map(pres_raw, ~ {
+#   .x %>% 
+#     select(1, 5, contains('YEAR')) %>% 
+#     setNames(c('fips', 'des', 'year')) %>% 
+#     mutate(
+#       across(everything(), as.character)
+#     ) %>% 
+#     filter(fips %in% fips_key$fips)
+# }) %>% 
+#   bind_rows()
+# get_str(pres)
+# 
+# 
+# # Want variables by county, state, whole system
+# # county first - number of unique events in each year
+# pres_county <- pres %>% 
+#   group_by(fips, year) %>% 
+#   summarize(n_des = length(unique(des))) %>% 
+#   arrange(fips)
+# get_str(pres_county)
+# 
+# # Get grid of all possibilities of counties and years - make sure no missing
+# old_fips <- fips_key %>% 
+#   filter_fips('old') %>% 
+#   pull(fips)
+# all_years <- c(2017:2020, 2023)
+# grid <- expand.grid(fips = old_fips, year = all_years) %>% 
+#   mutate(across(everything(), as.character))
+# 
+# # Join back to grid, turn NA into 0
+# pres_county <- left_join(grid, pres_county) %>% 
+#   mutate(across(everything(), ~ ifelse(is.na(.x), '0', .x)))
+# get_str(pres_county)
+# 
+# # Arrange like a regular variable
+# pres_county <- pres_county %>% 
+#   rename(nFsaPresDisasters = n_des) %>% 
+#   pivot_longer(
+#     cols = nFsaPresDisasters,
+#     values_to = 'value',
+#     names_to = 'variable_name'
+#   ) %>% 
+#   arrange(year)
+# get_str(pres_county)
+# 
+# # Save
+# results$fsa_pres <- pres_county
+# 
+# 
+# 
 ## Metadata ----------------------------------------------------------------
-
-
-names(results)
-results$fsa_pres$variable_name %>% unique
-results$fsa_sec$variable_name %>% unique
-results$fsa_sec$variable_name %>% unique
-
-check <- bind_rows(
-  results$fsa_pres, 
-  results$fsa_sec, 
-  results$prop_area_fsa_sec
-)
-get_vars(check)
-
-metas$fsa <- data.frame(
-  variable_name = get_vars(check),
-  metric = c(
-    'Number of FSA presidential disaster declarations',
-    'Number of FSA Agriculture Secretary disaster declarations',
-    'Proportion of area affected by FSA Agriculture Secretary disaster declaration'
-  ),
-  definition = c(
-    'Number of unique Presidential major disaster declarations. Used to trigger eligibility for emergency loans and FSA disaster assistance programs.',
-    'Number of unique disaster declarations made by the Secretary of Agriculture. Used to trigger eligibility for emergency loans and FSA disaster assistance programs.',
-    paste(
-      'Proportion of area within a state affected by FSA Agriculture Secretary disaster declarations.',
-      'Declarations are made at the county level, so the area of each county affected is summed and divided by the area of the state.'
-    )
-  ),
-  axis_name = c(
-    'FSA Pres. Disasters',
-    'FSA Sec. Disasters',
-    'Prop Area FSA Sec. Disasters'
-  ),
-  dimension = "environment",
-  index = 'water stability',
-  indicator = 'days / events of extremes',
-  units = c(
-    rep('count', 2),
-    'proportion'
-  ),
-  scope = 'national',
-  resolution = c(
-    rep('county', 2),
-    'state'
-  ),
-  year = get_all_years(check),
-  latest_year = get_max_year(check),
-  updates = "annual",
-  source = 'U.S. Department of Agriculture, Farm Service Agency Disaster Assistance',
-  url = 'https://www.fsa.usda.gov/resources/disaster-assistance-program/disaster-designation-information'
-) %>% 
-  add_citation('December 11, 2024')
-
-metas$fsa
+# 
+# 
+# names(results)
+# results$fsa_pres$variable_name %>% unique
+# results$fsa_sec$variable_name %>% unique
+# results$fsa_sec$variable_name %>% unique
+# 
+# check <- bind_rows(
+#   results$fsa_pres, 
+#   results$fsa_sec, 
+#   results$prop_area_fsa_sec
+# )
+# meta_vars(check)
+# 
+# metas$fsa <- data.frame(
+#   variable_name = meta_vars(check),
+#   metric = c(
+#     'Number of FSA presidential disaster declarations',
+#     'Number of FSA Agriculture Secretary disaster declarations',
+#     'Proportion of area affected by FSA Agriculture Secretary disaster declaration'
+#   ),
+#   definition = c(
+#     'Number of unique Presidential major disaster declarations. Used to trigger eligibility for emergency loans and FSA disaster assistance programs.',
+#     'Number of unique disaster declarations made by the Secretary of Agriculture. Used to trigger eligibility for emergency loans and FSA disaster assistance programs.',
+#     paste(
+#       'Proportion of area within a state affected by FSA Agriculture Secretary disaster declarations.',
+#       'Declarations are made at the county level, so the area of each county affected is summed and divided by the area of the state.'
+#     )
+#   ),
+#   axis_name = c(
+#     'FSA Pres. Disasters',
+#     'FSA Sec. Disasters',
+#     'Prop Area FSA Sec. Disasters'
+#   ),
+#   dimension = "environment",
+#   index = 'water stability',
+#   indicator = 'days / events of extremes',
+#   units = c(
+#     rep('count', 2),
+#     'proportion'
+#   ),
+#   scope = 'national',
+#   resolution = c(
+#     rep('county', 2),
+#     'state'
+#   ),
+#   year = get_all_years(check),
+#   latest_year = get_max_year(check),
+#   updates = "annual",
+#   source = 'U.S. Department of Agriculture, Farm Service Agency Disaster Assistance',
+#   url = 'https://www.fsa.usda.gov/resources/disaster-assistance-program/disaster-designation-information'
+# ) %>% 
+#   add_citation('December 11, 2024')
+# 
+# metas$fsa
 
 
 
@@ -642,6 +664,10 @@ metas$fsa
 
 # Load national summary data. Need specific pages for the data we want
 # Have to do these manually to get right cells. Unfortunate
+
+# NOTE: Can get zip code level data if we go to individual response files.
+# Trouble is format and variables are different each year - need to wrangle them
+# separately. Includes 2023, 2019, 2015, 2013
 path <- '1_raw/usda/f2s_census/ops-f2s-2023NationalStateDataWorkbook-120924.xlsx'
 census <- list()
 census$sfa_participation <- read_xlsx(
@@ -703,10 +729,10 @@ results$census <- census
 ## Metadata ----------------------------------------------------------------
 
 
-(vars <- get_vars(census))
+(vars <- meta_vars(census))
 
 metas$census <- data.frame(
-  variable_name = get_vars(census),
+  variable_name = meta_vars(census),
   metric = c(
     'SFAs serving culturally relevant food',
     'SFAs with Farm to School program',
@@ -736,13 +762,13 @@ metas$census <- data.frame(
   units = 'percentage',
   scope = 'national',
   resolution = 'state',
-  year = get_all_years(census),
-  latest_year = get_max_year(census),
+  year = meta_years(census),
+  latest_year = meta_latest_year(census),
   updates = "~ 4 years",
   source = 'U.S. Department of Agriculture Food and Nutrition Service Farm to School Program Census (2023).',
   url = 'https://farmtoschoolcensus.fns.usda.gov/census-results/census-data-explorer'
 ) %>% 
-  add_citation(access_date = '2024-12-18')
+  meta_citation(date = '2024-12-18')
   
 metas$census
 
@@ -751,177 +777,156 @@ metas$census
 # Happiness ---------------------------------------------------------------
 
 
-# World Population Review / WalletHub
-# https://worldpopulationreview.com/state-rankings/happiest-states
+# NOTE: taking this out for now, don't much trust it
 
-# Load state data from 2024
-happy <- read_csv('1_raw/world_pop_review/world_pop_review_happiness_scores.csv')
-get_str(happy)
-
-# Add fips and fix names
-happy_df <- state_key %>% 
-  select(state_name, state_code) %>% 
-  right_join(happy, by = join_by(state_name == state)) %>% 
-  select(-state_name) %>% 
-  setNames(c('fips', 'happinessScore', 'wellbeingRank', 'communityEnvRank', 'workEnvRank')) %>% 
-  mutate(year = 2024)
-get_str(happy_df)
-
-# Pivot longer to format for metrics data
-happy_df <- happy_df %>% 
-  pivot_longer(
-    cols = happinessScore:workEnvRank,
-    values_to = 'value',
-    names_to = 'variable_name'
-  )
-get_str(happy_df)
-
-# Save it
-results$happiness <- happy_df
+# # World Population Review / WalletHub
+# # https://worldpopulationreview.com/state-rankings/happiest-states
+# 
+# # Load state data from 2024
+# happy <- read_csv('1_raw/world_pop_review/world_pop_review_happiness_scores.csv')
+# get_str(happy)
+# 
+# # Add fips and fix names
+# happy_df <- state_key %>% 
+#   select(state_name, state_code) %>% 
+#   right_join(happy, by = join_by(state_name == state)) %>% 
+#   select(-state_name) %>% 
+#   setNames(c('fips', 'happinessScore', 'wellbeingRank', 'communityEnvRank', 'workEnvRank')) %>% 
+#   mutate(year = 2024)
+# get_str(happy_df)
+# 
+# # Pivot longer to format for metrics data
+# happy_df <- happy_df %>% 
+#   pivot_longer(
+#     cols = happinessScore:workEnvRank,
+#     values_to = 'value',
+#     names_to = 'variable_name'
+#   )
+# get_str(happy_df)
+# 
+# # Save it
+# results$happiness <- happy_df
 
 
 
 ## Metadata ----------------------------------------------------------------
 
 
-(vars <- get_vars(happy_df))
-
-metas$happiness <- data.frame(
-  variable_name = get_vars(happy_df),
-  metric = c(
-    'Community and Environment Rank',
-    'Total Happiness Score',
-    'Physical and Emotional Wellbeing Rank',
-    'Work Environment Rank'
-  ),
-  definition = c(
-    'Composite index that includes volunteer rate, ideal weather, average leisure time per day, separation and divorce rate, and safety.',
-    'Weighted average of Physical and Emotional Wellbeing rank, Community and Environment rank, and Work Environment rank.',
-    'Composite index that includes career wellbeing, physical health index, adverse childhood experiences, share of adult depression, social wellbeing, share of adults with alcohol use disorder, adequate sleep rate, sports participation rate, share of adults feeling active and productive, share of adults with poor mental health, life expectancy, suicide rate, and food insecurity rate',
-    'Composite index that includes number of work hours, commute time, share of households earning $75,000, share of adults with anxiety, unemployment rate, share of labor force unemployed 15 weeks or longer, underemployment rate, job security, share of work related stressed tweets, income growth rate, economic security, and median credit score.'
-  ),
-  axis_name = c(
-    'Community and Env Rank',
-    'Happiness Score',
-    'Wellbeing Rank',
-    'Work Environment Rank'
-  ),
-  dimension = 'health',
-  index = 'happiness',
-  indicator = 'happiness tbd',
-  units = c(
-    'rank',
-    'index',
-    rep('rank', 2)
-  ),
-  scope = 'national',
-  resolution = 'state',
-  year = get_all_years(happy_df),
-  latest_year = get_max_year(happy_df),
-  updates = "annual",
-  source = 'WalletHub Happiest States in America (2025)',
-  url = 'https://worldpopulationreview.com/state-rankings/happiest-states'
-) %>% 
-  add_citation(access_date = '2025-02-12')
-metas$happiness
+# (vars <- meta_vars(happy_df))
+# 
+# metas$happiness <- data.frame(
+#   variable_name = meta_vars(happy_df),
+#   metric = c(
+#     'Community and Environment Rank',
+#     'Total Happiness Score',
+#     'Physical and Emotional Wellbeing Rank',
+#     'Work Environment Rank'
+#   ),
+#   definition = c(
+#     'Composite index that includes volunteer rate, ideal weather, average leisure time per day, separation and divorce rate, and safety.',
+#     'Weighted average of Physical and Emotional Wellbeing rank, Community and Environment rank, and Work Environment rank.',
+#     'Composite index that includes career wellbeing, physical health index, adverse childhood experiences, share of adult depression, social wellbeing, share of adults with alcohol use disorder, adequate sleep rate, sports participation rate, share of adults feeling active and productive, share of adults with poor mental health, life expectancy, suicide rate, and food insecurity rate',
+#     'Composite index that includes number of work hours, commute time, share of households earning $75,000, share of adults with anxiety, unemployment rate, share of labor force unemployed 15 weeks or longer, underemployment rate, job security, share of work related stressed tweets, income growth rate, economic security, and median credit score.'
+#   ),
+#   axis_name = c(
+#     'Community and Env Rank',
+#     'Happiness Score',
+#     'Wellbeing Rank',
+#     'Work Environment Rank'
+#   ),
+#   dimension = 'health',
+#   index = 'happiness',
+#   indicator = 'happiness tbd',
+#   units = c(
+#     'rank',
+#     'index',
+#     rep('rank', 2)
+#   ),
+#   scope = 'national',
+#   resolution = 'state',
+#   year = meta_years(happy_df),
+#   latest_year = meta_latest_year(happy_df),
+#   updates = "annual",
+#   source = 'WalletHub Happiest States in America (2025)',
+#   url = 'https://worldpopulationreview.com/state-rankings/happiest-states'
+# ) %>% 
+#   add_citation(date = '2025-02-12')
+# metas$happiness
 
 
 
 # BEA GDP -----------------------------------------------------------------
 
 
-# Bureau of Economic Analysis, SAGDP - Annual GDP by State
-# Also has breakdowns by industry codes
-# ALL AREAS files are consolidated
-# SAGDP_1 is chained 2017 dollars (we want this)
-# https://apps.bea.gov/regional/downloadzip.htm
+# Load API outs
+out <- readRDS('5_objects/api_outs/bea_county_gdp.rds')
+get_str(out, 3)
+map(out, ~ .x$Statistic)
+map(out, ~ get_str(.x$Data))
 
-bea_raw <- read_csv('1_raw/bea/SAGDP/SAGDP1__ALL_AREAS_1997_2023.csv') %>% 
-  janitor::clean_names()
-get_str(bea_raw)
-
-# Reduce to 5 digit state keys (and US 00000)
-# Also reduce to relevant columns
-get_str(state_key)
-bea <- bea_raw %>% 
-  filter(geo_fips %in% c(state_key$full_state_code, '00000')) %>% 
-  select(
-    fips = geo_fips,
-    definition = description,
-    units = unit,
-    starts_with('x')
-  )
-get_str(bea)  
-
-# Reduce to relevant variables: current dollar GDP, real GDP (chained 2017)
-gdp <- bea %>% 
-  filter(str_detect(definition, '^Real GDP|Current-dollar GDP')) %>% 
-  mutate(
-    definition = str_remove(definition, '1/'),
-    variable_name = case_when(
-      str_detect(definition, 'Real GDP') ~ 'gdpRealChained',
-      str_detect(definition, 'Current-dollar') ~ 'gdpCurrent',
-      .default = NA
-    )
-  )
-get_str(gdp)  
-get_table(gdp$definition)  
-get_table(gdp$units)  
+# Add the Statistic (variable name) to each DF, pull selected vars, and combine
+dat <- map(out, ~ {
   
-# Pull this out into a df for metadata only (just take units and definition)
-gdp_meta <- gdp %>% 
-  select(variable_name, units, definition) %>% 
-  unique()
-gdp_meta
-# Use this later for seeding metadata
+  # Set variable names based on given Statistic
+  if (str_detect(.x$Statistic, 'Agriculture')) {
+    var <- 'gdpFromAg'
+  } else {
+    var <- 'gdp'
+  }
+  
+  # Select relevant columns, add variable name from Statistic
+  .x$Data %>% 
+    select(
+      fips = GeoFips,
+      year = TimePeriod,
+      value = DataValue,
+      matches('NoteRef')
+    ) %>% 
+    mutate(variable_name = var)
+}) %>% 
+  bind_rows()
+get_str(dat)
 
-# Now continue with metrics df. Pivot longer and fix year names
-get_str(gdp)
-gdp_df <- gdp %>% 
-  select(-units, -definition) %>% 
-  mutate(fips = str_sub(fips, end = 2)) %>% 
-  pivot_longer(
-    cols = starts_with('x'),
-    values_to = 'value',
-    names_to = 'year'
-  ) %>% 
-  mutate(
-    year = str_remove(year, 'x'),
-    across(everything(), as.character)
-  )
-get_str(gdp_df)
+# If NoteRef is D, value should be missing instead of 0
+# We will just remove them rather than making them NA
+dat <- dat %>% 
+  filter(is.na(NoteRef)) %>% 
+  select(-NoteRef)
+get_str(dat)
 
-# Save to results
-results$gdp <- gdp_df
+results$gdp <- dat
 
 
 
 ## Metadata ----------------------------------------------------------------
 
 
-gdp_meta
+get_str(results$gdp)
+meta_vars(results$gdp)
 
-metas$gdp <- gdp_meta %>% 
-  arrange(variable_name) %>% 
-  mutate(
-    metric = definition,
-    definition = c(
-      'Real GDP is in millions of chained 2017 dollars. Calculations are performed on unrounded data.',
-      'Chained (2017) dollar series are calculated as the product of the chain-type quantity index and the 2017 current-dollar value of the corresponding series, divided by 100. Because the formula for the chain-type quantity indexes uses weights of more than one period, the corresponding chained-dollar estimates are usually not additive.'
-    ),
-    axis_name = c('GDP Real (Millions)', 'GDP Chained (Millions)'),
-    dimension = 'utilities',
-    index = 'utilities_index',
-    indicator = 'utilities_indicator',
-    scope = 'national',
-    resolution = 'state',
-    year = get_all_years(gdp_df),
-    latest_year = get_max_year(gdp_df),
-    updates = "annual",
-    source = 'U.S. Department of Commerce, Bureau of Economic Analysis (2024). Regional Economic Accounts.',
-    url = 'https://apps.bea.gov/regional/downloadzip.htm'
-  ) %>% 
-  add_citation(access_date = '2025-02-24')
+metas$gdp <- data.frame(
+  variable_name = meta_vars(results$gdp),
+  metric = c(
+    'Gross Domestic Product',
+    'Gross Domestic Product from Agriculture'
+  ),
+  definition = c(
+    'Gross Domestic Product: All industry total',
+    'Gross Domestic Product: Agriculture, forestry, fishing and hunting'
+  ),
+  dimension = 'util_dimension',
+  index = 'util_index',
+  indicator = 'util_indicator',
+  axis_name = c('GDP', 'GDP from Ag'),
+  scope = 'national',
+  resolution = 'county',
+  year = meta_years(results$gdp),
+  latest_year = meta_latest_year(results$gdp),
+  updates = "annual",
+  source = 'U.S. Bureau of Economic Analysis (2025). CAGDP2 Gross domestic product (GDP) by county and metropolitan area',
+  url = 'https://www.bea.gov/'
+) %>% 
+  meta_citation(date = '2025-07-04')
 metas$gdp
 
 
@@ -929,139 +934,139 @@ metas$gdp
 # FDA ---------------------------------------------------------------------
 
 
-# Load API output
-out <- readRDS('5_objects/api_outs/fda_recalls_ne_2019_2024.rds')
-get_str(out)
-get_str(out$results)
-
-# Make sure we are in US and it is food. Then select relevant columns
-# Note that we can pull it by zip code and by state, but we will need unique id
-dat <- out$results %>% 
-  filter(country == 'United States', product_type == 'Food') %>% 
-  select(
-    state, 
-    postal_code, 
-    recall_number, 
-    date = recall_initiation_date
-  ) %>% 
-  mutate(
-    zip = str_sub(postal_code, end = 5), 
-    year = str_sub(date, end = 4),
-    .keep = 'unused'
-  )
-get_str(dat)
-
-# Swap out state for fips key
-dat <- fips_key %>% 
-  select(fips, state_code) %>% 
-  right_join(dat, by = join_by(state_code == state)) %>% 
-  select(-state_code)
-get_str(dat)
-
-# Here is where we split if we want to keep zip code
-zip_level <- dat %>% 
-  select(-fips) %>% 
-  group_by(zip, year) %>% 
-  summarize(nFoodRecallsZip = n()) %>% 
-  pivot_longer(
-    cols = nFoodRecallsZip,
-    values_to = 'value',
-    names_to = 'variable_name'
-  )
-get_str(zip_level)
-
-# Save it
-results$food_recall_zip <- zip_level
-
-# Now aggregate at state level
-state_level <- dat %>% 
-  select(-zip) %>% 
-  group_by(fips, year) %>% 
-  summarize(nFoodRecallsState = n()) %>% 
-  pivot_longer(
-    cols = nFoodRecallsState,
-    values_to = 'value',
-    names_to = 'variable_name'
-  )
-get_str(state_level)
-
-# Save it
-results$food_recall_state <- state_level
-
-# Let's just do all of new england while we're at it
-ne_level <- dat %>% 
-  select(-zip, -fips) %>% 
-  group_by(year) %>% 
-  summarize(nFoodRecallsNE = n()) %>% 
-  pivot_longer(
-    cols = nFoodRecallsNE,
-    values_to = 'value',
-    names_to = 'variable_name'
-  )
-get_str(ne_level)
-
-# Save it
-results$food_recall_ne <- ne_level
+# # Load API output
+# out <- readRDS('5_objects/api_outs/fda_recalls_ne_2019_2024.rds')
+# get_str(out)
+# get_str(out$results)
+# 
+# # Make sure we are in US and it is food. Then select relevant columns
+# # Note that we can pull it by zip code and by state, but we will need unique id
+# dat <- out$results %>% 
+#   filter(country == 'United States', product_type == 'Food') %>% 
+#   select(
+#     state, 
+#     postal_code, 
+#     recall_number, 
+#     date = recall_initiation_date
+#   ) %>% 
+#   mutate(
+#     zip = str_sub(postal_code, end = 5), 
+#     year = str_sub(date, end = 4),
+#     .keep = 'unused'
+#   )
+# get_str(dat)
+# 
+# # Swap out state for fips key
+# dat <- fips_key %>% 
+#   select(fips, state_code) %>% 
+#   right_join(dat, by = join_by(state_code == state)) %>% 
+#   select(-state_code)
+# get_str(dat)
+# 
+# # Here is where we split if we want to keep zip code
+# zip_level <- dat %>% 
+#   select(-fips) %>% 
+#   group_by(zip, year) %>% 
+#   summarize(nFoodRecallsZip = n()) %>% 
+#   pivot_longer(
+#     cols = nFoodRecallsZip,
+#     values_to = 'value',
+#     names_to = 'variable_name'
+#   )
+# get_str(zip_level)
+# 
+# # Save it
+# results$food_recall_zip <- zip_level
+# 
+# # Now aggregate at state level
+# state_level <- dat %>% 
+#   select(-zip) %>% 
+#   group_by(fips, year) %>% 
+#   summarize(nFoodRecallsState = n()) %>% 
+#   pivot_longer(
+#     cols = nFoodRecallsState,
+#     values_to = 'value',
+#     names_to = 'variable_name'
+#   )
+# get_str(state_level)
+# 
+# # Save it
+# results$food_recall_state <- state_level
+# 
+# # Let's just do all of new england while we're at it
+# ne_level <- dat %>% 
+#   select(-zip, -fips) %>% 
+#   group_by(year) %>% 
+#   summarize(nFoodRecallsNE = n()) %>% 
+#   pivot_longer(
+#     cols = nFoodRecallsNE,
+#     values_to = 'value',
+#     names_to = 'variable_name'
+#   )
+# get_str(ne_level)
+# 
+# # Save it
+# results$food_recall_ne <- ne_level
 
 
 
 ## Metadata ----------------------------------------------------------------
 
 
-# Check vars
-vars <- map_chr(results, ~ {
-  .x$variable_name %>% 
-    unique
-}) %>% 
-  sort
-vars
-
-all_years <- map_chr(results, ~ {
-  .x$year %>% 
-    unique %>% 
-    paste0(collapse = ', ')
-}) %>% 
-  sort
-
-latest_years <- map_chr(results, ~ {
-  .x$year %>%
-    unique() %>% 
-    str_split(', ') %>% 
-    as.character() %>% 
-    max()
-}) %>% 
-  unname()
-
-metas$unemp <- data.frame(
-  variable_name = vars,
-  dimension = 'production',
-  index = 'product quality',
-  indicator = 'product safety (not livestock)',
-  axis_name = c(
-    'Food Recalls, New England',
-    'Food Recalls by State',
-    'Food Recalls by ZIP'
-  ),
-  metric = 'FDA food recalls',
-  definition = rep('Number of food recall enforcement reports documented in the FDA Recall Enterprise System', 3),
-  units = 'count',
-  annotation = NA,
-  scope = 'national',
-  resolution = c(
-    'New England',
-    'state',
-    'ZIP code'
-  ),
-  year = all_years,
-  latest_year = latest_years,
-  updates = 'weekly',
-  warehouse = FALSE,
-  source = 'U.S. Food and Drug Administration, Recall Enterprise System (2024)',
-  url = 'https://open.fda.gov/apis/food/enforcement/'
-) %>% 
-  add_citation(access_date = '2024-12-16')
-
-get_str(metas$unemp)
+# # Check vars
+# vars <- map_chr(results, ~ {
+#   .x$variable_name %>% 
+#     unique
+# }) %>% 
+#   sort
+# vars
+# 
+# all_years <- map_chr(results, ~ {
+#   .x$year %>% 
+#     unique %>% 
+#     paste0(collapse = ', ')
+# }) %>% 
+#   sort
+# 
+# latest_years <- map_chr(results, ~ {
+#   .x$year %>%
+#     unique() %>% 
+#     str_split(', ') %>% 
+#     as.character() %>% 
+#     max()
+# }) %>% 
+#   unname()
+# 
+# metas$unemp <- data.frame(
+#   variable_name = vars,
+#   dimension = 'production',
+#   index = 'product quality',
+#   indicator = 'product safety (not livestock)',
+#   axis_name = c(
+#     'Food Recalls, New England',
+#     'Food Recalls by State',
+#     'Food Recalls by ZIP'
+#   ),
+#   metric = 'FDA food recalls',
+#   definition = rep('Number of food recall enforcement reports documented in the FDA Recall Enterprise System', 3),
+#   units = 'count',
+#   annotation = NA,
+#   scope = 'national',
+#   resolution = c(
+#     'New England',
+#     'state',
+#     'ZIP code'
+#   ),
+#   year = all_years,
+#   latest_year = latest_years,
+#   updates = 'weekly',
+#   warehouse = FALSE,
+#   source = 'U.S. Food and Drug Administration, Recall Enterprise System (2024)',
+#   url = 'https://open.fda.gov/apis/food/enforcement/'
+# ) %>% 
+#   meta_citation(date = '2024-12-16')
+# 
+# get_str(metas$unemp)
 
 
 
@@ -1069,50 +1074,57 @@ get_str(metas$unemp)
 ## Non-Consecutive Drought -------------------------------------------------
 
 
-# Pull drought monitor data that was just saved
-dm <- readRDS('5_objects/api_outs/usdm_weeks_drought_2019_2023.rds')
+# Pull drought monitor data from API
+dm <- readRDS('5_objects/api_outs/usdm_weeks_drought_counties_2000_2023.rds')
 get_str(dm)
-# Looks like no data for 2019 or 2023?
+get_str(dm, 3)
+get_str(dm[[1]])
 
-# Remove those years
-dm <- dm[!names(dm) %in% c('y2019', 'y2023')]
+# Drop years with no counties having any droughts at this severity
+dm <- dm %>% 
+  keep(~ any(map_lgl(.x, ~ any(map_lgl(.x, is.data.frame)))))
+get_str(dm, 3)
 get_str(dm, 4)
 
-# Combine DFs
+# Combine DFs. Make separate variables for cat 2, 3, and 4 droughts
 usdm <- imap(dm, \(year, year_name) {
-  map(year, \(state) {
-    
+  out <- map(year, \(state) {
     not_null_dfs <- state %>% 
-      keep(\(x) length(x) > 0)
-    
-    len <- length(not_null_dfs)
-    if (len > 1) {
-      out <- reduce(not_null_dfs, full_join)
-    } else if (len == 1) {
-      out <- not_null_dfs[[1]]
+      keep(\(x) is.data.frame(x)) %>% 
+      imap(\(df, cat) {
+        cat_num <- str_sub(cat, start = 5)
+        df %>% 
+          setNames(c('fips', paste0('droughtNonConWeeksCat', cat_num)))
+      })
+    if (length(not_null_dfs) > 0) {
+      reduce(not_null_dfs, full_join, by = "fips")
     } else {
-      out <- NULL
+      NULL
     }
-    return(out)
-    
   }) %>% 
-    keep(\(x) length(x) > 0) %>% 
-    bind_rows() %>% 
-    mutate(year = str_remove(year_name, 'y'))
+    keep(\(x) !is.null(x))
+  
+  if (length(out) > 0) {
+    out %>% 
+      reduce(full_join) %>%
+      mutate(year = str_sub(year_name, start = 2))
+  } else {
+    NULL
+  }
+  
 }) %>% 
+  keep(~ !is.null(.x)) %>% 
   bind_rows()
+get_str(usdm, 3)
+
+# Make zeroes explicit
+usdm <- usdm %>% 
+  complete(fips, year) %>% 
+  mutate(across(starts_with('drought'), ~ ifelse(is.na(.x), 0, .x)))
 get_str(usdm)
 
-# Mutate so we can weeks at 2 or more, and weeks at 3 or more
-usdm[is.na(usdm)] <- 0
+# Pivot longer to format like rest of data
 usdm <- usdm %>% 
-  rename(
-    droughtWeeksSevere = cat_2_weeks,
-    droughtWeeksExtreme = cat_3_weeks
-  ) %>% 
-  mutate(
-    droughtWeeksSevere = rowSums(select(., starts_with('drought')))
-  ) %>% 
   pivot_longer(
     cols = starts_with('drought'),
     names_to = 'variable_name',
@@ -1120,46 +1132,38 @@ usdm <- usdm %>%
   )
 get_str(usdm)
 
-# Make sure that all zeroes are accounted for, even implicit
-grid <- expand.grid(
-  fips = fips_key$fips[str_length(fips_key$fips) == 5 & 
-                         str_detect(fips_key$fips, '^09\\d{2}0$', negate = TRUE)],
-  year = as.character(2020:2022),
-  variable_name = c('droughtWeeksSevere', 'droughtWeeksExtreme')
-)
-usdm_clean <- full_join(grid, usdm)
-usdm_clean[is.na(usdm_clean)] <- 0
-get_str(usdm_clean)
-
 # Save
-results$usdm <- usdm_clean
+results$usdm <- usdm
 
 
 
 ## Avg Perc Drought --------------------------------------------------------
 
 
+# NOTE: Don't plan on using this. It is state level. Leaving it here for now
+# though
+
 # We can just take 100 - none, which will give us percent in drought for each week
 # Then take average of every week, giving one value per year per state
 out <- readRDS('5_objects/api_outs/usdm_perc_area_drought_2020_2024.rds')
 get_str(out)
 perc_area_drought <- imap(out, ~ {
-  .x %>% 
+  .x %>%
     left_join(
-      select(state_key, state, state_code), 
+      select(state_key, state, state_code),
       by = join_by(stateAbbreviation == state)
-    ) %>% 
-    mutate(perc_drought = 100 - none) %>% 
-    select(fips = state_code, perc_drought) %>% 
-    group_by(fips) %>% 
-    summarize(droughtMeanPercArea = mean(perc_drought, na.rm = TRUE)) %>% 
-    mutate(year = str_sub(.y, start = 2)) %>% 
+    ) %>%
+    mutate(perc_drought = 100 - none) %>%
+    select(fips = state_code, perc_drought) %>%
+    group_by(fips) %>%
+    summarize(droughtMeanPercArea = mean(perc_drought, na.rm = TRUE)) %>%
+    mutate(year = str_sub(.y, start = 2)) %>%
     pivot_longer(
       cols = droughtMeanPercArea,
       names_to = 'variable_name',
       values_to = 'value'
     )
-}) %>% 
+}) %>%
   bind_rows()
 get_str(perc_area_drought)
 
@@ -1172,7 +1176,7 @@ get_str(results$usdm)
 ## Metadata ----------------------------------------------------------------
 
 
-vars <- get_vars(results$usdm)
+(vars <- meta_vars(results$usdm))
 
 metas$usdm <- data.frame(
   variable_name = vars,
@@ -1182,36 +1186,39 @@ metas$usdm <- data.frame(
   axis_name = c(
     'Mean % Area in Drought',
     'Weeks of Severe Drought',
-    'Weeks of Extreme Drought'
+    'Weeks of Extreme Drought',
+    'Weeks of Exceptional Drought'
   ),
   metric = c(
     'Mean percent area in drought',
     'Weeks of severe drought',
-    'Weeks of extreme drought'
+    'Weeks of extreme drought',
+    'Weeks of exceptional drought'
   ),
   definition = c(
     'Mean of weekly percentages of area that under a drought, as defined by the US Drought Monitor (below 20th percentile for most indicators)',
     'Weeks in the year in which there were severe droughts or worse, as defined by the US Drought Monitor (below 10th percentile for most indicators)',
-    'Weeks in the year in which there were extreme droughts or worse, as defined by the US Drought Monitor (below 5th percentile for most indicators)'
+    'Weeks in the year in which there were extreme droughts or worse, as defined by the US Drought Monitor (below 5th percentile for most indicators)',
+    'Weeks in the year in which there were exceptional droughts, as defined by the US Drought Monitor (below 2nd percentile for most indicators)'
   ),
   units = c(
     'percentage',
-    rep('count', 2)
+    rep('count', 3)
   ),
   annotation = NA,
   scope = 'national',
   resolution = c(
     'state',
-    rep('county', 2)
+    rep('county', 3)
   ),
-  year = get_all_years(results$usdm),
-  latest_year = get_max_year(results$usdm),
+  year = meta_years(results$usdm),
+  latest_year = meta_latest_year(results$usdm),
   updates = 'weekly',
   warehouse = FALSE,
   source = 'U.S. Department of Agriculture, U.S. Drought Monitor. (2024).',
   url = 'https://droughtmonitor.unl.edu/DmData/DataDownload.aspx'
 ) %>% 
-  add_citation(access_date = '2024-12-17')
+  meta_citation(date = '2025-07-04')
 
 get_str(metas$usdm)
 
@@ -1229,5 +1236,4 @@ check_n_records(out$result, out$meta, 'other')
 saveRDS(out$result, '5_objects/metrics/other.RDS')
 saveRDS(out$meta, '5_objects/metadata/other_meta.RDS')
 
-clear_data()
-gc()
+clear_data(gc = TRUE)

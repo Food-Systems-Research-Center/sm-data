@@ -4,10 +4,7 @@
 \alias{sm_export}
 \title{SM Export}
 \usage{
-sm_export(agg = TRUE)
-}
-\arguments{
-\item{agg}{If \code{TRUE}, run the aggregate script before exporting.}
+sm_export()
 }
 \value{
 Output data to "6_outputs/". "sm_data.rds" contains metrics, keys,

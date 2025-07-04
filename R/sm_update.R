@@ -1,8 +1,9 @@
 #' Update exported datasets
 #'
 #' Internal function that updates the .rda files exported by the package. This
-#' should come after using the `sm_aggregate()` and `sm_export()` functions
-#' which update the .rds files in the outputs folder.
+#' should come after using the `sm_export()` function which updates the .rds
+#' files in the outputs folder. Updates only the essentials from the spatial 
+#' data, including counties, states, and the mask for the Northeast region.
 #' 
 #' @importFrom purrr walk2
 #' @keywords internal

@@ -106,10 +106,6 @@ spatial_paths <- c(
 )
 walk(spatial_paths, ~ saveRDS(spatial, .x))
 
-# Also save a csv of metrics_df only for bulk downloads
-write_csv(out$metrics, '../SMdocs/data/bulk_metrics.csv')
-
-# Clear, memory, out message
-clear_data()
-gc()
+# Clear 
+clear_data(gc = TRUE)
 cat('\n*Exports complete*')

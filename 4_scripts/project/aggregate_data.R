@@ -10,12 +10,15 @@
 pacman::p_load(
   dplyr,
   purrr,
-  readr
+  readr,
+  sf,
+  stars,
+  stringr
 )
 
 # Load datasets
-dat <- read_all_rds('5_objects/metrics/')  
-get_str(dat)
+metrics <- read_all_rds('5_objects/metrics/')  
+get_str(metrics)
 
 # Load metadata
 meta <- read_all_rds('5_objects/metadata/')
@@ -23,63 +26,30 @@ get_str(meta)
 
 
 
-# Aggregate Metrics --------------------------------------------------------
+# Aggregate ---------------------------------------------------------------
+## Metrics -----------------------------------------------------------------
 
-
-map(dat, get_str)
 
 # Keep all the weird variables, cv percent, disclosure, value codes, margins
 # Just make sure year is numeric
-agg <- map(dat, ~ {
+metrics_agg <- map(dat, ~ {
   .x %>% 
     mutate(across(c(year, value), as.character)) %>% 
     select(-any_of(c('metric', 'county_name')))
   }) %>% 
   bind_rows() %>% 
   select(fips, year, variable_name, value)
-get_str(agg)
-
-# Explore
-agg$variable_name %>% 
-  unique %>% 
-  sort
-# Note that our variable count is fucked now that were have NAICS codes 
-
-# NOTE: we used to remove these, but now let's keep them in. Want them for 
-# income stability and 
-# agg <- agg %>% 
-#   filter(str_detect(
-#     variable_name,
-#     regex('NAICS|^lq|^avgEmpLvl', ignore_case = TRUE),
-#     negate = TRUE
-#   ))
+get_str(metrics_agg)
 
 
 
-# Metadata ----------------------------------------------------------------
+## Metadata ---------------------------------------------------------------
 
-
-get_str(meta)
-map(meta, get_str)
 
 # Combine them, warehouse is FALSE if not included
 meta_agg <- bind_rows(meta) %>% 
-  mutate(warehouse = ifelse(is.na(warehouse), FALSE, warehouse))
+  select(-any_of('warehouse'))
 get_str(meta_agg)
-
-# Also add latest year column 
-# Also convert '|' to commas and spaces
-meta_agg <- meta_agg %>% 
-  mutate(
-    year = str_replace_all(year, '\\|', ', '),
-    latest_year = map_chr(year, ~ {
-      .x %>% 
-        str_split_1(', ') %>% 
-        max()
-      })
-  )
-meta_agg$latest_year
-meta_agg$year
 
 # If there is no axis name, make it the variable_name
 meta_agg <- meta_agg %>% 
@@ -87,20 +57,132 @@ meta_agg <- meta_agg %>%
 
 
 
-# Check and save ----------------------------------------------------------
+## Check -------------------------------------------------------------------
 
 
 # Check to make sure we have the same number of metrics and metas
-try(check_n_records(agg, meta_agg, 'Aggregation'))
+try(check_n_records(metrics_agg, meta_agg, 'Aggregation'))
 
-# Save metrics as clean dataset for use in docs and app. Also csv
-saveRDS(agg, '2_clean/metrics.rds')
-write_csv(agg, '6_outputs/metrics.csv')
 
-# Save meta as clean set
-saveRDS(meta_agg, '2_clean/metadata.rds')
-write_csv(meta_agg, '6_outputs/metadata.csv')
+
+# Save CSV Files ----------------------------------------------------------
+
+
+# Save metrics and metadata as a zipped csv file for easy transport
+paths <- c('6_outputs/metrics.csv', '6_outputs/metadata.csv')
+write_csv(metrics_agg, paths[1])
+write_csv(meta_agg, paths[2])
+
+# Zip csv files together, remove original csvs
+zip(
+  zipfile = '6_outputs/metrics_and_metadata.zip', 
+  files = c(paths)
+)
+file.remove(paths)
+
+
+
+# Export sm_data ----------------------------------------------------------
+
+
+# Throwing together a heap of utility objects into a single object, sm_data.
+# Includes metrics, metadata, fips keys, state keys, etc.
+
+# Initiate list
+sm_data <- list()
+
+# Metrics and metadata table
+sm_data$metrics <- metrics_agg
+
+# Spatial objects and references
+sm_data$fips <- read_all_rds(path = '5_objects/', pattern = '_key.rds$|^all_fips')
+
+# Add trees for various iterations of framework. Would do well do remove 
+# unecessary versions at some point...
+# Also giving placeholders a unique value
+tree <- read.csv('2_clean/trees/refined_secondary_tree.csv')
+count <- sum(tree$metric == 'NONE')
+tree$metric[tree$metric == 'NONE'] <- paste0('NONE_', 1:count)
+sm_data$refined_tree <- tree
+
+# Add fixed refined tree with all the indicators
+fixed_tree <- read.csv('2_clean/trees/fixed_tree.csv')
+count <- sum(fixed_tree$metric == 'NONE')
+fixed_tree$metric[fixed_tree$metric == 'NONE'] <- paste0('NONE_', 1:count)
+sm_data$fixed_tree <- fixed_tree
+
+# Also add new tree (reducing metrics for RFPP and Frontiers)
+new_tree <- read.csv('2_clean/trees/new_tree.csv')
+count <- sum(new_tree$metric == 'NONE')
+new_tree$metric[new_tree$metric == 'NONE'] <- paste0('NONE_', 1:count)
+sm_data$new_tree <- new_tree
+
+# And conference tree...
+conference_tree <- read.csv('2_clean/trees/conference_tree.csv')
+count <- sum(conference_tree$metric == 'NONE')
+conference_tree$metric[conference_tree$metric == 'NONE'] <- paste0('NONE_', 1:count)
+sm_data$conf_tree <- conference_tree
+
+
+# Flatten into single layer list
+sm_data <- list_flatten(sm_data, name_spec = "{inner}")
+
+get_str(sm_data)
+names(sm_data)
+get_size(sm_data)
+
+# Paths to SMdocs and SMexplorer. Also keeping a copy in outputs
+sm_data_paths <- c(
+  '../SMdocs/data/sm_data.rds',
+  '../SMexplorer/dev/data/sm_data.rds',
+  '6_outputs/sm_data.rds'
+)
+walk(sm_data_paths, ~ saveRDS(sm_data, .x))
+
+
+
+# Export sm_spatial -------------------------------------------------------
+
+
+# Another RDS object for spatial files to be used in other projects. Note that
+# to hand off to python, we will need to add rasters and geopackages separately.
+
+# Start empty list
+spatial <- list()
+
+# Map layers - this is where rasters are transported if they are to be mapped
+# in Quarto
+spatial$spatial <- read_all_rds('2_clean/spatial/map_layers/', pattern = '.rds$')
+
+# County and state layers
+# NOTE: all counties files are over 100MB and cannot be easily pushed on GitHub
+# We are dropping these for now - don't actually use them yet.
+
+# (?i) is case insensitive
+spatial$counties_and_states <- read_all_rds(
+  '2_clean/spatial/',
+  pattern = '(?i)^neast_.*.rds|^all_states.*.rds'
+)
+
+# Flatten into single level list
+spatial <- list_flatten(spatial, name_spec = "{inner}")
+
+get_str(spatial)
+names(spatial)
+get_size(spatial)
+
+# Save spatial data in those places also
+spatial_paths <- c(
+  '../SMdocs/data/sm_spatial.rds',
+  '../SMexplorer/dev/data/sm_spatial.rds',
+  '6_outputs/sm_spatial.rds'
+)
+walk(spatial_paths, ~ saveRDS(spatial, .x))
+
+
+
+# End ---------------------------------------------------------------------
+
 
 clear_data(gc = TRUE)
-
-cat('\n*Aggregation complete*')
+cat('\n*Export complete*')
