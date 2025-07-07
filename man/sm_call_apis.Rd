@@ -10,6 +10,7 @@ sm_call_apis(
   census = FALSE,
   fda = FALSE,
   usdm = FALSE,
+  cdc = FALSE,
   all = FALSE
 )
 }
@@ -23,6 +24,8 @@ sm_call_apis(
 \item{fda}{}
 
 \item{usdm}{}
+
+\item{cdc}{}
 
 \item{all}{If \code{TRUE}, run all API scripts.}
 }

@@ -17,12 +17,6 @@ pacman::p_load(
   stringr
 )
 
-source('3_functions/metadata_utilities.R')
-
-# Load fips key to filter to NE counties
-fips_key <- readRDS('5_objects/fips_key.rds')
-state_key <- readRDS('5_objects/state_key.rds')
-
 # Initiate results and metas lists
 res <- list()
 metas <- list()
@@ -38,6 +32,7 @@ metas <- list()
 path <- '1_raw/county_health_rankings/national/2024_county_health_release_data_-_v1.xlsx'
 sheets <- excel_sheets(path)
 nat_raw <- read_xlsx(path, sheet = sheets[6], skip = 1)
+get_str(nat_raw)
 
 # Clean up names, removes states, filter to NE counties
 nat <- nat_raw %>% 
@@ -80,18 +75,6 @@ nat <- nat_raw %>%
   ) %>% 
   filter(fips %in% fips_key$fips | str_detect(fips, '000$'))
 get_str(nat)
-
-# Check it out
-# library(sf)
-# library(mapview)
-# counties <- readRDS('2_clean/spatial/ne_counties_2021.RDS')
-# counties <- left_join(counties, nat)
-# mapview(counties, zcol = 'healthOutcomeZ')
-# mapview(counties, zcol = 'healthOutcomeGroup')
-# mapview(counties, zcol = 'healthFactorZ')
-# mapview(counties, zcol = 'healthFactorGroup')
-# Note that we recoded it so that higher z values are better. Originally, they
-# have it so low z values and low groups are better. Seems to cap just above 0
 
 # Convert to variable format
 get_str(nat)
@@ -146,7 +129,7 @@ metas$nat <- data.frame(
   url = 'https://www.countyhealthrankings.org/health-data/methodology-and-sources/data-documentation'
 ) %>%
   mutate(axis_name = metric) %>% 
-  add_citation(access_date = '2024-12-13')
+  meta_citation(date = '2024-12-13')
 
 metas$nat
 
@@ -161,7 +144,11 @@ metas$nat
 dict <- read_xlsx('1_raw/county_health_rankings/DataDictionary_2024.xlsx') %>% 
   mutate(Measure = str_replace_all(Measure, '\n', ' '))
 
-# All variables look good, just take them all. Get just var code for now
+# We are removing disconnected youth because we took it from Census directly
+dict <- dict %>%
+  filter(str_detect(Measure, 'Disconnected Youth', negate = TRUE))
+
+# Take everything else though
 dict_summary <- dict %>% 
   filter(
     str_detect(Measure, 'raw value$'),
@@ -212,7 +199,6 @@ select_measures <- map(analytic, ~ {
       names_to = 'variable_name',
       values_to = 'value'
     ) 
-    # mutate(variable_name = str_remove(variable_name, 'RawValue'))
 }) %>% 
   bind_rows()
 get_str(select_measures)
@@ -278,18 +264,27 @@ select_meta_meta <- select_meta %>%
     ),
     scope = 'national',
     resolution = 'county, state',
-    year = paste0(2020:2024, collapse = ', '),
-    latest_year = '2024',
+    year = paste0(2020:2025, collapse = ', '),
+    latest_year = 2025,
     updates = "annual",
     source = 'University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)',
     url = 'https://www.countyhealthrankings.org/health-data/methodology-and-sources/data-documentation'
   ) %>% 
-  add_citation(access_date = '2024-12-13') %>% 
+  meta_citation(date = '2025-07-07') %>% 
   select(-Measure)
 
 select_meta_meta %>% select(1, 5)
 select_meta_meta
 select_meta_meta$variable_name %>% unique
+
+select_meta_meta %>% 
+  filter(dimension == 'social') %>% 
+  pull(metric)
+
+select_meta_meta %>%
+  filter(dimension == 'social') %>% 
+  arrange(variable_name) %>% 
+  select(variable_name, metric)
 
 # Now just deal with social
 metas$select_measures_social <- select_meta_meta %>%
@@ -297,11 +292,10 @@ metas$select_measures_social <- select_meta_meta %>%
   arrange(variable_name) %>% 
   mutate(
     index = c(
-      'community livability',
+      'food system governance',
       'food system governance',
       'community embeddedness',
-      'community embeddedness',
-      'community embeddedness',
+      'community livability',
       'community livability',
       'community livability',
       'community livability',
@@ -314,7 +308,6 @@ metas$select_measures_social <- select_meta_meta %>%
       'community safety',
       'participatory governance',
       'social connectedness',
-      'social connectedness',
       'tbd',
       'community safety',
       'tbd',
@@ -325,7 +318,7 @@ metas$select_measures_social <- select_meta_meta %>%
       'participatory governance'
     ),
     units = c(
-      rep('percentage', 5),
+      rep('percentage', 4),
       'delinquencies per 1,000 juvelines',
       'percentage',
       'index',
@@ -429,11 +422,9 @@ out <- aggregate_metrics(res, metas)
 
 # Check record counts
 try(check_n_records(out$result, out$meta, 'County Health'))
-# This is cool - we didn't count the confidence intervals as metrics
 
 saveRDS(out$result, '5_objects/metrics/county_health.RDS')
 saveRDS(out$meta, '5_objects/metadata/county_health.RDS')
 
-clear_data()
-gc()
+clear_data(gc = TRUE)
 

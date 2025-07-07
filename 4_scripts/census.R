@@ -57,9 +57,11 @@ dat <- dat %>%
     edPercBS = (edTotalBS / edTotal) * 100,
     vacancyRate = (nHousingVacant / nHousingUnits) * 100,
     womenEarnPercMenFFF = (medianFemaleEarningsFFF / medianMaleEarningsFPS) * 100,
-    womenEarnPercMenFPS = (medianFemaleEarningsFPS / medianMaleEarningsFPS) * 100
+    womenEarnPercMenFPS = (medianFemaleEarningsFPS / medianMaleEarningsFPS) * 100,
+    disconnectedYouth = (nMaleNotEnrolledHSGradNotInLaborForce + nMaleNotEnrollNoGradNotInLaborForce +
+      nFemaleNotEnrollHSGradNotInLaborForce + nFemaleNotEnrollNoGradNotInLaborForce) / n16to19 * 100
   ) %>% 
-  select(-c(starts_with('edTotal')))
+  select(-matches('edTotal|^nMale|^nFemale|^n16'))
 get_str(dat)
 map(dat, range, na.rm = TRUE)
 
@@ -76,6 +78,8 @@ get_str(dat)
 
 ## Metadata ----------------------------------------------------------------
 
+
+meta_vars(dat)
 
 # Load from CSV
 meta <- read_csv('5_objects/metadata_csv/census_meta.csv')

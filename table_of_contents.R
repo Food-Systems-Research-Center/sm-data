@@ -38,6 +38,7 @@ source('4_scripts/naics_key.R')
 '4_scripts/api_calls/bls_api.R'
 '4_scripts/api_calls/usdm_api.R'
 '4_scripts/api_calls/fda_api.R'
+'4_scripts/api_calls/cdc_api.R'
 
 
 

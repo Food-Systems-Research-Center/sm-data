@@ -91,8 +91,17 @@ vars <- list(
   'medianMaleEarningsFPS' = 'B24022_024E',
   
   # Gini coefficient
-  'gini' = 'B19083_001E'
+  'gini' = 'B19083_001E',
+  
+  # disconnected youth (method from UW county health)
+  # Add all of these up, divide by n16to19
+  'n16to19' = 'B14005_001E',
+  'nMaleNotEnrolledHSGradNotInLaborForce' = 'B14005_011E',
+  'nMaleNotEnrollNoGradNotInLaborForce' = 'B14005_015E',
+  'nFemaleNotEnrollHSGradNotInLaborForce' = 'B14005_025E',
+  'nFemaleNotEnrollNoGradNotInLaborForce' = 'B14005_029E'
 )
+
 
 # Save this as crosswalk to name them later
 saveRDS(vars, '5_objects/census_acs5_crosswalk.rds')
@@ -142,75 +151,6 @@ get_str(county_out)
 
 
 
-## Function ----------------------------------------------------------------
-
-
-# Having some trouble getting package function to work - leaving this here
-# for now just in case.
-
-# census_api <- function(state_codes,
-#                        years,
-#                        vars,
-#                        census_key,
-#                        region = c('state', 'county'),
-#                        sleep_time = 1,
-#                        survey_name = 'acs/acs5') {
-#   map(state_codes, \(state_code) {
-#     
-#     cat(glue("\n\nStarting state: {state_code} ({which(state_codes == state_code)} of {length(state_codes)})\n"))
-#     
-#     # Set region based on state or county data
-#     if (region == 'state') {
-#       region_var <- paste0('state:', state_code)
-#       regionin_var <- NULL
-#     }
-#     else if (region == 'county') {
-#       region_var <- "county:*"
-#       regionin_var <- paste0("state:", state_code)
-#     }
-#     
-#     map(years, \(yr) {
-#       cat('\nStarting year', yr, '\n')
-#       Sys.sleep(sleep_time)
-#       vars_out <- map(vars, \(var) {
-#         tryCatch(
-#           {
-#             getCensus(
-#               name = survey_name,
-#               vintage = yr,
-#               key = census_key,
-#               vars = var,
-#               region = region_var,
-#               regionin = regionin_var
-#             ) %>% 
-#               mutate(year = yr)  
-#           },
-#           error = function(e) {
-#             message(glue("Error for state {state_code}, year {yr}: {e$message}"))
-#             tibble()
-#           }
-#         )
-#       }) %>% 
-#         purrr::keep(~ is.data.frame(.x) && nrow(.x) > 0)
-#       
-#       if (length(vars_out) > 1) {
-#         purrr::reduce(vars_out, full_join)
-#       } else if (length(vars_out) == 1) {
-#         vars_out[[1]]
-#       } else {
-#         NULL
-#       }
-#       
-#     }) %>% 
-#       purrr::keep(~ !is.null(.x)) %>% 
-#       bind_rows()
-#   }) %>% 
-#     purrr::keep(~ !is.null(.x)) %>% 
-#     bind_rows()
-# }
-
-
-
 ## Pull with function ------------------------------------------------------
 
 
@@ -226,10 +166,10 @@ get_str(states_out)
 # saveRDS(states_out, 'temp/states_out.rds')
 
 # County data
-county_out <- call_census_api(
+darn <- call_census_api(
   state_codes = state_codes,
   years = years,
-  vars = vars,
+  vars = 'B14005_001E',
   census_key = census_key,
   region = 'county'
 )

@@ -53,13 +53,16 @@ existing <- metrics %>%
 get_str(existing)
 
 # Get summary table showing coverage
-sum <- existing %>% 
-  group_by(variable_name) %>% 
+sum <- metadata %>% 
+  select(variable_name, source) %>% 
+  right_join(existing) %>% 
+  group_by(variable_name) %>%
   summarize(
     n_states = length(unique(fips[nchar(fips) == 2])),
     n_counties = length(unique(fips[nchar(fips) == 5])),
     n_years = length(unique(sort(year))),
-    years = paste0(unique(sort(year)), collapse = ', ')
+    source = unique(source)
+    # years = paste0(unique(sort(year)), collapse = ', ')
   )
 sum
 

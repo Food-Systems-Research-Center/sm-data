@@ -1224,6 +1224,59 @@ get_str(metas$usdm)
 
 
 
+# CDC ---------------------------------------------------------------------
+
+
+# Air quality from api calls
+out <- readRDS('5_objects/api_outs/cdc_airquality_ne_counties.rds')
+get_str(out)
+get_str(out$tableResult)
+
+# Filter down to fips and select relevant columns. Also add variable name
+dat <- out$tableResult %>% 
+  select(
+    fips = geoId,
+    year = temporal,
+    value = dataValue
+  ) %>% 
+  filter_fips(scope = 'all') %>% 
+  mutate(variable_name = 'airQuality')
+get_str(dat)
+
+results$cdc <- dat
+  
+
+
+## Metadata ----------------------------------------------------------------
+
+
+(vars <- meta_vars(results$cdc))
+
+metas$cdc <- data.frame(
+  variable_name = vars,
+  dimension = 'environment',
+  index = 'carbon, ghg, nutrients',
+  indicator = 'carbon fluxes',
+  axis_name = 'Air Quality',
+  definition = 'Percent of days with PM2.5 levels over the NAAQS',
+  metric = 'Air quality',
+  units = 'percentage',
+  annotation = NA,
+  scope = 'national',
+  resolution = 'county',
+  year = meta_years(results$cdc),
+  latest_year = meta_latest_year(results$cdc),
+  updates = 'annual',
+  warehouse = FALSE,
+  source = 'CDC National Environmental Public Health Tracking Network (2025)',
+  url = 'https://ephtracking.cdc.gov/'
+) %>% 
+  meta_citation(date = '2025-07-07')
+
+get_str(metas$cdc)
+
+
+
 # Aggregate and Save ------------------------------------------------------
 
 

@@ -8,6 +8,7 @@
 #' @param census 
 #' @param fda 
 #' @param usdm 
+#' @param cdc 
 #' @param all If `TRUE`, run all API scripts.
 #'
 #' @returns Runs all APIs and outputs are saved to "5_outputs/api_outs/"
@@ -17,6 +18,7 @@ sm_call_apis <- function(nass = FALSE,
                          census = FALSE,
                          fda = FALSE,
                          usdm = FALSE,
+                         cdc = FALSE,
                          all = FALSE) {
   if (all) {
     nass <- TRUE
@@ -30,4 +32,5 @@ sm_call_apis <- function(nass = FALSE,
   if (census) source('4_scripts/api_calls/census_api.R')
   # if (fda) source('4_scripts/api_calls/fda_api.R') # Not using this currently
   if (usdm) source('4_scripts/api_calls/usdm_api.R')
+  if (cdc) source('4_scripts/api_calls/cdc_api.R')
 }
