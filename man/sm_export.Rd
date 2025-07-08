@@ -4,7 +4,11 @@
 \alias{sm_export}
 \title{SM Export}
 \usage{
-sm_export()
+sm_export(update = TRUE)
+}
+\arguments{
+\item{update}{If \code{TRUE}, run \code{sm_update()} to update the \code{.rda} files in the
+project.}
 }
 \value{
 Output data to "6_outputs/". "sm_data.rds" contains metrics, keys,

@@ -26,19 +26,15 @@ pacman::p_load(
   stringr
 )
 
-# Load datasets
-metrics <- read_all_rds('5_objects/metrics/')  
-get_str(metrics)
-
-# Load metadata
-meta <- read_all_rds('5_objects/metadata/')
-get_str(meta)
-
 
 
 # Aggregate ---------------------------------------------------------------
 ## Metrics -----------------------------------------------------------------
 
+
+# Load datasets
+metrics <- read_all_rds('5_objects/metrics/')  
+get_str(metrics)
 
 # Keep all the weird variables, cv percent, disclosure, value codes, margins
 # Just make sure year is numeric
@@ -55,6 +51,10 @@ get_str(metrics_agg)
 
 ## Metadata ---------------------------------------------------------------
 
+
+# Load metadata
+meta <- read_all_rds('5_objects/metadata/')
+get_str(meta)
 
 # Combine them, warehouse is FALSE if not included
 meta_agg <- bind_rows(meta) %>% 

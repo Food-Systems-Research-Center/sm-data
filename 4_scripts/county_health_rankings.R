@@ -1,5 +1,5 @@
 # County Health Ranking dataset
-# 2024-12-13
+# 2025-07-08 update
 
 # https://www.countyhealthrankings.org/
 
@@ -34,57 +34,51 @@ sheets <- excel_sheets(path)
 nat_raw <- read_xlsx(path, sheet = sheets[6], skip = 1)
 get_str(nat_raw)
 
-# Clean up names, removes states, filter to NE counties
-nat <- nat_raw %>% 
-  select(-c(State, County, starts_with('Number of'))) %>% 
-  setNames(c(
-    'fips',
-    'healthOutcomeZ',
-    'healthOutcomeGroup',
-    'healthFactorZ',
-    'healthFactorGroup'
-  )) %>% 
-  mutate(
-    healthOutcomeGroup = case_when(
-      str_detect(healthOutcomeGroup, '^-1.76') ~ 10,
-      str_detect(healthOutcomeGroup, '^-1.09') ~ 9,
-      str_detect(healthOutcomeGroup, '^-0.72') ~ 8,
-      str_detect(healthOutcomeGroup, '^-0.4') ~ 7,
-      str_detect(healthOutcomeGroup, '^-0.1') ~ 6,
-      str_detect(healthOutcomeGroup, '^0.22') ~ 5,
-      str_detect(healthOutcomeGroup, '^0.56') ~ 4,
-      str_detect(healthOutcomeGroup, '^0.95') ~ 3,
-      str_detect(healthOutcomeGroup, '^1.42') ~ 2,
-      str_detect(healthOutcomeGroup, '^2.02') ~ 1,
-      .default = NA
-    ),
-    healthFactorGroup = case_when(
-      str_detect(healthFactorGroup, '^-1.62') ~ 10,
-      str_detect(healthFactorGroup, '^-0.96') ~ 9,
-      str_detect(healthFactorGroup, '^-0.67') ~ 8,
-      str_detect(healthFactorGroup, '^-0.44') ~ 7,
-      str_detect(healthFactorGroup, '^-0.22') ~ 6,
-      str_detect(healthFactorGroup, '^0 to') ~  5,
-      str_detect(healthFactorGroup, '^0.23') ~  4,
-      str_detect(healthFactorGroup, '^0.47') ~  3,
-      str_detect(healthFactorGroup, '^0.75') ~  2,
-      str_detect(healthFactorGroup, '^1.12') ~  1,
-      .default = NA
-    ),
-    across(ends_with('Z'), ~ -1 * .x)
-  ) %>% 
-  filter(fips %in% fips_key$fips | str_detect(fips, '000$'))
-get_str(nat)
+## Rework
+paths <- list.files(
+  '1_raw/county_health_rankings/national/',
+  pattern = '*.xlsx',
+  full.names = TRUE
+)
+(sheets <- map(paths, excel_sheets))
 
-# Convert to variable format
-get_str(nat)
+# Get only the sheet from each workbook that has outcomes and factors
+(sheets <- map(sheets, ~ str_subset(.x, '(Outcomes & Factors|Health Groups)(?!.*SubRankings)')))
+
+# Read them in
+raw <- map2(paths, sheets, \(path, sheet) {
+  read_xlsx(path, sheet = sheet, skip = 1)
+}) %>% 
+  setNames(c(paste0('y', 2020:2025)))
+get_str(raw)
+get_str(raw, 3)
+# NOTE: 2023 and earlier, used ranks and quartiles. 2024 and later, used 
+# z-scores. Cannot compare them. So let's just use 2024 and 2025 z-scores here.
+
+# Reduce to last 2 years
+raw <- raw[names(raw) %in% c('y2024', 'y2025')]
+get_str(raw, 3)
+
+# Reduce to FIPS and z scores for health outcomes and factors
+# Also reduce to northeast counties, add a column for year
+nat <- imap(raw, ~ {
+  year = str_sub(.y, start = 2)
+  .x %>% 
+    select(FIPS, contains('Z-Score')) %>% 
+    setNames(c('fips', 'healthOutcomeZ', 'healthFactorZ')) %>% 
+    filter_fips('all') %>% 
+    mutate(year = year)
+})
+get_str(nat, 3)
+
+# Bind together, then convert to long format
 nat <- nat %>% 
+  bind_rows() %>% 
   pivot_longer(
-    cols = !fips,
-    values_to = 'value',
-    names_to = 'variable_name'
-  ) %>% 
-  mutate(year = '2024')
+    cols = matches('Z$'),
+    names_to = 'variable_name',
+    values_to = 'value'
+  )
 get_str(nat)
 
 # Save to results
@@ -95,41 +89,32 @@ res$nat <- nat
 ## Metadata ----------------------------------------------------------------
 
 
-(vars <- nat$variable_name %>% unique %>% sort)
+(vars <- meta_vars(res$nat))
 
 metas$nat <- data.frame(
   variable_name = vars,
   definition = c(
-    'National grouping of counties based on health factors index (30% health behaviors, 20% clinical care, 40% social and economic factors, 10% physical environment). Counties are split into 10 groups based on k-means clustering of z-scores and demographic data. Values are recoded such that larger numbers represent healthier counties.',
     'Nationally standardized z-score index of county level health factors (30% health behaviors, 20% clinical care, 40% social and economic factors, 10% physical environment). Scores are recoded so that larger values represent healthier counties.',
-    'National grouping of counties based on health outcomes index (50% premature death rate, 10% reports of poor or fair health, 10% reports of poor physical health days, 10% reports of poor mental health days, 10% low birthweight rates). Counties are split into 10 groups based on k-means clustering of z-scores and demographic data. Values are recoded such that larger numbers represent healthier counties.',
     'Nationally standardized z-score index of county level health outcomes (50% premature death rate, 10% reports of poor or fair health, 10% reports of poor physical health days, 10% reports of poor mental health days, 10% low birthweight rates). Scores are recoded so that larger values represent healthier counties.'
   ),
   metric = c(
-    'Health Factor Group',
     'Health Factor Z-Score',
-    'Health Outcome Group',
     'Health Outcome Z-Score'
   ),
   dimension = "health",
   index = 'physical health',
   indicator = 'county health rankings',
-  units = c(
-    'categorical',
-    'index',
-    'categorical',
-    'index'
-  ),
+  units = rep('index', 2),
   scope = 'national',
   resolution = 'county',
-  year = '2024',
-  latest_year = '2024',
+  year = meta_years(res$nat),
+  latest_year = meta_latest_year(res$nat),
   updates = "annual",
   source = 'University of Wisconsin Population Health Institute, County Health Rankings and Roadmaps. (2024)',
   url = 'https://www.countyhealthrankings.org/health-data/methodology-and-sources/data-documentation'
 ) %>%
-  mutate(axis_name = metric) %>% 
-  meta_citation(date = '2024-12-13')
+  mutate(axis_name = str_remove(metric, '-Score')) %>% 
+  meta_citation(date = '2025-07-08')
 
 metas$nat
 

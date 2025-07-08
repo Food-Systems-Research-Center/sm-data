@@ -4,7 +4,10 @@
 \alias{sm_update}
 \title{Update exported datasets}
 \usage{
-sm_update()
+sm_update(export = FALSE)
+}
+\arguments{
+\item{export}{If TRUE, run \code{sm_export()} first.}
 }
 \description{
 Internal function that updates the .rda files exported by the package. This

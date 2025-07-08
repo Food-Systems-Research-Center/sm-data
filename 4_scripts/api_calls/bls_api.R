@@ -2,9 +2,9 @@
 # 2025-07-03 update
 
 
-# BLS API is not at all fun to use. The bls wrangling script is currently using
-# bulk downloads. That might be better, because I can only download one year
-# per day from the API before getting rate limited.
+# Note: BLS API is not at all fun to use. The bls wrangling script is currently
+# using bulk downloads. That might be better, because I can only download one
+# year per day from the API before getting rate limited.
 
 
 

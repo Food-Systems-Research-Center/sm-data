@@ -317,6 +317,121 @@ get_str(metas$lulc_div)
 
 
 
+# Forest Carbon -----------------------------------------------------------
+## Explore -----------------------------------------------------------------
+
+
+# USDA National forest carbon monitoring system
+# https://www.fs.usda.gov/rds/archive/catalog/RDS-2025-0019
+
+# Set up raster paths
+raster_paths <- list.files(
+  '1_raw/spatial/usda/forest_carbon_monitoring/',
+  pattern = '.*2020.tif|ForestExtent|ForestType',
+  full.names = TRUE
+)
+raster_paths
+
+# Assign names for outputs
+raster_names <- str_split_i(raster_paths, 'NE_', 2) %>% 
+  str_remove('.tif')
+raster_names
+
+
+# ## Check out a couple
+# # above ground biomass
+# raster_paths[[1]] %>% 
+#   read_stars() %>% 
+#   mapview()
+# 
+# # forest extent
+# raster_paths[[2]] %>% 
+#   read_stars() %>% 
+#   mapview()
+# 
+# # forest type
+# raster_paths[[3]] %>% 
+#   read_stars() %>% 
+#   mapview()
+
+# Aboveground biomass, live biomass, soil carbon, and ecosystem carbon need to
+# be summed by county, with missing = 65535. Forest extent is binary, so we can
+# do mean by county. Forest type is categorical, so we also want counts, but 
+# we don't have to worry about the missing values in that case.
+
+
+
+## Calculate ---------------------------------------------------------------
+
+
+# County and state paths for polygons
+county_path <- '2_clean/spatial/neast_counties_2024.gpkg'
+state_path <- '2_clean/spatial/all_states.gpkg'
+# Although we're not doing states for now. Not worth the processing time if we
+# aren't going to use them
+
+
+## Biomass
+# First do sums over aboveground biomass, live biomass, soil carbon, and total
+# ecosystem carbon, accounting for missing
+reticulate::source_python('3_functions/spatial/get_zonal_stats.py')
+(summed_rasters <- str_subset(raster_paths, '2020'))
+(summed_raster_names <- summed_rasters %>% 
+  str_split_i('NE_', 2) %>% 
+  str_remove('.tif'))
+out <- map(summed_rasters, ~ {
+  get_zonal_stats(
+    .x, 
+    county_path, 
+    stat = 'sum', 
+    new_name = 'sum',
+    missing = 65535
+  )
+}) %>% 
+  setNames(c(summed_raster_names))
+
+# Check
+get_str(out)
+get_str(out[[1]])
+
+# Save output to avoid processing again
+saveRDS(out, '5_objects/spatial/processing/neast_counties_forest_carbon.rds')
+
+
+## Extent and Type
+# Now categorical summaries of cells in each polygon for extent and type. Could
+# just do mean with the extent, but we only do 2 calls this way.
+reticulate::source_python('3_functions/spatial/cat_zonal_stats.py')
+(cat_rasters <- str_subset(raster_paths, '2020', negate = TRUE))
+(cat_names <- cat_rasters %>% 
+  str_split_i('NE_', 2) %>% 
+  str_remove('.tif'))
+out <- map(cat_rasters, ~ cat_zonal_stats(.x, county_path)) %>% 
+  setNames(c(cat_names))
+
+# Check
+get_str(out)
+
+# Save output to avoid processing again
+saveRDS(out, '5_objects/spatial/processing/neast_counties_extent_type.rds')
+
+
+
+## Wrangle -----------------------------------------------------------------
+
+
+# Load up outputs
+
+carbon <- readRDS('5_objects/spatial/processing/neast_counties_forest_carbon.rds')
+cat <- readRDS('5_objects/spatial/processing/neast_counties_extent_type.rds')
+# dat <- c(carbon, cat)
+# get_str(dat)
+
+# we are here
+
+
+
+
 # TreeMap 2016 ------------------------------------------------------------
 
 

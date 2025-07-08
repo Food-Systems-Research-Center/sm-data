@@ -35,10 +35,12 @@ source('4_scripts/naics_key.R')
 # and clean them and save them properly.
 '4_scripts/api_calls/nass_api.R'
 '4_scripts/api_calls/census_api.R'
-'4_scripts/api_calls/bls_api.R'
 '4_scripts/api_calls/usdm_api.R'
 '4_scripts/api_calls/fda_api.R'
 '4_scripts/api_calls/cdc_api.R'
+
+# Currently using bulk download for BLS due to unwieldy API
+# '4_scripts/api_calls/bls_api.R'
 
 
 
@@ -72,8 +74,7 @@ source('4_scripts/map_meal_gap.R')
 # FDA recall enforcement, USDM drought
 source('4_scripts/other_datasets.R')
 
-# Spatial data - MRLC LULC, other spatial data. Note that this script has a long
-# run time
+# Spatial data - MRLC LULC, other spatial data. Note long run time
 source('4_scripts/spatial.R')
 
 
@@ -81,13 +82,11 @@ source('4_scripts/spatial.R')
 ## Export ------------------------------------------------------------------
 
 
-# These scripts take the metrics data, metadata, and all associated files and
+# This script take the metrics data, metadata, and all associated files and
 # datasets, like framework trees for graphs, helper datasets like fips keys,
 # spatial data like counties and states, does some last minute checks, and puts
 # them all together into two rds list objects. Then the export script sends 
 # those to sm-docs and sm-explorer
-
-# Combine metrics, metadata, run some checks, and export data
 source('4_scripts/export_data.R')
 
 

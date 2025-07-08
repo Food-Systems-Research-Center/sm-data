@@ -1,7 +1,6 @@
 # BLS and ERS
 # 2025-06-30 update
 
-# Note that the first section
 
 # Housekeeping ------------------------------------------------------------
 
@@ -172,7 +171,10 @@ try(check_n_records(results$qcew, metas$qcew, 'QCEW'))
 
 # Is this actually better than using API?
 # https://www.bls.gov/cew/downloadable-data-files.htm
-# Download CSVs by industry. Then just took the ones for 11 - agriculture
+# Download CSVs by industry. Then just take the ones for 11 - agriculture
+# File layout: https://www.bls.gov/cew/about-data/downloadable-file-layouts/annual/naics-based-annual-layout.htm
+
+# Load csv files in bulk
 file_paths <- list.files(
   path = '1_raw/bls/bls_naics_11/',
   pattern = '*.csv',
@@ -217,6 +219,8 @@ dat <- dat %>%
 get_str(dat)
 
 results$qcew <- dat
+meta_vars(dat) %>% 
+  str_subset('^oty')
 
 
 
