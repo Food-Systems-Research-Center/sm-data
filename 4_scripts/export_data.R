@@ -34,7 +34,7 @@ pacman::p_load(
 
 # Load datasets
 metrics <- read_all_rds('5_objects/metrics/')  
-get_str(metrics)
+# get_str(metrics)
 
 # Keep all the weird variables, cv percent, disclosure, value codes, margins
 # Just make sure year is numeric
@@ -45,7 +45,7 @@ metrics_agg <- map(metrics, ~ {
   }) %>% 
   bind_rows() %>% 
   select(fips, year, variable_name, value)
-get_str(metrics_agg)
+# get_str(metrics_agg)
 
 
 
@@ -54,12 +54,12 @@ get_str(metrics_agg)
 
 # Load metadata
 meta <- read_all_rds('5_objects/metadata/')
-get_str(meta)
+# get_str(meta)
 
 # Combine them, warehouse is FALSE if not included
 meta_agg <- bind_rows(meta) %>% 
   select(-any_of('warehouse'))
-get_str(meta_agg)
+# get_str(meta_agg)
 
 # If there is no axis name, make it the variable_name
 meta_agg <- meta_agg %>% 
@@ -84,11 +84,14 @@ write_csv(metrics_agg, paths[1])
 write_csv(meta_agg, paths[2])
 write_csv(fips_key, paths[3])
 
-# Zip csv files together, remove original csvs
-zip(
-  zipfile = '6_outputs/metrics_and_metadata.zip', 
-  files = c(paths)
-)
+# Zip csv files together, save into SMdata and SMdocs, remove original csvs
+zip_paths <- c('6_outputs/metrics_and_metadata.zip', '../SMdocs/data/metrics_and_metadata.zip')
+walk(zip_paths, ~ {
+  zip(
+    zipfile = .x, 
+    files = c(paths)
+  )
+})
 file.remove(paths)
 
 
@@ -138,9 +141,9 @@ sm_data$conf_tree <- conference_tree
 # Flatten into single layer list
 sm_data <- list_flatten(sm_data, name_spec = "{inner}")
 
-get_str(sm_data)
-names(sm_data)
-get_size(sm_data)
+# get_str(sm_data)
+# names(sm_data)
+# get_size(sm_data)
 
 # Paths to SMdocs and SMexplorer. Also keeping a copy in outputs
 sm_data_paths <- c(
@@ -175,9 +178,9 @@ spatial$counties_and_states <- read_all_rds(
 # Flatten into single level list
 spatial <- list_flatten(spatial, name_spec = "{inner}")
 
-get_str(spatial)
-names(spatial)
-get_size(spatial)
+# get_str(spatial)
+# names(spatial)
+# get_size(spatial)
 
 # Save spatial data in those places also
 spatial_paths <- c(

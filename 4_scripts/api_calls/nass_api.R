@@ -158,6 +158,9 @@ get_str(out)
 # API Calls ---------------------------------------------------------------
 
 
+# Authorize key
+nassqs_auth(nass_key)
+
 # Load API parameters doc
 nass_params <- read_csv('5_objects/api_parameters/nass_api_parameters.csv')
 get_str(nass_params)
@@ -167,13 +170,23 @@ get_str(nass_params)
 ## Census Calls ------------------------------------------------------------
 
 
-census_params <- nass_params %>% 
+census_params <- nass_params %>%
   filter(
     source_desc == 'CENSUS',
     short_desc != 'derived' | is.na(short_desc)
   )
 get_str(census_params)
-# 73 vars. Should be fine to get every county in each year in one call
+# 86
+
+# # Test run with only the new variables
+# census_params <- nass_params %>%
+#   filter(
+#     source_desc == 'CENSUS',
+#     short_desc != 'derived' | is.na(short_desc),
+#     note == 'new'
+#   )
+# get_str(census_params)
+# # 13
 
 # Set parameters
 params <- list(
@@ -191,7 +204,7 @@ census_out <- map(years, \(yr) {
   )
   param_set <- params
   param_set[['year']] <- yr
-  Sys.sleep(3)
+  Sys.sleep(1)
   nassqs(param_set)
 }) %>% 
   purrr::list_rbind()
@@ -235,6 +248,7 @@ saveRDS(survey_out, '5_objects/api_outs/neast_nass_survey_2002_2022.rds')
 # # Northeast Counties ------------------------------------------------------
 # 
 # 
+# # NOTE: everything below is old, hanging on to it for now just in case
 # # All Northeast counties, 2002 through 2022 by 5 years
 # 
 # # This will be all counties, all sectors, 2022

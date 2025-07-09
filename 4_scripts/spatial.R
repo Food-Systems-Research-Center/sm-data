@@ -339,9 +339,9 @@ raster_names
 
 
 # ## Check out a couple
-# # above ground biomass
-# raster_paths[[1]] %>% 
-#   read_stars() %>% 
+# above ground biomass
+# raster_paths[[1]] %>%
+#   read_stars() %>%
 #   mapview()
 # 
 # # forest extent
@@ -355,13 +355,16 @@ raster_names
 #   mapview()
 
 # Aboveground biomass, live biomass, soil carbon, and ecosystem carbon need to
-# be summed by county, with missing = 65535. Forest extent is binary, so we can
-# do mean by county. Forest type is categorical, so we also want counts, but 
-# we don't have to worry about the missing values in that case.
+# be averaged by county, with missing = 65535. This will give us average biomass
+# per acre per county.
+
+# Forest extent is binary, so we can do mean by county. Forest type is
+# categorical, so we also want counts, but we don't have to worry about the
+# missing values in that case.
 
 
 
-## Calculate ---------------------------------------------------------------
+## Geoprocessing ----------------------------------------------------------
 
 
 # County and state paths for polygons
@@ -372,23 +375,23 @@ state_path <- '2_clean/spatial/all_states.gpkg'
 
 
 ## Biomass
-# First do sums over aboveground biomass, live biomass, soil carbon, and total
-# ecosystem carbon, accounting for missing
+# First do means over aboveground biomass, live biomass, soil carbon, and total
+# ecosystem carbon per acre, accounting for missing cells
 reticulate::source_python('3_functions/spatial/get_zonal_stats.py')
-(summed_rasters <- str_subset(raster_paths, '2020'))
-(summed_raster_names <- summed_rasters %>% 
+(meaned_rasters <- str_subset(raster_paths, '2020'))
+(meaned_raster_names <- meaned_rasters %>% 
   str_split_i('NE_', 2) %>% 
   str_remove('.tif'))
-out <- map(summed_rasters, ~ {
+out <- map(meaned_rasters, ~ {
   get_zonal_stats(
     .x, 
     county_path, 
-    stat = 'sum', 
-    new_name = 'sum',
+    stat = 'mean', 
+    new_name = 'mean',
     missing = 65535
   )
 }) %>% 
-  setNames(c(summed_raster_names))
+  setNames(c(meaned_raster_names))
 
 # Check
 get_str(out)
@@ -420,15 +423,160 @@ saveRDS(out, '5_objects/spatial/processing/neast_counties_extent_type.rds')
 ## Wrangle -----------------------------------------------------------------
 
 
-# Load up outputs
+# Mini result list for forest carbon
+forest_res <- list()
 
+# Load up outputs
 carbon <- readRDS('5_objects/spatial/processing/neast_counties_forest_carbon.rds')
 cat <- readRDS('5_objects/spatial/processing/neast_counties_extent_type.rds')
-# dat <- c(carbon, cat)
-# get_str(dat)
 
-# we are here
 
+## For carbon, all we need to do it bind them and format them. 
+get_str(carbon)
+carbon <- imap(carbon, ~ {
+  .x %>% 
+    mutate(
+      year = '2020',
+      # Create variable name by removing year, adding per acre, formatting
+      variable_name = .y %>% 
+        str_remove('[0-9]{4}$') %>% 
+        snakecase::to_lower_camel_case() %>% 
+        paste0('PerAcre')
+    ) %>% 
+    rename(value = mean)
+}) %>% 
+  bind_rows()
+get_str(carbon)  
+
+forest_res$carbon <- carbon
+
+
+## For categorical rasters: forest extent just needs a mean. Forest type
+# needs to remove 65535 and then get Shannon diversity
+get_str(cat)
+
+## Forest extent
+extent <- cat$ForestExtent %>% 
+  # Rename so that R won't hate the col names
+  rename(
+    forest = '1',
+    not = '0'
+  ) %>% 
+  rowwise() %>% 
+  mutate(
+    total = forest + not,
+    propForest = forest / total
+  )
+get_str(extent)
+
+# Check range to make sure it is between 0 and 1
+range(extent$propForest)
+
+# Remove other cols, add year and name, pivot wider to format for metrics
+extent <- extent %>% 
+  select(fips, propForest) %>% 
+  pivot_longer(
+    cols = propForest,
+    names_to = 'variable_name',
+    values_to = 'value'
+  ) %>% 
+  mutate(year = '2020')
+get_str(extent)
+
+forest_res$extent <- extent
+  
+
+## For forest type, need to remove missing and run diversity index
+# Making all NaN into 0 also
+# Note we are not grouping forest types any further for now.
+get_str(cat$ForestType)
+type <- cat$ForestType %>% 
+  select(-'65535') %>% 
+  tibble::column_to_rownames('fips') %>%
+  mutate(across(everything(), ~ ifelse(is.na(.x), 0, .x)))
+get_str(type)
+
+# Now calculate Shannon diversity across all types
+type <- type %>% 
+  diversity(index = 'shannon') %>% 
+  as.data.frame() %>% 
+  rename(forestTypeDiversity = 1) %>% 
+  tibble::rownames_to_column('fips')
+get_str(type)
+
+# Add year and var name, pivot longer
+type <- type %>% 
+  pivot_longer(
+    cols = forestTypeDiversity,
+    values_to = 'value',
+    names_to = 'variable_name'
+  ) %>% 
+  mutate(year = '2020')
+get_str(type)
+
+forest_res$type <- type
+
+
+## Combine forest carbon outputs into one result
+results$forest_carbon <- list_rbind(forest_res)
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+# Combine forest carbon variables
+(vars <- meta_vars(results$forest_carbon))
+
+metas$forest_carbon <- data.frame(
+  variable_name = vars,
+  metric = case_when(
+    str_detect(vars, 'PerAcre') ~ paste('Average', vars),
+    vars == 'propForest' ~ 'Proportion of forest',
+    .default = vars
+  ) %>% 
+    snakecase::to_sentence_case(),
+  definition = c(
+    'Aboveground woody biomass includes all live aboveground woody material such as trunk, branches, stems and bark, but not leaves.',
+    'Shannon index of diversity on forest type groups from Ruefenacht et al. 2008',
+    'Total live biomass includes above- and below- ground biomass, leaves and fine roots.',
+    'Proportion of area with forest of any kind',
+    'Soil carbon includes organic and minaral soil layers',
+    'Total ecosystem carbon includes all live and dead forest carbon pools'
+  ),
+  axis_name = c(
+    'AGB per Acre (MgCO2)',
+    'Forest Type Diversity',
+    'Live Biomass per Acre (MgCO2)',
+    'Proportion Forested',
+    'Soil Carbon per Acre (MgCO2)',
+    'Total Carbon per Acre (MgCO2)'
+  ),
+  dimension = 'environment',
+  index = case_when(
+    vars %in% c('forestTypeDiversity', 'propForest') ~ 'species and habitat',
+    .default = 'carbon, ghg, nutrients'
+  ),
+  indicator = case_when(
+    vars %in% c('forestTypeDiversity', 'propForest') ~ 'biodiversity',
+    .default = 'carbon stocks'
+  ),
+  units = case_when(
+    vars == 'forestTypeDiversity' ~ 'index',
+    vars == 'propForest' ~ 'proportion',
+    .default = 'MgCO2e per acre'
+  ),
+  scope = 'national',
+  resolution = '30m',
+  year = meta_years(results$forest_carbon),
+  latest_year = meta_latest_year(results$forest_carbon),
+  updates = "~10 years",
+  source = 'Hasler, Natalia; Williams, Christopher A. 2025. National Forest Carbon Monitoring System (NFCMS) version 3.0 - Carbon stocks and potential sequestration over conterminous U.S. forests. Fort Collins, CO: Forest Service Research Data Archive. https://doi.org/10.2737/RDS-2025-0019',
+  url = 'https://www.fs.usda.gov/rds/archive/catalog/RDS-2025-0019'
+) %>% 
+  mutate(citation = paste0(source, ', Accessed on 2025-07-03'))
+  # meta_citation(date = '2025-07-03')
+get_str(metas$forest_carbon)
 
 
 

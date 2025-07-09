@@ -3,7 +3,7 @@ import geopandas as gpd
 import rasterstats
 import rasterio
 
-def cat_zonal_stats(raster_path, polygon_path):
+def cat_zonal_stats(raster_path, polygon_path, missing=None):
   '''
   Get a DataFrame of LULC category cell counts for each polygon. If the CRS of 
   each file do not match, the polygons will be projected into the CRS of the 
@@ -35,7 +35,8 @@ def cat_zonal_stats(raster_path, polygon_path):
     polygons,
     raster_path,
     stats=None,
-    categorical=True
+    categorical=True,
+    nodata=missing
   )
   
   # Convert to dataframe, put fips column back in
