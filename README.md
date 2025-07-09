@@ -19,12 +19,12 @@ Created On October 15th, 2024
   - [Setting Up the Project](#setting-up-the-project)
     - [Clone the Repository](#clone-the-repository)
     - [Open Project](#open-project)
-    - [API Keys](#api-keys)
+    - [Data and API Keys](#data-and-api-keys)
     - [Python Environment](#python-environment)
     - [Load SMdata Package](#load-smdata-package)
   - [Navigation](#navigation)
   - [Running the Project](#running-the-project)
-  - [Data and Licensing](#data-and-licensing)
+  - [Licensing](#licensing)
 
 ## About
 
@@ -50,7 +50,7 @@ library('renv')
 renv::restore()
 ```
 
-### API Keys
+### Data and API Keys
 
 Note that the project requires around 45GB of tabular and spatial data to run. This should be whittled down at some point to only the files that we really use, but we haven't gotten there yet. While the project expects the data to be housed in the `1_raw` directory, little of it is pushed to the GitHub repository for size constraints. Instead, you can download it from [OneDrive](https://uvmoffice-my.sharepoint.com/:u:/g/personal/swalshda_uvm_edu/ETMgUnpyIFdImfhaBt_hFA8BCZ3I8Fotb11s14FpVskEMQ?e=gUCA3s). Once downloaded, put the contents of the zip file into `1_raw` and the project should work.
 
@@ -90,13 +90,19 @@ This provides easy access to the secondary data metrics, metadata, other useful 
 
 After opening the `SMdata.Rproj` file, head to `table_of_contents.R`, which outlines the workflow of the project. To navigate to a script, you can either use `CTRL/CMD + LEFT CLICK` on a file path or put the cursor into the file path and hit `F2`. Once in a script, bring up the navigation pane with `CTRL/CMD + SHIFT + O`, or jump to a section with `ALT + SHIFT + J`. Note that each script loads the relevant objects at the start and saves them at the end. So, you can jump into any script in the project without running all previous scripts. However, within each script, code must be run sequentially, starting with the housekeeping section. 
 
-The file structure is organized as follows:
+File structure for `SMdata` package:
 
--   `1_raw`: Downloads of bulk files, datasets, and spatial layers before any processing has taken place. Note that these files are large, and currently not pushed to this repo. See below regarding access.
--   `2_clean`: Cleaned, wrangled, compiled datasets and spatial layers ready for exploratory analysis. (But really all the datasets to be exported are in `6_outputs`. This is a bit jenky.)
--   `3_functions`: Functions that are used throughout the project. These are sourced in the housekeeping section of each script as needed.
--   `4_scripts`: R scripts for API calls, wrangling, metadata creation, and exporting to `SMdocs` and `SMexplorer` repos.
--   `5_objects`: Intermediate objects worth saving. Results from API calls, before processing, are saved here under `api_outs`. 
+-   `R`: Functions, both internal and external. Also contains descriptions for some key datasets
+-   `data`: Datasets exported with the package
+-   `man`: Roxygen2 documentation for R functions in the package.
+
+File structure for data collection and wrangling:
+
+-   `1_raw`: Downloads of bulk files, datasets, and spatial layers before any processing has taken place. Note that these files are large, and currently not pushed to this repo. See [Data and API Keys](#data-and-api-keys) for more info.
+-   `2_clean`: Cleaned, wrangled, compiled datasets and spatial layers ready for exploratory analysis. (But really all the datasets to be exported are in `6_outputs`. This is a bit jenky and will be updated at some point.)
+-   `3_functions`: Python functions called in the project with `reticulate`. Note that R functions are built into the package itself and are found in the `R` folder.
+-   `4_scripts`: Scripts for API calls, wrangling, and exporting to `SMdocs` and `SMexplorer` repos.
+-   `5_objects`: Intermediate objects worth saving. Wrangled data from each source are saved as `.rds` files in the `metadata/` and `metrics/`, where they are later aggregated with `sm_export()` (see below). Results from geoprocessing that take some time to run are saved here in `spatial/`. Results from API calls, before processing, are also saved here under `api_outs/`. 
 -   `6_outputs`: Zipped `.csv` files of metrics and metadata as well as `.rds` files to be used in other projects.
 
 ## Running the Project
@@ -112,11 +118,11 @@ Documentation can be found for both internal and exported functions (`?sm_wrangl
 
 The important outputs are found in `6_outputs`, including:
 
-- `metrics_and_metadata.zip`: One `.csv` file for each
+- `metrics_and_metadata.zip`: One `.csv` file for each, along with a key to FIPS codes in the Northeast.
 - `sm_data.rds`: A list that contains metrics, metadata, and useful intermediate objects like keys to FIPS codes
 - `sm_spatial.rds`: A list that contains polygons for counties, states, and the entire Northeast US. Counties from both 2021 and 2024 are included to accommodate the change in Connecticut from counties to governance regions circa 2022.
 
-## Data and Licensing
+## Licensing
 
 <div style="display: flex; align-items: center;">
   <a rel="license" href="https://www.gnu.org/licenses/gpl-3.0.en.html#license-text">
@@ -139,4 +145,4 @@ The important outputs are found in `6_outputs`, including:
   </span>
 </div>
 
-Otherwise, data are available under licenses from the original sources. (Should add a list of those sources and licenses here at some point). 
+Otherwise, data are available under licenses from the original sources. (Should add those sources here at some point.)

@@ -79,9 +79,10 @@ try(check_n_records(metrics_agg, meta_agg, 'Aggregation'))
 
 
 # Save metrics and metadata as a zipped csv file for easy transport
-paths <- c('6_outputs/metrics.csv', '6_outputs/metadata.csv')
+paths <- c('6_outputs/metrics.csv', '6_outputs/metadata.csv', '6_outputs/fips_key.csv')
 write_csv(metrics_agg, paths[1])
 write_csv(meta_agg, paths[2])
+write_csv(fips_key, paths[3])
 
 # Zip csv files together, remove original csvs
 zip(

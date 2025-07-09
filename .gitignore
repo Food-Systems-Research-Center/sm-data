@@ -1,9 +1,10 @@
-# R project files
+# R project files, other settings files
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
 .Renviron
+.vscode
 
 # Files too large for git
 1_raw/food_systems_data_warehouse
@@ -24,6 +25,7 @@
 4_scripts/explore.R
 temp/
 webdb/
+dev/
 
 # Environment files
 .venv
