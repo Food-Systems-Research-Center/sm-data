@@ -4,13 +4,14 @@
 #' Conveniently filter a long-format metrics df by FIPS code.
 #' 
 #' @param df A long-format metrics df.
-#' @param scope Method by which FIPS codes are filtered. `all` = all states nationally and 
-#' any county in Northeast. `counties` = any county in Northeast. This includes
-#' Connecticut's old county system and new governance region system. `new` = all counties in Northeast,
-#' but only Connecticut's new governance region system (n = 68).
-#' `old` = all counties in Northeast, but only Connecticut's old county system (n = 67).
-#' `neast` = Northeast states and Counties.
-#' @param fips_col column specifying fips code. 
+#' @param scope Method by which FIPS codes are filtered. `all` = all states
+#'   nationally and any county in Northeast (9 + 226 = 235). `counties` = any county in
+#'   Northeast. This includes Connecticut's old county system and new governance
+#'   region system (226). `new` = all counties in Northeast, but only
+#'   Connecticut's new governance region system (218). `old` = all counties in
+#'   Northeast, but only Connecticut's old county system (217). `neast` =
+#'   Northeast states and Counties.
+#' @param fips_col column specifying fips code.
 #'
 #' @returns A data.frame with filters applied.
 #' @import dplyr
@@ -21,7 +22,7 @@
 #' data(metrics_example)
 #' filter_fips(metrics_example, scope = 'all')
 filter_fips <- function(df, 
-                        scope = c('all', 'counties', 'new', 'old', 'states', 'us', 'ne'),
+                        scope = c('all', 'counties', 'new', 'old', 'states', 'us', 'neast'),
                         fips_col = 'fips') {
   # Match to one of arguments if it is a short version
   scope <- match.arg(scope)
@@ -31,7 +32,7 @@ filter_fips <- function(df,
     out <- df %>% 
       dplyr::filter(.data[[fips_col]] %in% fips_key$fips)
     
-  } else if (scope == 'ne') {
+  } else if (scope == 'neast') {
     subset <- fips_key %>% 
       dplyr::filter(str_length(fips) == 5 | (!is.na(state_code) & state_code != 'US')) %>% 
       pull(fips)

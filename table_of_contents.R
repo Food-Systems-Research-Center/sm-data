@@ -1,4 +1,5 @@
-# last update 2025-06-15
+#' Table of Contents
+#' 2025-07-11 last update
 
 #' This ToC links to all code used in SM data collection, wrangling, metadata 
 #' creation, and export to sm-docs and sm-explorer repos. To navigate to a 
@@ -68,7 +69,7 @@ source('4_scripts/bls_ers.R')
 source('4_scripts/county_health_rankings.R')
 
 # Feeding America - Map the Meal Gap
-source('4_scripts/map_meal_gap.R')
+# source('4_scripts/map_meal_gap.R')
 
 # Other - EPA, USDA bee surveys, FSA disaster declarations, BEA GDP by industry,
 # FDA recall enforcement, USDM drought
@@ -111,4 +112,4 @@ source('4_scripts/export_data.R')
 
 
 ## Secondary paper scripts
-'dev/pull_from_excel.R'
+'dev/update_excel.R'

@@ -1,5 +1,5 @@
 # NASS
-# 2025-07-09 update
+# 2025-07-10 update
 
 
 # Description -------------------------------------------------------------
@@ -7,19 +7,6 @@
 
 # Taking our API calls from nass_api.R and combining them. Using the nass 
 # api parameters to start metadata
-
-
-
-# Housekeeping ------------------------------------------------------------
-
-
-pacman::p_load(
-  dplyr,
-  readr,
-  tidyr
-)
-
-# Load API outs
 census <- readRDS('5_objects/api_outs/neast_nass_census_2002_2022.rds')
 survey <- readRDS('5_objects/api_outs/neast_nass_survey_2002_2022.rds')
 
@@ -33,8 +20,6 @@ nass_params <- read_csv('5_objects/api_parameters/nass_api_parameters.csv')
 
 bound <- bind_rows(census, survey)
 get_str(bound)
-bound %>% 
-  filter(str_detect(short_desc, 'LABOR, HIRED - NUMBER OF WORKERS'))
 
 # Pull relevant variables, create a single FIPS variable where counties have 5
 # digits and states have 2
@@ -75,21 +60,187 @@ dat <- dat %>%
   )
 get_str(dat)
 
+# Reduce unnecessary variables
+dat <- dat %>% 
+  select(
+    variable_name,
+    fips,
+    year,
+    value
+  )
+get_str(dat)
+
+
+
+# Calculate New Variables -------------------------------------------------
+
+
+# Doing this one at a time to avoid hangups pivoting wider with uneven sized
+# data
+(vars <- meta_vars(dat))
+
+# Function to add a derived variable
+calculate_var <- function(df,
+                          num,
+                          denom,
+                          name) {
+  out <- df %>% 
+    filter(variable_name %in% c(num, denom)) %>% 
+    pivot_wider(
+      id_cols = c(fips, year),
+      names_from = variable_name,
+      values_from = value
+    ) %>% 
+    rowwise() %>% 
+    mutate(
+      !!sym(name) := !!sym(num) / !!sym(denom),
+      .keep = 'unused'
+    )
+  cat('\nRange:', range(out[[name]], na.rm = TRUE))
+  
+  out <- out %>% 
+    pivot_longer(
+      cols = !c(fips, year),
+      values_to = 'value',
+      names_to = 'variable_name'
+    )
+  bind_rows(df, out)
+}
+
+get_str(dat)
+
+# Add value added sales as a proportion of total sales
+dat <- calculate_var(
+  dat,
+  'totalSalesValueAddedDirect',
+  'totalSalesCommodities',
+  'd2cSalesPropTotal'
+)
+
+# Value added retail as a proportion of all sales
+dat <- calculate_var(
+  dat,
+  'totalSalesValueAddedDirect',
+  'totalSalesCommodities',
+  'salesValueAddedDirectPropTotal'
+)
+
+# Value added wholesale as a proportion of all sales
+dat <- calculate_var(
+  dat,
+  'totalSalesValueAddedWholesale',
+  'totalSalesCommodities',
+  'salesValueAddedWholesalePropTotal'
+)
+
+# Income from agritourism as proportion of all income
+dat <- calculate_var(
+  dat,
+  'totalIncomeAgTourismRecreation',
+  'totalFarmIncome',
+  'incomeAgTourismRecPropTotal'
+)
+
+# Fertilizer expenses as proportion of total expenses
+dat <- calculate_var(
+  dat,
+  'expensesFertilizerLimeSoilCond',
+  'totalOperatingExpenses',
+  'fertExpensePropTotalExpense'
+)
+
+# Fuels as proportion of total expenses
+dat <- calculate_var(
+  dat,
+  'nOpsFuelExpenses',
+  'totalFuelExpenses',
+  'fuelExpensePropTotalExpense'
+)
+# This might be hinky
+
+# Female to male producer ratio
+dat <- calculate_var(
+  dat,
+  'nFemProducers',
+  'nMaleProducers',
+  'ftmProdRatio'
+)
+
+# Income from crop and animal insurance as a proportion of total
+dat <- calculate_var(
+  dat,
+  'totalIncomeCropAnimalInsurance',
+  'totalFarmIncome',
+  'incomeCropAnimalInsurancePropTotal'
+)
+
+
+## Producer racial diversity with Shannon index of producer races
+get_str(dat)
+
+# Prepare 
+out <- dat %>% 
+  filter(str_detect(variable_name, '^n.+Producers$')) %>% 
+  pivot_wider(
+    id_cols = c(fips, year),
+    values_from = value,
+    names_from = variable_name
+  ) %>% 
+  mutate(across(!c(fips, year), ~ ifelse(is.na(.x), 0, .x)))
+get_str(out)
+
+out$producerRacialDiversity <- out %>% 
+  select(where(is.numeric)) %>% 
+  diversity()
+get_str(out) 
+
+# Make it long again to add back into dat
+dat <- out %>% 
+  select(fips, year, producerRacialDiversity) %>% 
+  pivot_longer(
+    cols = producerRacialDiversity,
+    names_to = 'variable_name',
+    values_to = 'value'
+  ) %>% 
+  bind_rows(dat)
+get_str(dat)  
+
+
+## Total sales (animal sales + crop sales)
+dat <- dat %>% 
+  filter(variable_name %in% c('salesAnimal', 'salesCrop')) %>% 
+  pivot_wider(
+    id_cols = c(fips, year),
+    values_from = value,
+    names_from = variable_name
+  ) %>% 
+  mutate(
+    salesAnimalAndCrop = salesAnimal + salesCrop,
+    .keep = 'unused'
+  ) %>% 
+  pivot_longer(
+    cols = !c(fips, year),
+    values_to = 'value',
+    names_to = 'variable_name'
+  ) %>% 
+  bind_rows(dat)
+get_str(dat)
 
 
 # Metadata ----------------------------------------------------------------
 
 
-get_str(bound)
+get_str(dat)
 get_str(nass_params)
 (vars <- meta_vars(dat))
+dat_df <- data.frame(variable_name = vars)
 
 # Join nass params with variable names from dat to start metadata
 meta <- nass_params %>% 
-  filter(source_desc != 'SURVEY') %>% 
-  select(-ends_with('desc'), -note) %>% 
-  right_join(distinct(select(dat, short_desc, unit_desc, variable_name))) %>% 
-  arrange(variable_name)
+  filter(source_desc == 'CENSUS') %>%
+  right_join(dat_df) %>% 
+  select(-ends_with('desc'), -note) 
+
 get_str(meta)
 
 # Work off of this to fill in rest of metadata
@@ -107,14 +258,14 @@ meta <- meta %>%
       is.na(indicator) & str_detect(variable_name, 'Yield') ~ 'yield',
       .default = indicator
     ),
-    across(c(metric, definition), ~ case_when(
-      is.na(.x) & str_detect(variable_name, 'Yield') ~ snakecase::to_sentence_case(short_desc),
-      .default = .x
-    )),
-    units = case_when(
-      is.na(units) ~ snakecase::to_sentence_case(unit_desc),
-      .default = units
-    ),
+    # across(c(metric, definition), ~ case_when(
+    #   is.na(.x) & str_detect(variable_name, 'Yield') ~ snakecase::to_sentence_case(short_desc),
+    #   .default = .x
+    # )),
+    # units = case_when(
+    #   is.na(units) ~ snakecase::to_sentence_case(unit_desc),
+    #   .default = units
+    # ),
     axis_name = case_when(
       is.na(axis_name) ~ variable_name,
       .default = axis_name
@@ -134,8 +285,7 @@ meta <- meta %>%
     ),
     url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/',
   ) %>% 
-  meta_citation(date = '2025-07-02') %>% 
-  select(-c(ends_with('desc')))
+  meta_citation(date = '2025-07-10')
 get_str(meta)
 
 

@@ -15,6 +15,9 @@
 1_raw/county_health_rankings
 1_raw/usda/ers_wealth_and_income/
 1_raw/cdc/
+1_raw/ebird/
+1_raw/inaturalist/
+
 
 # More large files
 5_objects/spatial/

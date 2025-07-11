@@ -45,24 +45,3 @@ dat <- metrics %>%
 get_str(dat)
 
 
-
-# test saving space -------------------------------------------------------
-
-
-pacman::p_load(
-  dplyr,
-  readr
-)
-
-metrics <- read_csv('6_outputs/metrics.csv')
-get_size(metrics)
-
-dat <- metrics %>% 
-  mutate(variable_name = dense_rank(variable_name))
-get_str(dat)
-get_size(dat)
-# not much better
-
-
-sm_data <- readRDS('6_outputs/sm_data.rds')
-get_size(sm_data)

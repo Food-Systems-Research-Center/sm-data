@@ -6,19 +6,20 @@
 \usage{
 filter_fips(
   df,
-  scope = c("all", "counties", "new", "old", "states", "us", "ne"),
+  scope = c("all", "counties", "new", "old", "states", "us", "neast"),
   fips_col = "fips"
 )
 }
 \arguments{
 \item{df}{A long-format metrics df.}
 
-\item{scope}{Method by which FIPS codes are filtered. \code{all} = all states nationally and
-any county in Northeast. \code{counties} = any county in Northeast. This includes
-Connecticut's old county system and new governance region system. \code{new} = all counties in Northeast,
-but only Connecticut's new governance region system (n = 68).
-\code{old} = all counties in Northeast, but only Connecticut's old county system (n = 67).
-\code{neast} = Northeast states and Counties.}
+\item{scope}{Method by which FIPS codes are filtered. \code{all} = all states
+nationally and any county in Northeast (9 + 226 = 235). \code{counties} = any county in
+Northeast. This includes Connecticut's old county system and new governance
+region system (226). \code{new} = all counties in Northeast, but only
+Connecticut's new governance region system (218). \code{old} = all counties in
+Northeast, but only Connecticut's old county system (217). \code{neast} =
+Northeast states and Counties.}
 
 \item{fips_col}{column specifying fips code.}
 }

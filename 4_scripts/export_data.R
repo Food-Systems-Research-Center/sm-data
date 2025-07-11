@@ -105,8 +105,9 @@ file.remove(paths)
 # Initiate list
 sm_data <- list()
 
-# Metrics and metadata table
+# Metrics and metadata
 sm_data$metrics <- metrics_agg
+sm_data$metadata <- meta_agg
 
 # Spatial objects and references
 sm_data$fips <- read_all_rds(path = '5_objects/', pattern = '_key.rds$|^all_fips')
