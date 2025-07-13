@@ -30,8 +30,8 @@ census_key <- Sys.getenv("CENSUS_API_KEY")
 
 
 
-# Rework ------------------------------------------------------------------
-## Testing -----------------------------------------------------------------
+# Testing -----------------------------------------------------------------
+
 
 # Try out censusapi
 apis <- listCensusApis()
@@ -44,9 +44,12 @@ acs_apis <- listCensusApis(name = 'acs/acs5', vintage = 2022)
 meta <- listCensusMetadata('acs/acs5', vintage = 2022)
 get_str(meta)
 
+# Check acs1 also - might want population from here
+out <- listCensusMetadata('acs/acs1', vintage = 2022)
 
 
-## Prep --------------------------------------------------------------------
+
+# Prep --------------------------------------------------------------------
 
 
 # Get vector of northeast states
@@ -60,7 +63,7 @@ years <- seq(2008, 2023, 5)
 # Variables
 vars <- list(
   # Population
-  'population' = 'B01003_001E',
+  'population5year' = 'B01003_001E',
   
   # Education
   'edTotal' = 'B15003_001E',
@@ -108,53 +111,10 @@ saveRDS(vars, '5_objects/census_acs5_crosswalk.rds')
 
 
 
-## Small Tests -------------------------------------------------------------
+# API Calls ---------------------------------------------------------------
 
 
-# Map over states, get state data
-# one year only
-out <- map(state_codes, \(state_code) {
-  Sys.sleep(2)
-  getCensus(
-    name = "acs/acs5",
-    vintage = 2023,
-    key = census_key,
-    vars = vars,
-    region = paste0("state:", state_code)
-  )
-}) %>% 
-  bind_rows()
-get_str(out)
-# State data checks out - adds up to sum of counties approximately
-# looks like it will be easiest to just run them both separately and combine
-
-
-# Now map over multiple years (few states to test)
-years <- c(2018, 2023)
-county_out <- map(state_codes[1:2], \(state_code) {
-  map(years, \(yr) {
-    Sys.sleep(2)
-    getCensus(
-      name = "acs/acs5",
-      key = census_key,
-      vintage = yr,
-      vars = vars,
-      region = "county:*",
-      regionin = paste0("state:", state_code)
-    ) %>% 
-      mutate(year = yr)
-  }) %>%
-    bind_rows()
-}) %>% 
-  bind_rows()
-get_str(county_out)
-
-
-
-## Pull with function ------------------------------------------------------
-
-
-# State data
+# ACS5 state data
 states_out <- call_census_api(
   state_codes = state_codes,
   years = years,
@@ -163,24 +123,60 @@ states_out <- call_census_api(
   region = 'state'
 )
 get_str(states_out)  
-# saveRDS(states_out, 'temp/states_out.rds')
+saveRDS(states_out, 'temp/states_out.rds')
 
-# County data
-darn <- call_census_api(
+# ACS5 county data
+county_out <- call_census_api(
   state_codes = state_codes,
   years = years,
-  vars = 'B14005_001E',
+  vars = vars,
   census_key = census_key,
   region = 'county'
 )
 get_str(county_out)  
-# saveRDS(county_out, 'temp/county_out.rds')
+saveRDS(county_out, 'temp/county_out.rds')
 
-# Combine and rename
-out <- bind_rows(states_out, county_out) %>% 
+# ACS1 county data
+acs1_county_out <- call_census_api(
+  state_codes = state_codes,
+  years = 2000:2024,
+  vars = 'B01003_001E',
+  census_key = census_key,
+  region = 'county',
+  survey_name = 'acs/acs1'
+)
+get_str(acs1_county_out)
+saveRDS(acs1_county_out, 'temp/acs1_county_out.rds')
+
+# ACS1 state data
+acs1_states_out<- call_census_api(
+  state_codes = state_codes,
+  years = 2000:2024,
+  vars = 'B01003_001E',
+  census_key = census_key,
+  region = 'state',
+  survey_name = 'acs/acs1'
+)
+get_str(acs1_states_out)
+saveRDS(acs1_states_out, 'temp/acs1_states_out.rds')
+
+
+
+# Combine -----------------------------------------------------------------
+
+
+# Combine and rename ACS5 variables
+acs5 <- bind_rows(states_out, county_out) %>% 
   rename(!!!setNames(vars, names(vars)))
-get_str(out)
+get_str(acs5)
 
-saveRDS(out, '5_objects/api_outs/acs5_neast_counties_states_2008_2023.rds')
+# Give population from ACS1 a different name, then bind to rest
+acs1 <- bind_rows(acs1_county_out, acs1_states_out) %>% 
+  rename(populationAnnual = B01003_001E)
+get_str(acs1)
+
+# Save all together
+saveRDS(acs1, '5_objects/api_outs/acs1_neast_counties_states_2000_2023.rds')
+saveRDS(acs5, '5_objects/api_outs/acs5_neast_counties_states_2008_2023.rds')
 
 

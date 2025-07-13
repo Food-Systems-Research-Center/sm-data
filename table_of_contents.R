@@ -55,7 +55,7 @@ source('4_scripts/naics_key.R')
 # organized somewhat thematically, or sometimes functionally as seemed 
 # appropriate at the time, even though it might no longer be appropriate.
 
-# USDA National Agriculural Statistics Service
+# USDA National Agricultural Statistics Service
 source('4_scripts/nass.R')
 
 # American Community Survey (ACS5)

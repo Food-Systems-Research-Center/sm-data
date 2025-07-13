@@ -2,6 +2,17 @@
 # 2025-07-10 update
 
 
+# Housekeeping ------------------------------------------------------------
+
+
+pacman::p_load(
+  dplyr,
+  tidyr,
+  vegan
+)
+
+
+
 # Description -------------------------------------------------------------
 
 
@@ -227,6 +238,7 @@ dat <- dat %>%
 get_str(dat)
 
 
+
 # Metadata ----------------------------------------------------------------
 
 
@@ -239,8 +251,7 @@ dat_df <- data.frame(variable_name = vars)
 meta <- nass_params %>% 
   filter(source_desc == 'CENSUS') %>%
   right_join(dat_df) %>% 
-  select(-ends_with('desc'), -note) 
-
+  select(-ends_with('desc'), -note)
 get_str(meta)
 
 # Work off of this to fill in rest of metadata
@@ -258,14 +269,6 @@ meta <- meta %>%
       is.na(indicator) & str_detect(variable_name, 'Yield') ~ 'yield',
       .default = indicator
     ),
-    # across(c(metric, definition), ~ case_when(
-    #   is.na(.x) & str_detect(variable_name, 'Yield') ~ snakecase::to_sentence_case(short_desc),
-    #   .default = .x
-    # )),
-    # units = case_when(
-    #   is.na(units) ~ snakecase::to_sentence_case(unit_desc),
-    #   .default = units
-    # ),
     axis_name = case_when(
       is.na(axis_name) ~ variable_name,
       .default = axis_name

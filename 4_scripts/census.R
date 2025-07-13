@@ -22,10 +22,10 @@ results <- list()
 metas <- list()
 
 
-# Rework ------------------------------------------------------------------
-## Wrangle -----------------------------------------------------------------
+# ACS5 --------------------------------------------------------------------
 
 
+# Wrangle ACS5, calculating some derived variables
 out <- readRDS('5_objects/api_outs/acs5_neast_counties_states_2008_2023.rds')
 get_str(out)
 
@@ -76,7 +76,36 @@ get_str(dat)
 
 
 
-## Metadata ----------------------------------------------------------------
+# ACS1 --------------------------------------------------------------------
+
+
+# Now for ACS1, just one population variable
+acs1 <- readRDS('5_objects/api_outs/acs1_neast_counties_states_2000_2023.rds')
+get_str(acs1)
+range(acs1$populationAnnual)
+
+acs1 <- acs1 %>% 
+  mutate(
+    fips = case_when(
+      is.na(county) ~ state,
+      .default = paste0(state, county)
+    ),
+    .keep = 'unused'
+  ) %>% 
+  pivot_longer(
+    cols = populationAnnual,
+    names_to = 'variable_name',
+    values_to = 'value'
+  )
+get_str(acs1)
+
+# Combine with ACS5 above
+dat <- bind_rows(dat, acs1)
+get_str(dat)
+  
+
+
+# Metadata ----------------------------------------------------------------
 
 
 meta_vars(dat)
@@ -89,11 +118,14 @@ meta <- meta %>%
   arrange(variable_name) %>% 
   mutate(
     resolution = meta_resolution(dat),
-    updates = '5 years',
+    updates = case_when(
+      str_detect(variable_name, '5year') ~ 'annual',
+      .default = '5 years'
+    ),
     latest_year = meta_latest_year(dat),
     year = meta_years(dat)
   ) %>% 
-  meta_citation(date = '2025-07-03')
+  meta_citation(date = '2025-07-13')
 get_str(meta)
 
 

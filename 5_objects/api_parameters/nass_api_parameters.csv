@@ -8,6 +8,14 @@ economics,food business resilience,operations diversification,CENSUS,,"COMMODITY
 economics,food business resilience,operations diversification,CENSUS,,"COMMODITY TOTALS, INCL VALUE-ADDED, WHOLESALE, DIRECT TO RETAILERS & INSTITUTIONS & FOOD HUBS, LOCAL OR REGIONALLY BRANDED PRODUCTS, HUMAN CONSUMPTION - SALES, MEASURED IN $",COMMODITY TOTALS,new,"Total sales of value-added, wholesale commodities",totalSalesValueAddedWholesale,,,usd
 economics,food business resilience,operations diversification,CENSUS,,derived,COMMODITY TOTALS,new,Sales from value-added wholesale as a proportion of total sales,salesValueAddedWholesalePropTotal,,,usd
 util_dimension,util_index,util_indicator,CENSUS,,FARM OPERATIONS - NUMBER OF OPERATIONS,FARM OPERATIONS,new,Number of operations,nOperations,,,count
+util_dimension,util_index,util_indicator,CENSUS,,"AG LAND, CROPLAND - ACRES",AG LAND,new,Acres of crop ag land,agLandCropAcres,,,acres
+util_dimension,util_index,util_indicator,CENSUS,,"AG LAND, CROPLAND, HARVESTED - ACRES",AG LAND,new,Acres of harvested cropl ag land,agLandCropHarvestAcres,,,acres
+util_dimension,util_index,util_indicator,CENSUS,,"AG LAND, IRRIGATED - ACRES",AG LAND,new,Acres of irrigated ag land,agLandIrrigatedAcres,,,acres
+util_dimension,util_index,util_indicator,CENSUS,,"AG LAND, CROPLAND, PASTURED ONLY - ACRES",AG LAND,new,Acres of pasture ag land,agLandCropPastureAcres,,,acres
+util_dimension,util_index,util_indicator,CENSUS,,"AG LAND, WOODLAND - ACRES",AG LAND,new,Acres of woodland ag land,agLandWoodAcres,,,acres
+util_dimension,util_index,util_indicator,CENSUS,,"AG LAND, CROP INSURANCE - ACRES",AG LAND,new,Acres of ag land under crop insurance,agLandCropInsuranceAcres,,,acres
+util_dimension,util_index,util_indicator,CENSUS,,"LAND AREA, INCL NON-AG - ACRES",LAND AREA,new,"Land area, including non agricultural, in acres",landAreaInclNonAgAcres,,,acres
+util_dimension,util_index,util_indicator,CENSUS,,"AG LAND, PASTURELAND, (EXCL CROPLAND & WOODLAND) - ACRES",AG LAND,new,Acres of pasture ag land,agLandPastureAcres,,,acres
 production,production index tbd,"production inputs (fertilizers, pesticides)",CENSUS,,derived,FERTILIZER TOTALS,new,Fertilizer expenses as a percentage of operation expenses,fertExpensePropTotalExpense,,,usd
 environment,"carbon, ghg, nutrients",embodied carbon,CENSUS,,"FUELS, INCL LUBRICANTS - OPERATIONS WITH EXPENSE",FUELS,new,Operations with fuel expenses,nOpsFuelExpenses,,,count
 environment,"carbon, ghg, nutrients",embodied carbon,CENSUS,,"FUELS, INCL LUBRICANTS - EXPENSE, MEASURED IN $",FUELS,new,Total fuel expenses,totalFuelExpenses,,,usd
@@ -16,7 +24,7 @@ economics,food business resilience,use of ag/farm/crop insurance,CENSUS,,"INCOME
 economics,food business resilience,use of ag/farm/crop insurance,CENSUS,,"INCOME, FARM-RELATED, CROP & ANIMAL INSURANCE PAYMENTS - RECEIPTS, MEASURED IN $","INCOME, FARM-RELATED",new,Total crop and animal insurance payments,totalIncomeCropAnimalInsurance,,,usd
 economics,food business resilience,use of ag/farm/crop insurance,CENSUS,,derived,"INCOME, FARM-RELATED",new,Income from crop and animal insurance as a proportion of total income,incomeCropAnimalInsurancePropTotal,,,usd
 util_dimension,util_index,util_indicator,CENSUS,,"AG LAND, CROPLAND - ACRES",AG LAND,new,Acres of cropland,croplandAcres,,,acres
-util_dimension,util_index,util_indicator,CENSUS,,PRODUCERS - NUMBER OF PRODUCERS,PRODUCERS,new,Number of producers,nProducers,,,count
+util_dimension,util_index,util_indicator,CENSUS,,"PRODUCERS, (ALL) - NUMBER OF PRODUCERS",PRODUCERS,new,Number of producers,nProducers,,,count
 economics,food business resilience,operations diversification,CENSUS,,"INCOME, FARM-RELATED - RECEIPTS, MEASURED IN $","INCOME, FARM-RELATED",new,Total farm-related income,totalFarmIncome,,,usd
 economics,food business resilience,operations diversification,CENSUS,,"COMMODITY TOTALS - SALES, MEASURED IN $",COMMODITY TOTALS,new,Total sales from commodities,totalSalesCommodities,,,usd
 production,production index tbd,"production inputs (fertilizers, pesticides)",CENSUS,,"EXPENSE TOTALS, OPERATING - EXPENSE, MEASURED IN $",EXPENSE TOTALS,new,Total operating expenses,totalOperatingExpenses,,,usd

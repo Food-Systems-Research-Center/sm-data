@@ -188,7 +188,11 @@ select_measures <- map(analytic, ~ {
   bind_rows()
 get_str(select_measures)
 
-# Remove any NAs
+# Remove population - using census ACS5 here instead
+select_measures <- select_measures %>% 
+  filter(str_detect(variable_name, 'Population', negate = TRUE))
+get_str(select_measures)
+
 # Save to results
 res$select_measures <- select_measures
 
@@ -240,7 +244,7 @@ select_meta_meta <- select_meta %>%
   mutate(
     metric = str_to_sentence(Measure),
     variable_name = snakecase::to_lower_camel_case(Measure),
-    axis_name = variable_name, # Could try to give better names...
+    axis_name = variable_name,
     dimension = case_when(
       str_detect(metric, regex('social|disconnected|census|turnout|traffic|arrest|segregation|commute|driving|single-parent', ignore_case = TRUE)) ~ 'social',
       str_detect(metric, regex('broadband|poverty|employm|income|pay gap|free|wage', ignore_case = TRUE)) ~ 'economics',
@@ -257,19 +261,6 @@ select_meta_meta <- select_meta %>%
   ) %>% 
   meta_citation(date = '2025-07-07') %>% 
   select(-Measure)
-
-select_meta_meta %>% select(1, 5)
-select_meta_meta
-select_meta_meta$variable_name %>% unique
-
-select_meta_meta %>% 
-  filter(dimension == 'social') %>% 
-  pull(metric)
-
-select_meta_meta %>%
-  filter(dimension == 'social') %>% 
-  arrange(variable_name) %>% 
-  select(variable_name, metric)
 
 # Now just deal with social
 metas$select_measures_social <- select_meta_meta %>%

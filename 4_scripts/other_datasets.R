@@ -21,7 +21,8 @@ pacman::p_load(
   readr,
   tidyr,
   snakecase,
-  readxl
+  readxl,
+  sf
 )
 
 # Get areas of each county - used in FSA calculations
@@ -1274,6 +1275,78 @@ metas$cdc <- data.frame(
   meta_citation(date = '2025-07-07')
 
 get_str(metas$cdc)
+
+
+
+# Areas -------------------------------------------------------------------
+
+
+# Pulling state and county area from our polygons from tidycensus
+# Map over both, just taking fips, awater, and aland
+dat <- map(list(neast_counties_2024, neast_states), ~ {
+  .x %>% 
+    sf::st_drop_geometry() %>% 
+    select(fips, aland, awater)
+}) %>% 
+  bind_rows()
+get_str(dat)
+
+# Convert to acres (4046.8564224 sq meters per acre)
+dat <- dat %>% 
+  mutate(across(
+    c(aland, awater), 
+    ~ .x / 4046.8564224, 
+    .names = '{str_sub(.col, start = 2)}Acres'
+  ), .keep = 'unused',
+  year = NA
+)
+get_str(dat)
+
+# Pivot to fit with metrics
+dat <- dat %>% 
+  pivot_longer(
+    cols = c(landAcres, waterAcres),
+    names_to = 'variable_name',
+    values_to = 'value'
+  )
+get_str(dat)
+
+results$area <- dat
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+(vars <- meta_vars(dat))
+
+# Abbreviated metadata
+metas$area <- data.frame(
+  variable_name = vars,
+  dimension = 'util_dimension',
+  index = 'util_index',
+  indicator = 'util_indicator',
+  definition = c(
+    'Acres of land based on US Census shapefiles from 2024',
+    'Acres of water based on US Census shapefiles from 2024'
+  ),
+  metric = c(
+    'Acres of land',
+    'Acres of water'
+  ),
+  units = 'acres',
+  axis_name = NA,
+  annotation = NA,
+  scope = NA,
+  resolution = NA,
+  year = NA,
+  latest_year = NA,
+  updates = NA,
+  source = 'US Census Bureau',
+  url = NA
+)
+
+get_str(metas$area)
 
 
 
