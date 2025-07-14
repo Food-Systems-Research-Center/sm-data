@@ -27,8 +27,6 @@ pacman::p_load(
   tidyr
 )
 
-# source('3_functions/metadata_utilities.R')
-
 
 
 # Load and Wrangle --------------------------------------------------------
@@ -110,12 +108,14 @@ map(mmg, get_str)
 map(mmg, ~ sum(is.na(.x$fips)))
 
 # Now put them together and fix n/a s
+# Also fix names
 mmg <- mmg %>% 
   bind_rows() %>% 
   mutate(across(everything(), ~ case_when(
     .x == 'n/a' ~ NA_character_,
     .default = .x
-  )))
+  ))) %>% 
+  setNames(c(snakecase::to_lower_camel_case(names(.))))
 get_str(mmg)
 
 # Pivot longer to put in metrics format
@@ -139,7 +139,8 @@ get_str(mmg)
 
 # Metadata ----------------------------------------------------------------
 
-(vars <- get_vars(mmg))
+
+(vars <- meta_vars(mmg))
 
 
 meta <- tibble(
@@ -179,15 +180,15 @@ meta <- tibble(
       'usd'
     ),
     scope = 'national',
-    resolution = get_resolution(mmg),
-    year = get_all_years(mmg),
-    latest_year = get_max_year(mmg),
+    resolution = meta_resolution(mmg),
+    year = meta_years(mmg),
+    latest_year = meta_latest_year(mmg),
     updates = "annual",
     source = 'Feeding America: Map the Meal Gap (2025). An analysis of county and congressional district food insecurity and couty food cost in the United States',
     url = 'https://map.feedingamerica.org/',
     warehouse = FALSE
   ) %>% 
-    add_citation_2(date = 'June 6th, 2025')
+    meta_citation(date = '2025-06-06')
 get_str(meta)
 
 
@@ -202,4 +203,4 @@ check_n_records(mmg, meta, 'Map the Meal Gap')
 saveRDS(mmg, '5_objects/metrics/map_meal_gap.RDS')
 saveRDS(meta, '5_objects/metadata/mmg_meta.RDS')
 
-clear_data()
+clear_data(gc = TRUE)

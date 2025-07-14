@@ -4,7 +4,7 @@
 \alias{sm_export}
 \title{SM Export}
 \usage{
-sm_export(update = TRUE)
+sm_export(update = TRUE, load_all = TRUE)
 }
 \arguments{
 \item{update}{If \code{TRUE}, run \code{sm_update()} to update the \code{.rda} files in the

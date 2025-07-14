@@ -27,7 +27,8 @@ pacman::p_load(
   lubridate,
   reticulate,
   tidyr,
-  readr
+  readr,
+  prism
 )
 
 results <- list()
@@ -583,24 +584,6 @@ get_str(metas$forest_carbon)
 # TreeMap 2016 ------------------------------------------------------------
 
 
-# NOTE: Dropping this for now - waiting on newer datasets
-
-# # This is just live carbon layer. Doing more below
-# # https://www.fs.usda.gov/rds/archive/catalog/RDS-2021-0074
-# treemap <- read_stars('1_raw/spatial/usfs_treemap/TreeMap2016_CARBON_L.tif')
-# 
-# # Crop
-# ne_counties_prj <- st_transform(ne_counties, st_crs(treemap))
-# treemap_crop <- st_crop(treemap, ne_counties_prj)
-# 
-# # Saving this raster to use straight up in Quarto
-# # saveRDS(treemap_crop, '2_clean/spatial/map_layers/treemap_biomass.rds')
-
-
-
-# Redo TreeMap ------------------------------------------------------------
-
-
 # NOTE: dropping this for now, waiting on newer datasets
 
 # # Run python script to aggregate TreeMap2016 data by counties
@@ -1054,6 +1037,123 @@ get_str(metas$nature_serve)
 
 
 
+# SSURGO ------------------------------------------------------------------
+
+
+# Reduce to northeast mask
+
+# reticulate::source_python('3_functions/spatial/mask_rasters.py')
+# mask_rasters(
+#   input_dir = '1_raw/spatial/ssurgo/gSSURGO_CONUS/',
+#   output_dir = '1_raw/spatial/mrlc_lulc/neast',
+#   aoi_path = '2_clean/spatial/neast_mask.gpkg'
+# )
+
+# surgo <- sf::read_sf('1_raw/spatial/ssurgo/gSSURGO_CONUS/gSSURGO_CONUS.gdb/')
+# get_str(surgo)
+
+
+# # Save gpkg as shapefile to download from WSS
+# mask <- sf::read_sf('2_clean/spatial/neast_mask.gpkg')
+# sf::write_sf(mask, '2_clean/spatial/neast_mask.shp')
+# 
+# # Load some gsmsoil data
+# gsm <- sf::st_read('1_raw/spatial/ssurgo/wss_gsmsoil/wss_gsmsoil_CT_[2016-10-13]/wss_gsmsoil_CT_[2016-10-13]/spatial/')
+# gsm
+# 
+# # Another
+# out <- sf::st_read('1_raw/spatial/ssurgo/wss_gsmsoil/wss_gsmsoil_CT_[2016-10-13]/wss_gsmsoil_CT_[2016-10-13]/spatial/')
+# out
+
+
+
+# PRISM -------------------------------------------------------------------
+
+
+# Set download directory
+prism_set_dl_dir("1_raw/spatial/prism/")
+
+# Get total precipitation (rain and snow)
+get_prism_annual(
+  "ppt", 
+  years = 2000:2024,
+  keepZip = FALSE
+)
+
+# Check archive
+(archive <- prism_archive_ls())
+
+# Check metadata
+df <- pd_get_md(archive[[1]])
+
+# Load one to check
+# bil <- stars::read_stars('1_raw/spatial/prism/PRISM_ppt_stable_4kmM3_2024_bil/PRISM_ppt_stable_4kmM3_2024_bil.bil')
+# bil
+# mapview(bil)
+
+# Get all paths
+paths <- ls_prism_data(absPath = TRUE)
+
+# Use python function to get sums of precipitation by county using paths
+county_path <- '2_clean/spatial/neast_counties_2024.gpkg'
+reticulate::source_python('3_functions/spatial/get_zonal_stats.py')
+out <- map(paths$abs_path, ~ {
+  print(.x)
+  get_zonal_stats(
+    .x, 
+    county_path, 
+    stat = 'sum', 
+    new_name = 'sum'
+  )
+}) %>% 
+  setNames(c(paste0('y', 2000:2024)))
+get_str(out)
+
+# Combine, wrangle into metric format
+dat <- imap(out, ~ {
+  .x %>% 
+    mutate(year = str_sub(.y, start = 2)) %>% 
+    rename(annualPrecipMM = sum)
+}) %>% 
+  bind_rows() %>% 
+  pivot_longer(
+    cols = annualPrecipMM,
+    values_to = 'value',
+    names_to = 'variable_name'
+  )
+get_str(dat)
+
+results$prism <- dat
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+meta_vars(results$prism)
+
+metas$prism <- data.frame(
+  variable_name = meta_vars(results$prism),
+  metric = 'Annual precipitation (mm)',
+  definition = 'Sum of annual precipitation by county in mm',
+  axis_name = 'Annual Precip (mm)',
+  dimension = 'environment',
+  index = 'species and habitat',
+  units = 'mm',
+  scope = 'national',
+  resolution = '4km',
+  year = meta_years(results$prism),
+  latest_year = meta_latest_year(results$prism),
+  updates = "monthly",
+  source = 'PRISM Group, Oregon State University (2025).',
+  url = 'https://prism.oregonstate.edu'
+) %>% 
+  meta_citation(date = '2025-07-14')
+
+get_str(metas$prism)
+
+
+
 # Save and Clear ----------------------------------------------------------
 
 
@@ -1067,3 +1167,4 @@ saveRDS(out$result, '5_objects/metrics/lulc.RDS')
 saveRDS(out$meta, '5_objects/metadata/lulc_meta.RDS')
 
 clear_data(gc = TRUE)
+

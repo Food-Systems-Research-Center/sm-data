@@ -69,11 +69,14 @@ source('4_scripts/bls_ers.R')
 source('4_scripts/county_health_rankings.R')
 
 # Feeding America - Map the Meal Gap
-# source('4_scripts/map_meal_gap.R')
+source('4_scripts/map_meal_gap.R')
 
 # Other - EPA, USDA bee surveys, FSA disaster declarations, BEA GDP by industry,
 # FDA recall enforcement, USDM drought
 source('4_scripts/other_datasets.R')
+
+# iNaturalist 
+source('4_scripts/inaturalist.R')
 
 # Spatial data - MRLC LULC, other spatial data. Note long run time
 source('4_scripts/spatial.R')

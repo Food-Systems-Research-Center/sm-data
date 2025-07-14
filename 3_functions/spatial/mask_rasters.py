@@ -11,9 +11,8 @@ from rasterio.mask import mask
 
 def mask_rasters(input_dir, output_dir, aoi_path = '2_clean/spatial/neast_mask.gpkg'):
     '''
-    Get a DataFrame of LULC category cell counts for each polygon. If the CRS of 
-    each file do not match, the polygons will be projected into the CRS of the 
-    raster.
+    Reduces folder of rasters to Northeast states using mask file and saves to
+    a new folder.
     
     Args:
       input_dir (str): File path to where large conus rasters are kept

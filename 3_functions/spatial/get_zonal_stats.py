@@ -21,7 +21,7 @@ def get_zonal_stats(raster_path, polygon_path, stat, new_name, missing=None):
     # Get raster crs
     with rasterio.open(raster_path) as src:
         raster_crs = src.crs
-    
+        
     # Load polygons shapefile
     polygons = gpd.read_file(polygon_path)
 

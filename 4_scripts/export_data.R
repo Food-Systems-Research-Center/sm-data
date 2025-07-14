@@ -109,6 +109,12 @@ sm_data <- list()
 sm_data$metrics <- metrics_agg
 sm_data$metadata <- meta_agg
 
+# Crosswalk for weighting variable names and metrics
+sm_data$weighting <- readRDS('5_objects/weighting_vars.rds')
+
+# Summary table from OneDrive excel
+sm_data$data_paper_meta <- readRDS('5_objects/data_paper_meta.rds')
+
 # Spatial objects and references
 sm_data$fips <- read_all_rds(path = '5_objects/', pattern = '_key.rds$|^all_fips')
 
@@ -141,10 +147,6 @@ sm_data$conf_tree <- conference_tree
 
 # Flatten into single layer list
 sm_data <- list_flatten(sm_data, name_spec = "{inner}")
-
-# get_str(sm_data)
-# names(sm_data)
-# get_size(sm_data)
 
 # Paths to SMdocs and SMexplorer. Also keeping a copy in outputs
 sm_data_paths <- c(

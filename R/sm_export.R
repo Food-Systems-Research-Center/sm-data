@@ -11,7 +11,8 @@
 #'   creates "metadata.csv" and "metrics.csv" which can be used to pick up
 #'   analysis in other languages if necessary.
 #' @keywords internal
-sm_export <- function(update = TRUE) {
+sm_export <- function(update = TRUE, load_all = TRUE) {
   source('4_scripts/export_data.R')
   if (update) sm_update()
+  if (load_all) devtools::load_all()
 }

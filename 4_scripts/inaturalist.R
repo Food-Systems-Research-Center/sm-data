@@ -1,5 +1,5 @@
 # iNaturalist
-# 2025-07-11
+# 2025-07-14 update
 
 
 # Description -------------------------------------------------------------
@@ -72,6 +72,52 @@ dat <- dat %>%
   st_drop_geometry()
 get_str(dat)
 
+
+# -------------------------------------------------------------------------
+
+
+# Get abundance table, filtering for >100 observations
+get_str(dat)
+dat_n100 <- dat %>%
+  group_by(fips, year, kingdom) %>%
+  filter(n() >= 100) %>%
+  ungroup()
+get_str(dat_n100)
+
+abund_table <- dat_n100 %>%
+  group_by(fips, year, kingdom, species) %>%
+  summarize(n = n(), .groups = "drop") %>%
+  pivot_wider(
+    names_from = species,
+    values_from = n,
+    values_fill = 0
+  )
+abund_table
+
+abund_only <- abund_table %>%
+  select(-fips, -year, -kingdom)
+abund_only
+
+min_n <- min(rowSums(abund_only))
+
+# Rarefy
+rare_rich <- rarefy(abund_only, sample = min_n)
+
+# Combine with grouping info
+abund_table$rare_rich <- rare_rich
+rare_rich <- abund_table %>% 
+  select(fips, year, kingdom, rare_rich)
+get_str(rare_rich)
+
+# Make name 3 characters to match others
+rare_rich <- rename(rare_rich, rar = rare_rich)
+get_str(rare_rich)
+
+
+
+# -------------------------------------------------------------------------
+
+
 # Get counts of observations, species, and diversity by county
 dat <- dat %>%
   group_by(fips, year, kingdom) %>%
@@ -82,7 +128,10 @@ dat <- dat %>%
     .groups = "drop"
   )
 get_str(dat)
-# This will be our dataset
+
+# Add rarefied richness to check bias
+dat <- left_join(dat, rare_rich)
+get_str(dat)
 
 # # Map diversity by county to check
 # check <- out %>% 
@@ -98,7 +147,7 @@ dat <- dat %>%
   pivot_wider(
     id_cols = c(fips, year),
     names_from = kingdom,
-    values_from = c(n_spp, n_obs, div),
+    values_from = c(n_spp, n_obs, div, rar),
     names_glue = "{kingdom}_{.value}"
   )
 get_str(dat)
@@ -125,6 +174,7 @@ get_str(dat)
 
 
 
+
 # Metadata ----------------------------------------------------------------
 
 
@@ -143,18 +193,20 @@ meta <- data.frame(
         str_detect(variable_name, 'Spp$') ~ 'species',
         str_detect(variable_name, 'Obs$') ~ 'observations',
         str_detect(variable_name, 'Div$') ~ 'diversity',
+        str_detect(variable_name, 'Rar$') ~ 'rarefied richness',
         .default = NA
       )
     ) %>% 
       snakecase::to_sentence_case(),
     definition = case_when(
-      str_detect(variable_name, 'diversity') ~ 'Shannon diversity of species within kingdom',
-      str_detect(variable_name, 'species') ~ 'Number of species within kingdom',
-      str_detect(variable_name, 'observations') ~ 'Number of observations within kingdom',
+      str_detect(metric, 'diversity') ~ 'Shannon diversity of species within kingdom',
+      str_detect(metric, 'species') ~ 'Number of species within kingdom',
+      str_detect(metric, 'observations') ~ 'Number of observations within kingdom',
+      str_detect(metric, 'rarefied richnes') ~ 'Rarefied richness of observations within kingdom, truncated at counties wtih > 100 total observations',
       .default = NA
     ),
     units = case_when(
-      str_detect(variable_name, 'diversity') ~ 'index',
+      str_detect(metric, 'diversity|rarefied') ~ 'index',
       .default = 'count'
     ),
     scope = 'national',

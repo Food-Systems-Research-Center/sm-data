@@ -22,7 +22,8 @@ pacman::p_load(
   tidyr,
   snakecase,
   readxl,
-  sf
+  sf,
+  stringr
 )
 
 # Get areas of each county - used in FSA calculations
@@ -1347,6 +1348,135 @@ metas$area <- data.frame(
 )
 
 get_str(metas$area)
+
+
+
+# RMA ---------------------------------------------------------------------
+
+
+# Risk management agency for crop losses and indemnities
+# https://pubfs-rma.fpac.usda.gov/pub/Web_Data_Files/Summary_of_Business/cause_of_loss/index.html
+col_names <- c(
+  'year',
+  'state_fips',
+  'state_abbr',
+  'county_fips',
+  'county_name',
+  'commodity_code',
+  'commodity_name',
+  'insurance_plan_code',
+  'insurance_plan_name',
+  'coverage_category',
+  'stage_code',
+  'cause_of_loss_code',
+  'cause_of_loss_desc',
+  'month_of_loss',
+  'month_of_loss_name',
+  'year_of_loss',
+  'policies_earning_premium',
+  'policies_indemnified',
+  'net_planted_quantity',
+  'net_endorsed_acres',
+  'liability',
+  'total_premium',
+  'producer_paid_premium',
+  'subsidy',
+  'state_private_subsidy',
+  'additional_subsidy',
+  'efa_premium_discount',
+  'net_determined_quantity',
+  'indemnity_amount',
+  'loss_ratio'
+)
+
+# Get file paths and names to pull them all
+# Not taking 2002 because it crashes R for some reason
+paths <- list.files(
+  '1_raw/usda/rma/',
+  pattern = '*.txt',
+  full.names = TRUE
+) %>% 
+  discard(~ str_detect(.x, 'colsom02'))
+names <- list.files(
+  '1_raw/usda/rma/',
+  pattern = '*.txt'
+) %>% 
+  discard(~ str_detect(.x, 'colsom02')) %>% 
+  str_remove('\\.txt')
+
+# Load all years except 2002
+out <- map(paths, ~ {
+  read_delim(.x, col_names = col_names, trim_ws = TRUE)
+}) %>% 
+  setNames(c(names))
+get_str(out)
+get_str(out, 3)
+
+# Make 5 digit fips, reduce to northeast, choose columns, and bind into one df
+dat <- map(out, ~ {
+  .x %>% 
+    mutate(fips = paste0(state_fips, county_fips)) %>% 
+    filter_fips('new') %>% 
+    mutate(indemnity_amount = as.numeric(indemnity_amount)) %>% 
+    select(fips, year, stage_code, indemnity_amount)
+}) %>% 
+  bind_rows()
+get_str(dat)
+
+# Group by fips, get totals per year
+# Filter stage code for final loss payment (FL), get total indemnity
+dat <- dat %>% 
+  filter(stage_code == 'FL') %>% 
+  group_by(fips, year) %>% 
+  summarize(totalIndemnities = sum(indemnity_amount))
+get_str(dat)
+
+# Check county coverage
+dat %>% 
+  group_by(fips) %>% 
+  summarize(n())
+# Missing a bunch of counties - are they zero?
+# Some are nearly zero so it sounds reasonable. Check this
+
+# Pivot longer to fit with other metrics
+dat <- dat %>% 
+  pivot_longer(
+    cols = totalIndemnities,
+    values_to = 'value',
+    names_to = 'variable_name'
+  )
+get_str(dat)
+
+results$indemnities <- dat
+
+
+
+## Metadata ----------------------------------------------------------------
+
+
+(vars <- meta_vars(dat))
+
+# Abbreviated metadata
+metas$indemnities <- data.frame(
+  variable_name = vars,
+  dimension = 'economics',
+  index = 'food business resilience',
+  indicator = 'use of ag/farm/crop insurance',
+  definition = 'Sum of indemnity amounts for all final loss amounts (stage code = FL)',
+  metric = 'Total indemnities',
+  units = 'usd',
+  axis_name = 'Indemnities ($)',
+  annotation = NA,
+  scope = NA,
+  resolution = 'county',
+  year = meta_years(dat),
+  latest_year = meta_latest_year(dat),
+  updates = 'annual',
+  source = 'U.S. Department of Agriculture, Risk Management Agency (2025). Summary of Business - Cause of Loss',
+  url = 'https://www.rma.usda.gov/tools-reports'
+)
+
+get_str(metas$indemnities)
 
 
 
