@@ -24,10 +24,10 @@ pacman::p_load(
 
 
 
-# Test --------------------------------------------------------------------
+# Wrangle -----------------------------------------------------------------
 
 
-# Using just 2024 data across Northeast
+# Using just 2024 data across Northeast as a test run
 dat <- read_tsv('1_raw/inaturalist/0001192-250711103210423.csv')
 get_str(dat)
 
@@ -73,7 +73,8 @@ dat <- dat %>%
 get_str(dat)
 
 
-# -------------------------------------------------------------------------
+
+# Rarefy ------------------------------------------------------------------
 
 
 # Get abundance table, filtering for >100 observations
@@ -115,7 +116,7 @@ get_str(rare_rich)
 
 
 
-# -------------------------------------------------------------------------
+# Continue ----------------------------------------------------------------
 
 
 # Get counts of observations, species, and diversity by county
@@ -171,7 +172,6 @@ dat <- dat %>%
     values_to = 'value'
   )
 get_str(dat)    
-
 
 
 

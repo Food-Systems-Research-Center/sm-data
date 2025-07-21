@@ -23,7 +23,8 @@ pacman::p_load(
   readr,
   sf,
   stars,
-  stringr
+  stringr,
+  arrow
 )
 
 
@@ -75,7 +76,7 @@ try(check_n_records(metrics_agg, meta_agg, 'Aggregation'))
 
 
 
-# Save CSV Files ----------------------------------------------------------
+# Save CSV and Parquet ----------------------------------------------------
 
 
 # Save metrics and metadata as a zipped csv file for easy transport
@@ -93,6 +94,13 @@ walk(zip_paths, ~ {
   )
 })
 file.remove(paths)
+
+# Also save a parquet file
+pq_paths <- c(
+  '6_outputs/metrics.parquet', 
+  '../SMdocs/data/metrics.parquet'
+)
+walk(pq_paths, ~ write_parquet(metrics_agg, .x))
 
 
 
@@ -112,8 +120,9 @@ sm_data$metadata <- meta_agg
 # Crosswalk for weighting variable names and metrics
 sm_data$weighting <- readRDS('5_objects/weighting_vars.rds')
 
-# Summary table from OneDrive excel
+# Summary table from OneDrive excel, and tree to go with it
 sm_data$data_paper_meta <- readRDS('5_objects/data_paper_meta.rds')
+sm_data$data_paper_tree <- readRDS('5_objects/data_paper_tree.rds')
 
 # Spatial objects and references
 sm_data$fips <- read_all_rds(path = '5_objects/', pattern = '_key.rds$|^all_fips')

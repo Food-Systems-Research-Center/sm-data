@@ -116,3 +116,9 @@ source('4_scripts/export_data.R')
 
 ## Secondary paper scripts
 'dev/update_excel.R'
+
+
+## DB 
+'webdb/webdb_test.R'
+'webdb/get_tables.SQL'
+'webdb/upload_csv.SQL'

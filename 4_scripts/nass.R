@@ -26,9 +26,34 @@ nass_params <- read_csv('5_objects/api_parameters/nass_api_parameters.csv')
 
 
 
+# Check Yields ------------------------------------------------------------
+
+
+## Check yield variables
+# Yield vars
+yields <- survey %>% 
+  filter(source_desc == 'SURVEY')
+get_str(yields)
+
+# Check groups
+yields$group_desc %>% unique %>% sort
+# No cattle here. Could reduce to just field crops, fruit/nuts, vegetables
+# Get cattle somewhere else
+
+# Check units by group
+out <- yields %>% 
+  group_by(group_desc) %>% 
+  summarize(
+    desc = paste0(unique(short_desc), collapse = ', '),
+    units = paste0(unique(unit_desc), collapse = ', ')
+  )
+out
+
+
 # Wrangle -----------------------------------------------------------------
 
 
+# Combine 
 bound <- bind_rows(census, survey)
 get_str(bound)
 
@@ -80,7 +105,6 @@ dat <- dat %>%
     value
   )
 get_str(dat)
-
 
 
 # Calculate New Variables -------------------------------------------------

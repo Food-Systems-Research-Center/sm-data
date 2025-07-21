@@ -132,7 +132,7 @@ codes <- data.frame(
     'Areas of open water, generally with less than 25% cover of vegetation or soil',
     # 'Areas characterized by a perennial cover of ice and/or snow',
     'Areas with a mixture of some constructed materials, but mostly vegetation in the form of lawn grasses. Impervious surfaces account for less than 20% of total cover. These areas most commonly include large-lot single-family housing units, parks, golf courses, and vegetation planted in developed settings for recreation, erosion control, or aeshetic purposes',
-    'Areas with a mixture of constructed materials and vegetation. Impervious surfaces account for 20% to 49% percent of total cover. Thesea reas most commonly include single-family housing units.',
+    'Areas with a mixture of constructed materials and vegetation. Impervious surfaces account for 20% to 49% percent of total cover. These areas most commonly include single-family housing units.',
     'Areas with a mixture of constructed materials and vegetation. Impervious surfaces account for 50 % to 79% of the total cover. These areas most commonly include single - family housing units.',
     'Highly developed areas where people reside or work in high numbers. Examples include apartment complexes, row houses and commercial/industrial. Impervious surfaces account for 80% to 100% of the total cover.',
     'Areas of bedrock, desert pavement, scarps, talus, slides, volcanic material, glacial debris, sand dunes, strip mines, gravel pits and other accumulations of earthen material. Generally, vegetation accounts for less than 15% of total cover.',
@@ -1151,6 +1151,18 @@ metas$prism <- data.frame(
   meta_citation(date = '2025-07-14')
 
 get_str(metas$prism)
+
+
+
+# NWI ---------------------------------------------------------------------
+
+
+# Wetland inventory
+# https://www.fws.gov/program/national-wetlands-inventory/download-state-wetlands-data
+dat <- sf::st_read('1_raw/spatial/nwi/VT_geodatabase_wetlands.gdb/')
+dat <- sf::st_read('1_raw/spatial/nwi/NY_geodatabase_wetlands.gdb/')
+dat
+mapview(dat)
 
 
 

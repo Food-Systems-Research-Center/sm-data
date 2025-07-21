@@ -237,7 +237,24 @@ lakes_meta <- read_tsv(
 
 
 ## Explore
+# Lake data
 get_str(lakes)
+lakes %>% 
+  filter(PSTL_CODE %in% fips_key$state_code) %>% 
+  get_str()
+lakes %>% 
+  filter(PSTL_CODE == 'VT') %>% 
+  get_str()
+# Plot points in VT
+# vt <- lakes %>% 
+#   filter(PSTL_CODE == 'VT') %>% 
+#   sf::st_as_sf(coords = c('LON_DD83', 'LAT_DD83'))
+# sf::st_crs(vt) <- 4269
+# get_str(vt)
+# mapview(vt)
+
+
+# Meta
 get_str(lakes_meta)
 lakes_meta %>% 
   filter(str_detect(COLUMN_NAME, 'COND$')) %>% 
@@ -330,6 +347,17 @@ results$lakes <- results$lakes %>%
 
 rivers <- read_csv('1_raw/epa/nars/rivers_data_for_population_estimates_2019.csv')
 get_str(rivers)
+rivers
+rivers %>% 
+  filter(PSTL_CODE == 'VT') %>% 
+  get_str()
+# Plot points in VT
+# vt <- rivers %>% 
+#   filter(PSTL_CODE == 'VT') %>% 
+#   sf::st_as_sf(coords = c('LON_DD83', 'LAT_DD83'))
+# sf::st_crs(vt) <- 4269
+# get_str(vt)
+# mapview(vt)
 
 rivers_meta <- read.table(
   '1_raw/epa/nars/rivers_metadata.txt',
