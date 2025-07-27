@@ -32,11 +32,8 @@ pacman::p_load(
 
 
 # Vector of New England states
-neng_st_codes <- c('VT', 'NH', 'MA', 'ME', 'CT', 'RI') %>% 
-  sort()
-
-neast_st_codes <- c(neng_st_codes, 'NY', 'PA', 'NJ') %>% 
-  sort()
+neng_st_codes <- c('CT', 'ME', 'MA', 'NH', 'RI', 'VT')
+neast_st_codes <- c('CT', 'ME', 'MA', 'NH', 'NJ', 'NY', 'PA', 'RI', 'VT')
 
 # Get county and state fips, state name, county name for New England
 neng_counties <- tidycensus::fips_codes %>% 

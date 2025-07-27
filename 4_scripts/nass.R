@@ -26,6 +26,7 @@ nass_params <- read_csv('5_objects/api_parameters/nass_api_parameters.csv')
 
 
 
+
 # Check Yields ------------------------------------------------------------
 
 
@@ -44,10 +45,26 @@ yields$group_desc %>% unique %>% sort
 out <- yields %>% 
   group_by(group_desc) %>% 
   summarize(
-    desc = paste0(unique(short_desc), collapse = ', '),
-    units = paste0(unique(unit_desc), collapse = ', ')
+    desc = paste0(unique(short_desc), collapse = ' | '),
+    units = paste0(unique(unit_desc), collapse = ' | ')
   )
 out
+
+
+
+# Filter Milk Yields ------------------------------------------------------
+
+
+# We have multiple milk vars, only want lbs per head
+get_str(survey)
+survey %>% 
+  filter(short_desc == 'MILK - PRODUCTION, MEASURED IN LB / HEAD') %>% 
+  pull(unit_desc) %>% 
+  unique()
+survey$short_desc %>% 
+  str_subset('MILK') %>% 
+  unique()
+
 
 
 # Wrangle -----------------------------------------------------------------
@@ -64,12 +81,12 @@ dat <- bound %>%
     agg_level_desc,
     short_desc,
     value = Value,
-    year, 
+    year,
     county_ansi,
     state_ansi,
     cv = `CV (%)`,
     unit_desc
-  ) %>% 
+  ) %>%
   mutate(
     fips = case_when(
       agg_level_desc == 'COUNTY' ~ paste0(state_ansi, county_ansi),
@@ -80,13 +97,29 @@ dat <- bound %>%
   )
 get_str(dat)
 
+# dat %>% 
+#   filter(
+#     str_detect(short_desc, regex('milk', ignore_case = TRUE)),
+#     fips == '50'
+#   ) %>% 
+#   pull(unit_desc) %>% 
+#   unique()
+
 # Join with api parameter doc to get variable names
 dat <- nass_params %>% 
+  # filter(note != 'ignore')
   select(short_desc, variable_name) %>% 
-  right_join(dat)
+  full_join(dat, by = 'short_desc')
 get_str(dat)
 
+# out$short_desc %>% str_subset('TOUR') %>% unique
+dat %>%
+  filter(str_detect(short_desc, '^HAY')) %>%
+  select(variable_name, short_desc) %>%
+  unique()
+
 # For those without variable names, create them from short desc
+# This is slow, should rework
 dat <- dat %>% 
   mutate(
     variable_name = case_when(
@@ -105,6 +138,7 @@ dat <- dat %>%
     value
   )
 get_str(dat)
+
 
 
 # Calculate New Variables -------------------------------------------------
@@ -187,11 +221,10 @@ dat <- calculate_var(
 # Fuels as proportion of total expenses
 dat <- calculate_var(
   dat,
-  'nOpsFuelExpenses',
   'totalFuelExpenses',
+  'totalOperatingExpenses',
   'fuelExpensePropTotalExpense'
 )
-# This might be hinky
 
 # Female to male producer ratio
 dat <- calculate_var(
@@ -208,6 +241,14 @@ dat <- calculate_var(
   'totalFarmIncome',
   'incomeCropAnimalInsurancePropTotal'
 )
+
+# # Maple production per tap (don't need this, using survey)
+# dat <- calculate_var(
+#   dat,
+#   'mapleProdGallons',
+#   'nMapleTaps',
+#   'yieldMaple'
+# )
 
 
 ## Producer racial diversity with Shannon index of producer races
@@ -262,6 +303,66 @@ dat <- dat %>%
 get_str(dat)
 
 
+## Producer age diversity
+get_str(dat)
+dat$variable_name %>% 
+  str_subset('Producer') %>% 
+  unique()
+
+# Pull out nProducers variables to get diversity and skew
+out <- dat %>% 
+  filter(str_detect(variable_name, '^nProducers.*'))
+get_str(out)
+out$variable_name %>% unique
+
+# Pivot wider for calculations
+out <- out %>% 
+  pivot_wider(
+    id_cols = c(fips, year),
+    values_from = value,
+    names_from = variable_name
+  )
+get_str(out)
+
+# Calculate shannon diversity and skew
+trans <- out %>% 
+  select(nProducersLT25:last_col())
+get_str(trans)
+
+pacman::p_load(e1071)
+skew <- trans %>% 
+  rowwise() %>% 
+  mutate(producerSkew = skewness(c_across(everything()))) %>% 
+  ungroup() %>% 
+  pull(producerSkew)
+get_str(skew)
+
+div <- trans %>% 
+  mutate(across(everything(), ~ ifelse(is.na(.x), 0, .x))) %>% 
+  diversity()
+get_str(div)
+div
+
+# Join back to out as new variable, put back in long format
+combine <- out %>% 
+  mutate(
+    producerAgeDiversity = div,
+    producerSkew = skew
+  ) %>% 
+  select(fips, year, producerAgeDiversity, producerSkew) %>% 
+  pivot_longer(
+    cols = !c(fips, year),
+    names_to = 'variable_name',
+    values_to = 'value'
+  )
+get_str(combine)
+
+# Bind it back to dat
+get_str(dat)
+dat <- bind_rows(dat, combine)
+get_str(dat)
+
+
 
 # Metadata ----------------------------------------------------------------
 
@@ -312,7 +413,7 @@ meta <- meta %>%
     ),
     url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/',
   ) %>% 
-  meta_citation(date = '2025-07-10')
+  meta_citation(date = '2025-07-25')
 get_str(meta)
 
 

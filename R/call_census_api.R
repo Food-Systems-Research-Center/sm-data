@@ -18,7 +18,6 @@
 #' @importFrom purrr map keep reduce
 #' @importFrom dplyr mutate full_join bind_rows
 #' @importFrom glue glue
-#' @import censusapi
 #' @keywords internal
 call_census_api <- function(state_codes,
                             years,
@@ -27,6 +26,10 @@ call_census_api <- function(state_codes,
                             region = c('state', 'county'),
                             sleep_time = 1,
                             survey_name = 'acs/acs5') {
+  if (!requireNamespace("censusapi", quietly = TRUE)) {
+    stop("The 'censusapi' package is required to use this function. Please install it with install.packages('censusapi')", call. = FALSE)
+  }
+  
   map(state_codes, \(state_code) {
     
     cat(glue("\n\nStarting state: {state_code} ({which(state_codes == state_code)} of {length(state_codes)})\n"))
@@ -50,7 +53,7 @@ call_census_api <- function(state_codes,
       vars_out <- map(vars, \(var) {
         tryCatch(
           {
-            getCensus(
+            censusapi::getCensus(
               name = survey_name,
               vintage = yr,
               key = census_key,

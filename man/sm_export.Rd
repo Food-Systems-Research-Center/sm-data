@@ -4,11 +4,16 @@
 \alias{sm_export}
 \title{SM Export}
 \usage{
-sm_export(update = TRUE, load_all = TRUE)
+sm_export(update = TRUE, load_all = TRUE, refresh_onedrive = FALSE)
 }
 \arguments{
 \item{update}{If \code{TRUE}, run \code{sm_update()} to update the \code{.rda} files in the
 project.}
+
+\item{load_all}{If \code{TRUE}, run \code{devtools::load_all()} to load SMdata project.}
+
+\item{refresh_onedrive}{If \code{TRUE}, source \code{dev/update_excel/R} refresh
+metadata and zipped metric outputs on OneDrive.}
 }
 \value{
 Output data to "6_outputs/". "sm_data.rds" contains metrics, keys,

@@ -26,5 +26,5 @@ sm_update <- function(export = FALSE) {
     assign(.x, sm_spatial[[.x]])
     do.call("use_data", list(as.name(.x), overwrite = TRUE))
   })
-cat('\n*Update complete*')
+cat('\n*Update complete*\n')
 }

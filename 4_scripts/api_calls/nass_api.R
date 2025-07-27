@@ -210,6 +210,20 @@ setdiff(census_params$short_desc, census_out$short_desc)
 # Save this to API outs
 saveRDS(census_out, '5_objects/api_outs/neast_nass_census_2002_2022.rds')
 
+# Check
+test <- readRDS('5_objects/api_outs/neast_nass_census_2002_2022.rds')
+check <- test %>%
+  filter(short_desc == 'MAPLE SYRUP - PRODUCTION, MEASURED IN GALLONS') %>%
+  unique()
+get_str(check)
+map(check, ~ length(unique(.x)))
+check$agg_level_desc %>% unique
+
+get_str(check)
+check %>% 
+  filter(state_ansi == '09', county_code == '', year == '2002') %>% 
+  get_str()
+
 
 
 ## Survey Calls ------------------------------------------------------------
@@ -219,11 +233,11 @@ saveRDS(census_out, '5_objects/api_outs/neast_nass_census_2002_2022.rds')
 params <- list(
   source_desc = 'SURVEY',
   domain_desc = 'TOTAL',
-  statisticcat_desc = 'YIELD',
+  statisticcat_desc = c('YIELD', 'PRODUCTION'),
   agg_level_desc = c('COUNTY', 'STATE'),
   state_fips_code = states_only[1:9]
 )
-years <- seq(2002, 2022, 5)
+years <- seq(2002, 2022, 1)
 survey_out <- map(years, \(yr) {
   cat(
     '\nDownloading year ', yr, ' (', which(years == yr), ' of ', length(years), ')\n\n',
@@ -241,3 +255,4 @@ get_str(survey_out)
 saveRDS(survey_out, '5_objects/api_outs/neast_nass_survey_2002_2022.rds')
 
 clear_data(gc = TRUE)
+
