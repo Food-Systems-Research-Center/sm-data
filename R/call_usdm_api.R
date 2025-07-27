@@ -17,7 +17,7 @@
 #' @returns Loops over states and drought categories to collect list of data,
 #'   nested by state and category
 #' @import glue
-#' @import httr
+#' @import httr2
 #' @import purrr
 #' @import dplyr
 #' @keywords internal
