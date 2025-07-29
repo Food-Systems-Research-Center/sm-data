@@ -17,5 +17,3 @@ Imports:
     stringr,
     tidyr
 Suggests: 
-    censusapi,
-    httr2

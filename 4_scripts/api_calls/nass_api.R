@@ -59,11 +59,13 @@ stopifnot(length(county_fips) == length(state_fips))
 # )
 # get_str(out)
 # 
-# # Test with relevant variable
+# Test with relevant variable
 # out <- nassqs(
-#   short_desc = 'LABOR, HIRED - EXPENSE, MEASURED IN $',
-#   year__GE = 2020,
-#   state_alpha = 'VT'
+#   short_desc = 'PRODUCERS, (ALL) - NUMBER OF PRODUCERS',
+#   domain_desc = 'AREA OPERATED',
+#   commodity_desc = 'PRODUCERS',
+#   state_ansi = '50',
+#   year__GE = 2015
 # )
 # get_str(out)
 # 
@@ -178,7 +180,8 @@ get_str(nass_params)
 census_params <- nass_params %>%
   filter(
     source_desc == 'CENSUS',
-    short_desc != 'derived' | is.na(short_desc)
+    short_desc != 'derived',
+    !is.na(short_desc)
   )
 get_str(census_params)
 
@@ -199,7 +202,14 @@ census_out <- map(years, \(yr) {
   param_set <- params
   param_set[['year']] <- yr
   Sys.sleep(1)
-  nassqs(param_set)
+  tryCatch({
+    nassqs(param_set)
+  },
+    error = function(e) {
+      message('Error. Returning NULL')
+      return(NULL)
+    }
+  )
 }) %>% 
   purrr::list_rbind()
 get_str(census_out)
@@ -210,19 +220,90 @@ setdiff(census_params$short_desc, census_out$short_desc)
 # Save this to API outs
 saveRDS(census_out, '5_objects/api_outs/neast_nass_census_2002_2022.rds')
 
-# Check
-test <- readRDS('5_objects/api_outs/neast_nass_census_2002_2022.rds')
-check <- test %>%
-  filter(short_desc == 'MAPLE SYRUP - PRODUCTION, MEASURED IN GALLONS') %>%
-  unique()
-get_str(check)
-map(check, ~ length(unique(.x)))
-check$agg_level_desc %>% unique
 
-get_str(check)
-check %>% 
-  filter(state_ansi == '09', county_code == '', year == '2002') %>% 
-  get_str()
+
+## Farm Size Calls ---------------------------------------------------------
+
+
+# Calling Census farm size variables separately to include domaincat_desc
+farm_params <- nass_params %>%
+  filter(
+    short_desc == 'PRODUCERS, (ALL) - NUMBER OF PRODUCERS',
+    str_detect(domaincat_desc, '^AREA OPERATED')
+  )
+get_str(farm_params)
+
+# Set parameters
+params <- list(
+  source_desc = 'CENSUS',
+  short_desc = farm_params$short_desc,
+  domain_desc = 'AREA OPERATED',
+  agg_level_desc = c('COUNTY', 'STATE'),
+  state_fips_code = states_only[1:9]
+)
+years <- seq(2002, 2022, 5)
+farm_out <- map(years, \(yr) {
+  cat(
+    '\nDownloading year ', yr, ' (', which(years == yr), ' of ', length(years), ')\n\n',
+    sep = ''
+  )
+  param_set <- params
+  param_set[['year']] <- yr
+  Sys.sleep(1)
+  tryCatch({
+    nassqs(param_set)
+  },
+    error = function(e) {
+      message('Error')
+      return(NULL)
+  })
+}) %>% 
+  purrr::list_rbind()
+get_str(farm_out)
+
+# Save this to API outs
+saveRDS(farm_out, '5_objects/api_outs/neast_nass_farm_2002_2022.rds')
+
+
+
+## Organic Call ------------------------------------------------------------
+
+
+# Pulling this out separately to see if it will work
+og_params <- nass_params %>%
+  filter(short_desc == 'FARM OPERATIONS, ORGANIC - NUMBER OF OPERATIONS')
+get_str(og_params)
+
+# Set parameters
+params <- list(
+  source_desc = 'CENSUS',
+  short_desc = og_params$short_desc,
+  domain_desc = 'ORGANIC STATUS',
+  domaincat_desc = 'ORGANIC STATUS: (NOP USDA CERTIFIED)',
+  agg_level_desc = c('COUNTY', 'STATE'),
+  state_fips_code = states_only[1:9]
+)
+years <- seq(2002, 2022, 5)
+og_out <- map(years, \(yr) {
+  cat(
+    '\nDownloading year ', yr, ' (', which(years == yr), ' of ', length(years), ')\n\n',
+    sep = ''
+  )
+  param_set <- params
+  param_set[['year']] <- yr
+  Sys.sleep(1)
+  tryCatch({
+    nassqs(param_set)
+  },
+    error = function(e) {
+      message('Error')
+      return(NULL)
+  })
+}) %>% 
+  purrr::list_rbind()
+get_str(og_out)
+
+saveRDS(og_out, '5_objects/api_outs/neast_nass_og_2002_2022.rds')
 
 
 
@@ -235,7 +316,8 @@ params <- list(
   domain_desc = 'TOTAL',
   statisticcat_desc = c('YIELD', 'PRODUCTION'),
   agg_level_desc = c('COUNTY', 'STATE'),
-  state_fips_code = states_only[1:9]
+  state_fips_code = states_only[1:9],
+  freq_desc = 'ANNUAL'
 )
 years <- seq(2002, 2022, 1)
 survey_out <- map(years, \(yr) {
@@ -253,6 +335,11 @@ get_str(survey_out)
 
 # Save this to API outs
 saveRDS(survey_out, '5_objects/api_outs/neast_nass_survey_2002_2022.rds')
+
+
+
+# Clear -------------------------------------------------------------------
+
 
 clear_data(gc = TRUE)
 

@@ -1,5 +1,5 @@
 #' Table of Contents
-#' 2025-07-11 last update
+#' 2025-07-11 update
 
 #' This ToC links to all code used in SM data collection, wrangling, metadata 
 #' creation, and export to sm-docs and sm-explorer repos. To navigate to a 

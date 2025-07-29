@@ -1255,6 +1255,7 @@ get_str(metas$usdm)
 
 
 # CDC ---------------------------------------------------------------------
+## Air Quality -------------------------------------------------------------
 
 
 # Air quality from api calls
@@ -1277,7 +1278,7 @@ results$cdc <- dat
   
 
 
-## Metadata ----------------------------------------------------------------
+### Metadata ----------------------------------------------------------------
 
 
 (vars <- meta_vars(results$cdc))
@@ -1304,6 +1305,249 @@ metas$cdc <- data.frame(
   meta_citation(date = '2025-07-07')
 
 get_str(metas$cdc)
+
+
+
+## Nutrition ---------------------------------------------------------------
+
+
+# BRFSS 
+# TODO: Convert this to API call
+# TODO: Take all these data, not just the 3 we wanted here
+nut <- read_csv('1_raw/cdc/brfss/Nutrition__Physical_Activity__and_Obesity_-_Behavioral_Risk_Factor_Surveillance_System_20250728.csv') %>% 
+  janitor::clean_names()
+get_str(nut)
+
+# Check vars
+all_vars <- nut$question %>% 
+  unique %>% 
+  sort()
+all_vars
+
+# Pull fruits, vegetables, and the more modest exercise var
+good_vars <- all_vars %>% 
+  str_subset('fruit|vegetable|at least 150.*equivalent')
+good_vars
+
+# Filter to 3 vars, only keep totals (sums of each sample)
+dat <- nut %>% 
+  filter(
+    question %in% good_vars,
+    total == 'Total'
+    ) %>% 
+  select(
+    year = year_start,
+    state = location_abbr,
+    definition = question,
+    value = data_value
+  )
+get_str(dat)
+
+# Replace state codes with FIPS
+dat <- state_key %>% 
+  select(state, state_code) %>% 
+  right_join(dat) %>% 
+  select(-state) %>% 
+  rename(fips = state_code)
+get_str(dat)
+  
+# Replace definitions with variable names
+dat <- dat %>% 
+  mutate(
+    variable_name = case_when(
+      str_detect(definition, 'aerobic') ~ 'percExercise150Min',
+      str_detect(definition, 'fruit') ~ 'percDailyFruitLessThanOne',
+      str_detect(definition, 'vegetables') ~ 'percDailyVegLessThanOne',
+      .default = NA
+    )
+  )
+get_str(dat)
+
+# Pull out a crosswalk for metadata
+crosswalk <- dat %>% 
+  select(variable_name, definition) %>% 
+  unique()
+crosswalk
+
+# Remove definition to finish off metrics data
+dat <- dat %>% 
+  select(-definition)
+get_str(dat)
+
+results$brfss <- dat
+
+
+
+### Metadata ----------------------------------------------------------------
+
+
+(vars <- meta_vars(results$brfss))
+
+metas$brfss <- crosswalk %>% 
+  arrange(variable_name) %>% 
+  mutate(
+    dimension = 'health',
+    index = 'physical health',
+    indicator = c(rep('nutritious diets', 2), 'mobility, pain'),
+    metric = c(
+      'Percent low daily fruit consumption',
+      'Percent low daily vegetable consumption',
+      'Percent 150 minute weekly exercise'
+    ),
+    axis_name = c(
+      'Daily Fruit < 1 (%)',
+      'Daily Veg < 1 (%)',
+      'Exercise 150 Min (%)'
+    ),
+    units = 'percentage',
+    scope = 'national',
+    resolution = 'state',
+    year = meta_years(results$brfss),
+    latest_year = meta_latest_year(results$brfss),
+    updates = 'annual',
+    source = 'CDC Behavioral Risk Factor Surveillance System (2025).',
+    url = 'https://data.cdc.gov/Nutrition-Physical-Activity-and-Obesity/Nutrition-Physical-Activity-and-Obesity-Behavioral/hn4x-zwk7/about_data'
+  ) %>% 
+  meta_citation(date = '2025-07-28')
+get_str(metas$brfss)
+
+
+
+## Places ------------------------------------------------------------------
+
+
+# From CDC Places dataset
+# https://data.cdc.gov/500-Cities-Places/PLACES-County-Data-GIS-Friendly-Format-2024-releas/i46a-9kgh/about_data
+# TODO: Use API for this if possible
+# TODO: Take all variables, not just relevant ones
+places <- read_csv('1_raw/cdc/PLACES__County_Data__GIS_Friendly_Format___2024_release_20250728.csv') %>% 
+  janitor::clean_names()
+get_str(places)
+
+# Check vars
+(all_vars <- names(places))
+
+# Get relevant vars
+good_vars <- all_vars %>% 
+  str_subset(
+    paste0(
+      c(
+        'emotionspt',
+        'isolation',
+        'mobility',
+        'chd',
+        'highchol'
+      ),
+    '_crude_prev',
+    collapse = '|'
+    )
+  )
+good_vars
+
+# Crosswalk for cdc var, variable_name, definition
+crosswalk <- data.frame(cdc_var = good_vars) %>% 
+  arrange(cdc_var) %>% 
+  mutate(
+    variable_name = c(
+      'heartDisease',
+      'lackSocialSupport',
+      'highCholesterol',
+      'socialIsolation',
+      'mobilityDisability'
+    ),
+    definition = c(
+      'Model-based estimate for crude prevalence of coronary heart disease among adults',
+      'Model-based estimate for crude prevalence of lack of social and emotional support among adults',
+      'Model-based estimate for crude prevalence of high cholesterol among adults who have ever been screened',
+      'Model-based estimate for crude prevalence of feeling socially isolated among adults',
+      'Model-based estimate for crude prevalence of mobility disability among adults'
+    )
+  )
+
+# Pull good vars
+get_str(places)
+dat <- places %>% 
+  select(
+    fips = county_fips,
+    all_of(good_vars)
+  )
+get_str(dat)
+
+# Rename with variable names
+matches <- match(names(dat), crosswalk$cdc_var)
+names(dat)[!is.na(matches)] <- crosswalk$variable_name[matches[!is.na(matches)]]
+get_str(dat)
+
+# Reformat for metrics, drop NAs from long format df
+dat <- dat %>% 
+  pivot_longer(
+    cols = !fips,
+    values_to = 'value',
+    names_to = 'variable_name'
+  ) %>% 
+  mutate(year = '2022') %>% 
+  na.omit()
+get_str(dat)
+
+results$places <- dat
+
+
+
+### Metadata ----------------------------------------------------------------
+
+
+(vars <- meta_vars(results$places))
+
+metas$places <- crosswalk %>% 
+  select(-cdc_var) %>% 
+  arrange(variable_name) %>% 
+  mutate(
+    dimension = case_when(
+      str_detect(variable_name, 'Isolation') ~ 'social',
+      .default = 'health'
+    ) ,
+    index = case_when(
+      str_detect(variable_name, 'lackSocial') ~ 'mental health',
+      str_detect(variable_name, 'socialIsolation') ~ 'social connectedness',
+      .default = 'physical health tbd'
+    ),
+    indicator = case_when(
+      str_detect(variable_name, 'mobility') ~ 'mobility, pain',
+      str_detect(variable_name, 'lackSocialSupport') ~ 'access to social support',
+      str_detect(variable_name, 'Isolation') ~ 'social connectedness',
+      .default = 'physical health tbd'
+    ),
+    metric = c(
+      'Coronary heart disease',
+      'High cholesterol',
+      'Lack of social support',
+      'Mobility disability',
+      'Social isolation'
+    ),
+    axis_name = c(
+      'Heart Disease (%)',
+      'High Chol (%)',
+      'Lack Support (%)',
+      'Mobility Disability (%)',
+      'Social Isolation (%)'
+    ),
+    units = 'percentage',
+    scope = 'national',
+    resolution = 'county',
+    year = meta_years(results$places),
+    latest_year = meta_latest_year(results$places),
+    updates = 'annual',
+    source = 'CDC Division of Population Health, Epidemiology and Surveillance Branch (2024).',
+    url = 'https://data.cdc.gov/500-Cities-Places/PLACES-County-Data-GIS-Friendly-Format-2024-releas/i46a-9kgh/about_data'
+  ) %>% 
+  meta_citation(date = '2025-07-28')
+get_str(metas$places)
+
+
+
+# Check BRFSS -------------------------------------------------------------
+
+
 
 
 

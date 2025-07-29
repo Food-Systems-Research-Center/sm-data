@@ -8,7 +8,9 @@
 pacman::p_load(
   dplyr,
   tidyr,
-  vegan
+  vegan,
+  readr,
+  e1071
 )
 
 
@@ -18,12 +20,14 @@ pacman::p_load(
 
 # Taking our API calls from nass_api.R and combining them. Using the nass 
 # api parameters to start metadata
+# Note that we can consolidate some of these
 census <- readRDS('5_objects/api_outs/neast_nass_census_2002_2022.rds')
 survey <- readRDS('5_objects/api_outs/neast_nass_survey_2002_2022.rds')
+farm <- readRDS('5_objects/api_outs/neast_nass_farm_2002_2022.rds')
+og <- readRDS('5_objects/api_outs/neast_nass_og_2002_2022.rds')
 
 # Load nass api parameters to build metadata
 nass_params <- read_csv('5_objects/api_parameters/nass_api_parameters.csv')
-
 
 
 
@@ -52,33 +56,43 @@ out
 
 
 
-# Filter Milk Yields ------------------------------------------------------
-
-
-# We have multiple milk vars, only want lbs per head
-get_str(survey)
-survey %>% 
-  filter(short_desc == 'MILK - PRODUCTION, MEASURED IN LB / HEAD') %>% 
-  pull(unit_desc) %>% 
-  unique()
-survey$short_desc %>% 
-  str_subset('MILK') %>% 
-  unique()
-
-
-
 # Wrangle -----------------------------------------------------------------
 
 
 # Combine 
-bound <- bind_rows(census, survey)
+bound <- bind_rows(census, survey, farm, og)
 get_str(bound)
+
+bound$short_desc %>% 
+  str_subset('ORGANIC')
+# # Check for farm size vars
+# check <- bound %>% 
+#   filter(
+#     str_detect(domaincat_desc, '^AREA'),
+#     county_code != '998'
+#   )
+# map(check, unique)  
+#   
+# bound %>% 
+#   filter(
+#     str_detect(domaincat_desc, '^AREA'),
+#     county_code != '998'
+#   ) %>% 
+#   mutate(fips = paste0(state_ansi, county_ansi)) %>% 
+#   group_by(fips, year) %>% 
+#   summarize(count = n())
+
 
 # Pull relevant variables, create a single FIPS variable where counties have 5
 # digits and states have 2
 dat <- bound %>% 
+  filter(
+    freq_desc == 'ANNUAL',
+    county_code != '998'
+  ) %>% 
   select(
     agg_level_desc,
+    domaincat_desc,
     short_desc,
     value = Value,
     year,
@@ -97,26 +111,38 @@ dat <- bound %>%
   )
 get_str(dat)
 
-# dat %>% 
-#   filter(
-#     str_detect(short_desc, regex('milk', ignore_case = TRUE)),
-#     fips == '50'
-#   ) %>% 
-#   pull(unit_desc) %>% 
-#   unique()
+# Pull out farm size vars, give them variable names from nass_params separately
+# This is because the short_desc is all the same for them
+farm_size <- dat %>% 
+  filter(str_detect(domaincat_desc, '^AREA')) %>% 
+  left_join(
+    select(nass_params, domaincat_desc, variable_name), 
+    by = 'domaincat_desc'
+  )
+get_str(farm_size)
 
-# Join with api parameter doc to get variable names
+# For other vars, just join with nass params 
+others <- dat %>% 
+  filter(str_detect(domaincat_desc, '^AREA OPERATED', negate = TRUE))
+# check <- nass_params %>% 
+#   filter(is.na(domaincat_desc))
+# get_str(check)
+  
 dat <- nass_params %>% 
-  # filter(note != 'ignore')
+  # filter(str_detect(domaincat_desc, '^AREA OPERATED', negate = TRUE)) %>% 
+  filter(is.na(domaincat_desc)) %>% 
   select(short_desc, variable_name) %>% 
-  full_join(dat, by = 'short_desc')
+  right_join(others, by = 'short_desc')
 get_str(dat)
 
-# out$short_desc %>% str_subset('TOUR') %>% unique
-dat %>%
-  filter(str_detect(short_desc, '^HAY')) %>%
-  select(variable_name, short_desc) %>%
+# Check
+dat %>% 
+  select(variable_name, short_desc) %>% 
   unique()
+
+# Now put the two back together
+dat <- bind_rows(farm_size, dat)
+get_str(dat)
 
 # For those without variable names, create them from short desc
 # This is slow, should rework
@@ -242,13 +268,17 @@ dat <- calculate_var(
   'incomeCropAnimalInsurancePropTotal'
 )
 
-# # Maple production per tap (don't need this, using survey)
-# dat <- calculate_var(
-#   dat,
-#   'mapleProdGallons',
-#   'nMapleTaps',
-#   'yieldMaple'
-# )
+# Proportion of organic operations
+dat <- calculate_var(
+  dat,
+  'nOpsOrganic',
+  'nOperations',
+  'propOpsOrganic'
+)
+
+
+
+# Ad Hoc Vars -------------------------------------------------------------
 
 
 ## Producer racial diversity with Shannon index of producer races
@@ -304,14 +334,12 @@ get_str(dat)
 
 
 ## Producer age diversity
-get_str(dat)
-dat$variable_name %>% 
-  str_subset('Producer') %>% 
-  unique()
-
-# Pull out nProducers variables to get diversity and skew
+# Pull out nProducers variables to get diversity and skew (not area operated)
 out <- dat %>% 
-  filter(str_detect(variable_name, '^nProducers.*'))
+  filter(
+    str_detect(variable_name, '^nProducers.*'),
+    str_detect(variable_name, 'AreaOperated', negate = TRUE)
+  )
 get_str(out)
 out$variable_name %>% unique
 
@@ -324,32 +352,109 @@ out <- out %>%
   )
 get_str(out)
 
-# Calculate shannon diversity and skew
+# Calculate skew
 trans <- out %>% 
   select(nProducersLT25:last_col())
 get_str(trans)
 
-pacman::p_load(e1071)
+# Test out skew calculation
+(first_row <- as.numeric(trans[1, ]))
+prod_midpoints <- c(22.5, 29.5, 39.5, 49.5, 59.5, 69.5, 79.5)
+test <- map(1:7, ~ {
+  rep(prod_midpoints[.x], first_row[.x])
+}) %>% 
+  unlist()
+skewness(test)
+hist(test)
+
+# Function for weighted skew
+get_skew <- function(weights, counts) {
+  stopifnot(length(weights) == length(counts))
+  
+  # If all NA, return NA
+  if (all(is.na(counts)) || sum(counts, na.rm = TRUE) == 0) {
+    return(NA_real_)
+  }
+  
+  # Turn individual NAs into zeroes
+  counts[is.na(counts)] <- 0
+  
+  # Repeat each bin midpoint x number of times based on count
+  map(1:length(weights), ~ {
+    rep(weights[.x], counts[.x])
+  }) %>% 
+    unlist() %>% 
+    skewness()
+}
+get_skew(prod_midpoints, first_row)
+
+# Calculate it in real data
 skew <- trans %>% 
   rowwise() %>% 
-  mutate(producerSkew = skewness(c_across(everything()))) %>% 
+  mutate(producerSkew = get_skew(prod_midpoints, c_across(everything()))) %>% 
   ungroup() %>% 
   pull(producerSkew)
-get_str(skew)
-
-div <- trans %>% 
-  mutate(across(everything(), ~ ifelse(is.na(.x), 0, .x))) %>% 
-  diversity()
-get_str(div)
-div
+skew
 
 # Join back to out as new variable, put back in long format
 combine <- out %>% 
   mutate(
-    producerAgeDiversity = div,
     producerSkew = skew
   ) %>% 
-  select(fips, year, producerAgeDiversity, producerSkew) %>% 
+  select(fips, year, producerSkew) %>% 
+  pivot_longer(
+    cols = !c(fips, year),
+    names_to = 'variable_name',
+    values_to = 'value'
+  )
+get_str(combine)
+
+# Bind it back to dat
+get_str(dat)
+dat <- bind_rows(dat, combine)
+get_str(dat)
+
+
+## Farm size skew
+get_str(dat)
+out <- dat %>% 
+  filter(str_detect(variable_name, 'nProducersAreaOperated'))
+get_str(out)
+out$variable_name %>% unique
+
+# Pivot wider for calculations
+out <- out %>% 
+  pivot_wider(
+    id_cols = c(fips, year),
+    values_from = value,
+    names_from = variable_name
+  )
+get_str(out)
+
+# Put in order of distribution
+trans <- out %>%
+  select(matches('nProducers.')) %>% 
+  select(
+    all_of(
+      names(.) %>%
+        .[order(as.integer(str_extract(., "\\d+$")))]
+    )
+  )
+get_str(trans)
+
+# Calculate skew
+size_midpoints <- c(5, 30, 60, 80, 120, 160, 200, 240, 380, 750, 1500, 2500)
+skew <- trans %>%
+  rowwise() %>%
+  mutate(farmSizeSkew = get_skew(size_midpoints, c_across(everything()))) %>% 
+  ungroup() %>%
+  pull(farmSizeSkew)
+skew
+
+# Join back to out as new variable, put back in long format
+combine <- out %>%
+  mutate(farmSizeSkew = skew) %>%
+  select(fips, year, farmSizeSkew) %>%
   pivot_longer(
     cols = !c(fips, year),
     names_to = 'variable_name',
@@ -413,7 +518,7 @@ meta <- meta %>%
     ),
     url = 'https://www.nass.usda.gov/Publications/AgCensus/2022/',
   ) %>% 
-  meta_citation(date = '2025-07-25')
+  meta_citation(date = '2025-07-28')
 get_str(meta)
 
 
