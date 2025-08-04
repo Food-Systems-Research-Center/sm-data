@@ -72,7 +72,7 @@ meta_agg <- meta_agg %>%
 
 
 # Check to make sure we have the same number of metrics and metas
-try(check_n_records(metrics_agg, meta_agg, 'Aggregation'))
+# try(check_n_records(metrics_agg, meta_agg, 'Aggregation'))
 
 
 
@@ -120,9 +120,10 @@ sm_data$metadata <- meta_agg
 # Crosswalk for weighting variable names and metrics
 sm_data$weighting <- readRDS('5_objects/weighting_vars.rds')
 
-# Summary table from OneDrive excel, and tree to go with it
+# Data paper metadata, tree, and metrics
 sm_data$data_paper_meta <- readRDS('5_objects/data_paper_meta.rds')
 sm_data$data_paper_tree <- readRDS('5_objects/data_paper_tree.rds')
+sm_data$data_paper_metrics <- readRDS('5_objects/data_paper_metrics.rds')
 
 # Spatial objects and references
 sm_data$fips <- read_all_rds(path = '5_objects/', pattern = '_key.rds$|^all_fips')

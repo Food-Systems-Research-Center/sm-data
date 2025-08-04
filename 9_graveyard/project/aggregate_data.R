@@ -61,7 +61,7 @@ meta_agg <- meta_agg %>%
 
 
 # Check to make sure we have the same number of metrics and metas
-try(check_n_records(metrics_agg, meta_agg, 'Aggregation'))
+# try(check_n_records(metrics_agg, meta_agg, 'Aggregation'))
 
 
 

@@ -22,37 +22,14 @@ pacman::p_load(
 # api parameters to start metadata
 # Note that we can consolidate some of these
 census <- readRDS('5_objects/api_outs/neast_nass_census_2002_2022.rds')
+census <- readRDS('5_objects/api_outs/neast_nass_census_2002_2022_test.rds') %>% 
+  unique()
 survey <- readRDS('5_objects/api_outs/neast_nass_survey_2002_2022.rds')
 farm <- readRDS('5_objects/api_outs/neast_nass_farm_2002_2022.rds')
 og <- readRDS('5_objects/api_outs/neast_nass_og_2002_2022.rds')
 
 # Load nass api parameters to build metadata
 nass_params <- read_csv('5_objects/api_parameters/nass_api_parameters.csv')
-
-
-
-# Check Yields ------------------------------------------------------------
-
-
-## Check yield variables
-# Yield vars
-yields <- survey %>% 
-  filter(source_desc == 'SURVEY')
-get_str(yields)
-
-# Check groups
-yields$group_desc %>% unique %>% sort
-# No cattle here. Could reduce to just field crops, fruit/nuts, vegetables
-# Get cattle somewhere else
-
-# Check units by group
-out <- yields %>% 
-  group_by(group_desc) %>% 
-  summarize(
-    desc = paste0(unique(short_desc), collapse = ' | '),
-    units = paste0(unique(unit_desc), collapse = ' | ')
-  )
-out
 
 
 
@@ -63,31 +40,11 @@ out
 bound <- bind_rows(census, survey, farm, og)
 get_str(bound)
 
-bound$short_desc %>% 
-  str_subset('ORGANIC')
-# # Check for farm size vars
-# check <- bound %>% 
-#   filter(
-#     str_detect(domaincat_desc, '^AREA'),
-#     county_code != '998'
-#   )
-# map(check, unique)  
-#   
-# bound %>% 
-#   filter(
-#     str_detect(domaincat_desc, '^AREA'),
-#     county_code != '998'
-#   ) %>% 
-#   mutate(fips = paste0(state_ansi, county_ansi)) %>% 
-#   group_by(fips, year) %>% 
-#   summarize(count = n())
-
-
 # Pull relevant variables, create a single FIPS variable where counties have 5
 # digits and states have 2
 dat <- bound %>% 
   filter(
-    freq_desc == 'ANNUAL',
+    freq_desc %in% c('ANNUAL', 'POINT IN TIME'),
     county_code != '998'
   ) %>% 
   select(
@@ -276,6 +233,23 @@ dat <- calculate_var(
   'propOpsOrganic'
 )
 
+# Proportion retail to wholesale
+dat <- calculate_var(
+  dat,
+  'totalSalesValueAddedDirect',
+  'totalSalesValueAddedWholesale',
+  'retailSalesPropWholesale'
+)
+# Note that this should be a target I guess, 50/50?
+
+# Proportion of value added sales to total commodity sales
+dat <- calculate_var(
+  dat,
+  'salesValueAdded',
+  'totalSalesCommodities',
+  'salesValueAddedPropTotal'
+)
+
 
 
 # Ad Hoc Vars -------------------------------------------------------------
@@ -391,17 +365,17 @@ get_skew(prod_midpoints, first_row)
 # Calculate it in real data
 skew <- trans %>% 
   rowwise() %>% 
-  mutate(producerSkew = get_skew(prod_midpoints, c_across(everything()))) %>% 
+  mutate(producerAgeSkew = get_skew(prod_midpoints, c_across(everything()))) %>% 
   ungroup() %>% 
-  pull(producerSkew)
+  pull(producerAgeSkew)
 skew
 
 # Join back to out as new variable, put back in long format
 combine <- out %>% 
   mutate(
-    producerSkew = skew
+    producerAgeSkew = skew
   ) %>% 
-  select(fips, year, producerSkew) %>% 
+  select(fips, year, producerAgeSkew) %>% 
   pivot_longer(
     cols = !c(fips, year),
     names_to = 'variable_name',
@@ -466,6 +440,7 @@ get_str(combine)
 get_str(dat)
 dat <- bind_rows(dat, combine)
 get_str(dat)
+
 
 
 

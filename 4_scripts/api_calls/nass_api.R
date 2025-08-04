@@ -172,11 +172,70 @@ nassqs_auth(nass_key)
 nass_params <- read_csv('5_objects/api_parameters/nass_api_parameters.csv')
 get_str(nass_params)
 
+# Remove three broken variables
+broken <- c(
+  'INCOME, FARM-RELATED, FOREST PRODUCTS, (EXCL CHRISTMAS TREES & SHORT TERM WOODY CROPS & MAPLE SYRUP) - RECEIPTS, MEASURED IN $',
+  'FARM OPERATIONS, ORGANIC - NUMBER OF OPERATIONS',
+  'PRACTICES, ALLEY CROPPING & SILVAPASTURE - NUMBER OF OPERATIONS'
+)
+nass_params <- filter(nass_params, !short_desc %in% broken)
+get_str(nass_params)
+
+
+
+# Old Census Calls --------------------------------------------------------
+
+
+# These stopped working because some short_desc were not acceptable in some
+# years. We changed it below to run var by var so they don't all fail together
+
+# census_params <- nass_params %>%
+#   filter(
+#     source_desc == 'CENSUS',
+#     short_desc != 'derived',
+#     !is.na(short_desc)
+#   )
+# get_str(census_params)
+# 
+# # Set parameters
+# params <- list(
+#   source_desc = 'CENSUS',
+#   short_desc = census_params$short_desc,
+#   domain_desc = 'TOTAL',
+#   agg_level_desc = c('COUNTY', 'STATE'),
+#   state_fips_code = states_only[1:9]
+# )
+# years <- seq(2002, 2022, 5)
+# census_out <- map(years, \(yr) {
+#   cat(
+#     '\nDownloading year ', yr, ' (', which(years == yr), ' of ', length(years), ')\n\n',
+#     sep = ''
+#   )
+#   param_set <- params
+#   param_set[['year']] <- yr
+#   Sys.sleep(1)
+#   tryCatch({
+#     nassqs(param_set)
+#   },
+#     error = function(e) {
+#       message('Error. Returning NULL')
+#       return(NULL)
+#     }
+#   )
+# }) %>%
+#   purrr::list_rbind()
+
+# # Try doing at once with GE
+# param_set <- params
+# param_set[['year__GE']] <- 2010
+# test <- nassqs(param_set)
+
 
 
 ## Census Calls ------------------------------------------------------------
 
 
+# Try going one variable at a time, GE 2000 instead of specific years
 census_params <- nass_params %>%
   filter(
     source_desc == 'CENSUS',
@@ -185,40 +244,37 @@ census_params <- nass_params %>%
   )
 get_str(census_params)
 
-# Set parameters
+# Rework census params for this new purpose
 params <- list(
   source_desc = 'CENSUS',
-  short_desc = census_params$short_desc,
+  # short_desc = census_params$short_desc,
   domain_desc = 'TOTAL',
   agg_level_desc = c('COUNTY', 'STATE'),
-  state_fips_code = states_only[1:9]
+  state_fips_code = states_only[1:9],
+  year__GE = 2000
 )
-years <- seq(2002, 2022, 5)
-census_out <- map(years, \(yr) {
-  cat(
-    '\nDownloading year ', yr, ' (', which(years == yr), ' of ', length(years), ')\n\n',
-    sep = ''
-  )
-  param_set <- params
-  param_set[['year']] <- yr
-  Sys.sleep(1)
+vars <- census_params$short_desc
+out <- imap(vars, ~ {
+  cat('\n\nStarting:', .x, '\n', .y, 'of', length(vars), '\n')
+  params[['short_desc']] <- .x
+  Sys.sleep(0.5)
   tryCatch({
-    nassqs(param_set)
+    nassqs(params)
   },
     error = function(e) {
       message('Error. Returning NULL')
       return(NULL)
     }
   )
-}) %>% 
+}, .progress = TRUE) %>% 
   purrr::list_rbind()
-get_str(census_out)
+get_str(out)
 
 # Check if we got everything
-setdiff(census_params$short_desc, census_out$short_desc)
+setdiff(census_params$short_desc, out$short_desc)
 
 # Save this to API outs
-saveRDS(census_out, '5_objects/api_outs/neast_nass_census_2002_2022.rds')
+saveRDS(out, '5_objects/api_outs/neast_nass_census_2002_2022.rds')
 
 
 
