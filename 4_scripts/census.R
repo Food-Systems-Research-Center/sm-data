@@ -49,12 +49,23 @@ dat <- dat %>%
   )
 get_str(dat)           
 map(dat, range, na.rm = TRUE)
-
+  
+  
 # Calculations to get proportions for education, housing, earnings
+# edPercHsOrMore is:
+#   edTotal - (BS, Phd, Prof, Master, Assoc, some college, some college < 1y)
+# 'edTotalBS' = 'B15003_022E',
+# 'edTotalPhD' = "B15003_025E",
+# 'edTotalProf' = "B15003_024E",
+# 'edTotalMaster' = "B15003_023E",
+# 'edTotalAssoc' = "B15003_021E",
+# 'edTotalSomeCollege' = "B15003_020E",
+# 'edTotalSomeCollegeLessThanYear' = "B15003_019E",
 dat <- dat %>% 
   mutate(
     edPercHSGED = ((edTotalHS + edTotalGED) / edTotal) * 100,
     edPercBS = (edTotalBS / edTotal) * 100,
+    edPercHSOrMore = ((edTotal - (edTotalBS + edTotalPhD + edTotalProf + edTotalMaster + edTotalSomeCollege + edTotalSomeCollegeLessThanYear)) / edTotal) * 100,
     vacancyRate = (nHousingVacant / nHousingUnits) * 100,
     womenEarnPercMenFFF = (medianFemaleEarningsFFF / medianMaleEarningsFPS) * 100,
     womenEarnPercMenFPS = (medianFemaleEarningsFPS / medianMaleEarningsFPS) * 100,
@@ -64,7 +75,7 @@ dat <- dat %>%
   select(-matches('edTotal|^nMale|^nFemale|^n16'))
 get_str(dat)
 map(dat, range, na.rm = TRUE)
-
+  
 # Pivot longer
 dat <- dat %>% 
   pivot_longer(

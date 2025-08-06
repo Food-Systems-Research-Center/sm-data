@@ -1,5 +1,5 @@
 # Census API
-# 2025-06-30
+# 2025-08-05
 
 
 # Description -------------------------------------------------------------
@@ -44,6 +44,13 @@ acs_apis <- listCensusApis(name = 'acs/acs5', vintage = 2022)
 meta <- listCensusMetadata('acs/acs5', vintage = 2022)
 get_str(meta)
 
+# Check for education
+meta %>% 
+  filter(
+    group == 'B15003',
+  )
+    # str_detect(label, regex('doctorate', ignore_case = TRUE)))
+         
 # Check acs1 also - might want population from here
 out <- listCensusMetadata('acs/acs1', vintage = 2022)
 
@@ -66,10 +73,19 @@ vars <- list(
   'population5year' = 'B01003_001E',
   
   # Education
+  # To get prop with HS/GED or higher, have to take total and substract:
+  #   doctorate, master, bachelor, associate, some college, some college < 1yr
   'edTotal' = 'B15003_001E',
   'edTotalHS' = 'B15003_017E',
   'edTotalGED' = 'B15003_018E',
+  
   'edTotalBS' = 'B15003_022E',
+  'edTotalPhD' = "B15003_025E",
+  'edTotalProf' = "B15003_024E",
+  'edTotalMaster' = "B15003_023E",
+  'edTotalAssoc' = "B15003_021E",
+  'edTotalSomeCollege' = "B15003_020E",
+  'edTotalSomeCollegeLessThanYear' = "B15003_019E",
   
   # Housing
   'nHousingUnits' = 'B25001_001E',

@@ -25,6 +25,9 @@ if (interactive()) {
   # Set up vim function for kj escape
   try(vim <- function() rstudiovim::rsvim_exec_file())
   
+  # Load SMdata package
+  devtools::load_all()
+  
   # Set conflict winners
   conflicts_prefer(
     dplyr::select(),
