@@ -1418,14 +1418,36 @@ get_str(metas$brfss)
 
 # From CDC Places dataset
 # https://data.cdc.gov/500-Cities-Places/PLACES-County-Data-GIS-Friendly-Format-2024-releas/i46a-9kgh/about_data
-# TODO: Use API for this if possible
-# TODO: Take all variables, not just relevant ones
-places <- read_csv('1_raw/cdc/PLACES__County_Data__GIS_Friendly_Format___2024_release_20250728.csv') %>% 
-  janitor::clean_names()
-get_str(places)
+# Note that not all of our relevant variables exist in all surveys.
 
-# Check vars
-(all_vars <- names(places))
+# TODO: Use API for this if possible. Would have to chunk it though
+# TODO: Take all variables, not just relevant ones
+
+## Load all files 
+# Paths for each file
+paths <- list.files(
+  '1_raw/cdc/places/',
+  full.names = TRUE,
+  pattern = 'release'
+)
+
+# Make a clean name for each file
+file_names <- paths %>% 
+  str_extract('[0-9]{4}_release')
+
+# Load all files into list and name them
+out <- map(paths, ~ { 
+  read_csv(.x) %>% 
+    janitor::clean_names()
+}) %>% 
+  setNames(c(file_names))
+get_str(out)
+get_str(out, 3)
+
+# Get all variable names
+all_vars <- map(out, ~ names(.x)) %>% 
+  unlist() %>% 
+  unique()
 
 # Get relevant vars
 good_vars <- all_vars %>% 
@@ -1445,6 +1467,7 @@ good_vars <- all_vars %>%
 good_vars
 
 # Crosswalk for cdc var, variable_name, definition
+# TODO: update this with text from dictionary
 crosswalk <- data.frame(cdc_var = good_vars) %>% 
   arrange(cdc_var) %>% 
   mutate(
@@ -1464,29 +1487,35 @@ crosswalk <- data.frame(cdc_var = good_vars) %>%
     )
   )
 
-# Pull good vars
-get_str(places)
-dat <- places %>% 
-  select(
-    fips = county_fips,
-    all_of(good_vars)
-  )
-get_str(dat)
 
-# Rename with variable names
-matches <- match(names(dat), crosswalk$cdc_var)
-names(dat)[!is.na(matches)] <- crosswalk$variable_name[matches[!is.na(matches)]]
+# Pull good vars from each survey, add year, fix names, pivot longer
+get_str(out, 3)
+dat <- imap(out, ~ {
+  yr <- str_sub(.y, end = 4)
+  df <- .x %>% 
+    select(
+      fips = county_fips,
+      any_of(good_vars)
+    ) %>% 
+    mutate(year = yr)
+  
+  matches <- match(names(df), crosswalk$cdc_var)
+  names(df)[!is.na(matches)] <- crosswalk$variable_name[matches[!is.na(matches)]]
+ 
+  df %>% 
+    pivot_longer(
+      cols = !c(year, fips),
+      names_to = 'variable_name',
+      values_to = 'value'
+    )
+})
 get_str(dat)
+get_str(dat, 3)
+map(dat, ~ unique(.x$variable_name))
+# Some variables started later, 1 in 2023, 2 more in 2024
 
-# Reformat for metrics, drop NAs from long format df
-dat <- dat %>% 
-  pivot_longer(
-    cols = !fips,
-    values_to = 'value',
-    names_to = 'variable_name'
-  ) %>% 
-  mutate(year = '2022') %>% 
-  na.omit()
+# Bind into one DF
+dat <- bind_rows(dat)
 get_str(dat)
 
 results$places <- dat
@@ -1540,14 +1569,8 @@ metas$places <- crosswalk %>%
     source = 'CDC Division of Population Health, Epidemiology and Surveillance Branch (2024).',
     url = 'https://data.cdc.gov/500-Cities-Places/PLACES-County-Data-GIS-Friendly-Format-2024-releas/i46a-9kgh/about_data'
   ) %>% 
-  meta_citation(date = '2025-07-28')
+  meta_citation(date = '2025-08-07')
 get_str(metas$places)
-
-
-
-# Check BRFSS -------------------------------------------------------------
-
-
 
 
 
@@ -1705,10 +1728,35 @@ get_str(dat)
 
 # Check county coverage
 dat %>% 
-  group_by(fips) %>% 
+  group_by(year) %>% 
+  summarize(n())
+dat %>% 
+  # group_by(fips) %>% 
   summarize(n())
 # Missing a bunch of counties - are they zero?
 # Some are nearly zero so it sounds reasonable. Check this
+
+# Checked indemnity tables: https://www.rma.usda.gov/tools-reports/crop-indemnity-maps/crop-indemnity-maps-crop-year-2024
+# Looks like yes, many zeroes, and no NAs. So we will expand to complete cases
+# and turn implicit NAs into zeroes
+
+# Get master key of all combos of year and fips. Using new CT codes only
+all_fips <- fips_key %>% 
+  filter(
+    str_length(fips) == 5, 
+    !(str_detect(fips, '^09.*[^0]$'))
+  ) %>% 
+  pull(fips)
+combos <- expand.grid(all_fips, unique(dat$year)) %>% 
+  setNames(c('fips', 'year'))
+
+# Join combos with dataset to make missing data explicit
+# Then turn NA into 0
+dat <- full_join(dat, combos) %>% 
+  mutate(totalIndemnities = ifelse(is.na(totalIndemnities), 0, totalIndemnities))
+get_str(dat)
+tail(dat)  
+
 
 # Pivot longer to fit with other metrics
 dat <- dat %>% 

@@ -1,5 +1,5 @@
 # iNaturalist
-# 2025-08-05 update
+# 2025-08-08 update
 
 
 # Description -------------------------------------------------------------
@@ -17,6 +17,10 @@
 # Download link: 
 # https://api.gbif.org/v1/occurrence/download/request/0064098-250717081556266.zip
 
+# TODO: issue where read_chunked_csv fails with about 5% of dataset left due to
+# max string length. Not sure why this is happening or why string length keeps
+# growing. Could try to split csv in half from CLI 
+
 
 
 # Housekeeping ------------------------------------------------------------
@@ -29,12 +33,48 @@ pacman::p_load(
   mapview,
   vegan,
   tidyr,
-  arrow
+  arrow,
+  furrr,
+  tictoc
 )
 
 
 
 # Load Data ---------------------------------------------------------------
+## Load 2024 ---------------------------------------------------------------
+
+
+# Using just 2024 data across Northeast as a test run
+dat <- read_tsv('1_raw/inaturalist/0001192-250711103210423.csv')
+get_str(dat)
+unique(dat$year)
+
+# Check unique species key vs species
+length(unique(dat$speciesKey))
+length(unique(dat$species))
+length(unique(dat$scientificName))
+# Let's use species, don't worry about subspecies in scientific name
+
+# Kingdoms
+get_table(dat$kingdom)
+
+# Filter down to just plants, animals, fungi
+# Then take relevant cols only
+dat <- filter(dat, kingdom %in% c('Animalia', 'Fungi', 'Plantae')) %>% 
+  select(kingdom, species, year, decimalLatitude, decimalLongitude)  
+get_str(dat)
+
+dat <- dat %>% 
+  na.omit() %>% 
+  st_as_sf(coords = c('decimalLongitude', 'decimalLatitude'))
+st_crs(dat) <- 4326
+dat <- dat %>% 
+  st_join(county_prj) %>% 
+  select(kingdom, species, year, fips) %>% 
+  st_drop_geometry()
+
+
+
 ## Load 2010-2023 ----------------------------------------------------------
 
 
@@ -69,188 +109,91 @@ read_tsv_chunked(
 )
 # Issue with the last 5% - R caps out at 100 million. Not sure why this is
 # happening though
+# TODO: fix this
 
-# Read all parquet files together
-dataset <- open_dataset(output_dir, format = "parquet")
-dat <- collect(dataset)
-get_str(dat)
-sort(unique(dat$year))
-
-
-
-## Load 2010-2023 ----------------------------------------------------------
-
-
-# # Loading large file for northeast states 2010-2023. We also add the 2024 
-# # data to this one below.
-# 
-# # Check headers from smaller file
-# headers <- read_tsv(
-#   '1_raw/inaturalist/0001192-250711103210423.csv',
-#   n_max = 0
-# ) %>% 
-#   names()
-# headers
-# 
-# 
-# # Filter function for each chunk
-# chunk_filter <- function(df, pos) {
-#   df %>%
-#     select(kingdom, species, year, decimalLatitude, decimalLongitude) %>%
-#     filter(
-#       kingdom %in% c('Animalia', 'Fungi', 'Plantae'),
-#       year >= 2010
-#     )
-#   
-#   
-# }
-# 
-# output_file <- '1_raw/inaturalist/preprocessed.csv'
-# if (file.exists(output_file)) file.remove(output_file)
-# 
-# # Read in chunks and save back to smaller csv
-# # Automatically unzips
-# read_tsv_chunked(
-#   file = "1_raw/inaturalist/0064098-250717081556266/0064098-250717081556266.csv",
-#   # file = "https://api.gbif.org/v1/occurrence/download/request/0064098-250717081556266.zip",
-#   callback = SideEffectChunkCallback$new(function(df, pos) {
-#     filtered <- chunk_filter(df, pos)
-#     write_csv(filtered, output_file, append = file.exists(output_file))
-#     write.table(filtered, output_file,
-#                 append = file.exists(output_file),
-#                 sep = ",", col.names = !file.exists(output_file),
-#                 row.names = FALSE, quote = TRUE)
-#     rm(filtered)
-#     gc()
-#   }),
-#   chunk_size = 250000
-# )
-# 
-# 
-# # Read it back to test
-# # test <- read_csv('1_raw/inaturalist/preprocessed.csv')
-# test <- read_csv(output_file)
-# get_size(test)
-# get_str(test)
+# # Read all parquet files together to check
+# dataset <- open_dataset(output_dir, format = "parquet")
+# dat <- collect(dataset)
+# get_str(dat)
+# sort(unique(dat$year))
 
 
 
-## Load 2024 ---------------------------------------------------------------
+## Process Parquet ---------------------------------------------------------
 
 
-# Using just 2024 data across Northeast as a test run
-dat <- read_tsv('1_raw/inaturalist/0001192-250711103210423.csv')
-get_str(dat)
-unique(dat$year)
+# Combined files are too big to perform spatial join. We need to process each
+# parquet separately, run the join, then save without spatial data. Then we can
+# hopefully combine and get summary stats.
 
-# Check unique species key vs species
-length(unique(dat$speciesKey))
-length(unique(dat$species))
-length(unique(dat$scientificName))
-# Let's use species, don't worry about subspecies in scientific name
+# Find files
+raw_chunks <- "1_raw/inaturalist/parquet_chunks"
+files <- list.files(raw_chunks, full.names = TRUE)
 
-# Kingdoms
-get_table(dat$kingdom)
+# Prep counties file. Project into same format as iNaturalist data (4326)
+neast_counties_2024
+st_crs(neast_counties_2024)
+county_prj <- st_transform(neast_counties_2024, 4326)
+st_crs(county_prj)
 
-# Filter down to just plants, animals, fungi
-# Then take relevant cols only
-dat <- filter(dat, kingdom %in% c('Animalia', 'Fungi', 'Plantae')) %>% 
-  select(kingdom, species, year, decimalLatitude, decimalLongitude)  
+# New output directory
+output <- '1_raw/inaturalist/spatial_chunks/'
+# For each parquet, drop all NAs (if we are missing any we can't use it), make
+# it sf object, define projection, join with counties, remove extra cols and
+# spatial data, and save as parquet
+
+# test <- read_parquet(files[1]) %>%
+#   drop_na(decimalLongitude, decimalLatitude) %>% 
+#   st_as_sf(coords = c('decimalLongitude', 'decimalLatitude'))
+
+get_time()
+tic()
+plan(multisession, workers = availableCores(omit = 2))
+future_iwalk(files, ~ {
+  df <- .x %>% 
+    read_parquet() %>% 
+    na.omit() %>% 
+    st_as_sf(coords = c('decimalLongitude', 'decimalLatitude'))
+  st_crs(df) <- 4326
+  df <- df %>% 
+    st_join(county_prj) %>% 
+    select(kingdom, species, year, fips) %>% 
+    st_drop_geometry()
+  path <- paste0(output, 'chunk_', .y, '.parquet')
+  write_parquet(df, path)
+}, .options = furrr_options(seed = TRUE))
+plan(sequential)
+toc()
+# 3 minutes total
+
+# Testing:
+# 118 seconds for 100 sequential
+# 30 seconds for 100 parallel, so 5 minutes total
+# test <- read_parquet(paste0(output, 'chunk_99.parquet'))
+# test
+
+
+
+# Combine, Group, Rarefy --------------------------------------------------
+
+
+## Combine
+# 2024 test run is all set:
 get_str(dat)
 
-
-
-# COMBINE HERE ------------------------------------------------------------
-
-
-# 2024:
-get_str(dat)
-
-# Read all parquet files together from 2010 to 2023
-dataset <- open_dataset(output_dir, format = "parquet")
-more_dat <- collect(dataset)
-get_str(more_dat)
+# Read all spatial parquet files together from 2010 to 2023
+bulk <- open_dataset(output, format = "parquet")
+bulk <- collect(bulk)
+get_str(bulk)
 
 # Combine them
-combine <- bind_rows(dat, more_dat) %>% 
-  drop_na(decimalLongitude, decimalLatitude)
-get_str(combine)
+all <- bind_rows(dat, bulk)
+get_str(all)
 
 
-
-# New Spatial -------------------------------------------------------------
-
-
-# TODO: need to process each parquet separately. All the way through
-# group_by. Then put them together
-
-# Convert to sf object
-dat <- st_as_sf(combine, coords = c('decimalLongitude', 'decimalLatitude'))
-class(dat)
-
-# Set CRS for points to WGS
-st_crs(dat) <- 4326
-
-# Bring in counties, check crs
-neast_counties_2024
-st_crs(neast_counties_2024)
-
-# Get counties into same crs as points
-county_prj <- st_transform(neast_counties_2024, st_crs(dat))
-
-# Map points over counties
-# mapview(dat, col.regions = 'red') + mapview(county_prj)
-
-# Get counties for each point
-## TODO
-dat <- st_join(dat, county_prj)
-get_str(dat)
-
-# Remove other columns, drop geometry
-dat <- dat %>% 
-  select(kingdom, species, year, fips) %>% 
-  st_drop_geometry()
-get_str(dat)
-
-
-
-# Spatial -----------------------------------------------------------------
-
-
-# Convert to sf object
-dat <- st_as_sf(dat, coords = c('decimalLongitude', 'decimalLatitude'))
-
-# Set CRS for points to WGS
-st_crs(dat) <- 4326
-
-# Bring in counties, check crs
-neast_counties_2024
-st_crs(neast_counties_2024)
-
-# Get counties into same crs as points
-county_prj <- st_transform(neast_counties_2024, st_crs(dat))
-
-# Map points over counties
-# mapview(dat, col.regions = 'red') + mapview(county_prj)
-
-# Get counties for each point
-dat <- st_join(dat, county_prj)
-get_str(dat)
-
-# Remove other columns, drop geometry
-dat <- dat %>% 
-  select(kingdom, species, year, fips) %>% 
-  st_drop_geometry()
-get_str(dat)
-
-
-
-# Rarefy ------------------------------------------------------------------
-
-
-# Get abundance table, filtering for >100 observations
-get_str(dat)
-dat_n100 <- dat %>%
+## Group
+# then get abundance table, filter for > 100 observations
+dat_n100 <- all %>%
   group_by(fips, year, kingdom) %>%
   filter(n() >= 100) %>%
   ungroup()
@@ -272,7 +215,11 @@ abund_only
 
 min_n <- min(rowSums(abund_only))
 
-# Rarefy
+
+
+## Rarefy ------------------------------------------------------------------
+
+
 rare_rich <- rarefy(abund_only, sample = min_n)
 
 # Combine with grouping info
@@ -287,11 +234,11 @@ get_str(rare_rich)
 
 
 
-# Continue ----------------------------------------------------------------
+## Counts ------------------------------------------------------------------
 
 
 # Get counts of observations, species, and diversity by county
-dat <- dat %>%
+dat <- all %>%
   group_by(fips, year, kingdom) %>%
   summarize(
     n_spp = n_distinct(species),

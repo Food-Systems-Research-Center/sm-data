@@ -34,26 +34,6 @@ results <- list()
 
 
 
-# sqldf -------------------------------------------------------------------
-
-
-# pacman::p_load(sqldf)
-# dat <- read.csv.sql(
-#   '1_raw/usfs/CSV_FIADB_ENTIRE/ENTIRE_TREE.csv',
-#   sql = 
-#   'select
-#     INVYR as year,
-#     STATECD as state_fips,
-#     COUNTYCD as county_fips,
-#     SPCD as species,
-#     DIA as dia
-#   from file
-#   where INVYR >= 2022'
-# )
-# get_str(dat)
-
-
-
 # Chunking ----------------------------------------------------------------
 
 
@@ -90,56 +70,6 @@ get_str(test)
 
 
 
-# SQLite ------------------------------------------------------------------
-
-
-# # Connect to SQLite database
-# con <- dbConnect(
-#   RSQLite::SQLite(), 
-#   "1_raw/usfs/SQLite_FIADB_ENTIRE/SQLite_FIADB_ENTIRE.db"
-# )
-# con
-# 
-# # Check col names
-# (names <- dbListFields(con, 'tree'))
-# 
-# # Get only our variables, filter to 2000 and on
-# out <- dbGetQuery(
-#   con, 
-#   'select 
-#     INVYR as year, 
-#     STATECD as state_fips, 
-#     COUNTYCD as county_fips, 
-#     SPCD as species, 
-#     DIA as dia
-#   from tree 
-#   where INVYR >= 2000'
-# )
-# get_str(out)
-# 
-# # Fix fips
-# dat <- out %>% 
-#   mutate(
-#     state_fips = sprintf("%02d", state_fips),
-#     county_fips = sprintf("%03d", county_fips),
-#     fips = paste0(state_fips, county_fips)
-#   ) %>% 
-#   select(year, fips, species, dia)
-# get_str(dat)
-# 
-# # Get SD of distribution of diameter
-# # Also diversity of species codes
-# test <- dat %>% 
-#   group_by(year, fips) %>% 
-#   summarize(
-#     # div = vegan::diversity(species),
-#     sd_dia = sd(dia, na.rm = TRUE),
-#     count = n()
-#   )
-# get_str(test)
-
-
-
 # Wrangle -----------------------------------------------------------------
 
 
@@ -169,9 +99,35 @@ dat <- dat %>%
     state_fips = sprintf("%02d", state_fips),
     county_fips = sprintf("%03d", county_fips),
     fips = paste0(state_fips, county_fips)
-  ) %>% 
-  select(year, fips, species, dia)
+  )
+  # select(year, fips, species, dia)
 get_str(dat)
+
+# Check coverage of fips
+dat %>% 
+  group_by(fips) %>% 
+  summarize(count = n())
+
+# Check coverage of years
+dat %>% 
+  group_by(year) %>% 
+  summarize(count = n())
+
+# Check coverage of fips in 2024
+dat %>% 
+  filter(year == 2023) %>% 
+  group_by(fips) %>% 
+  summarize(count = n())
+
+# Seems like 2021 is last full year, then it dips after that
+# 2022 and 2023 are okay, but 2024 is super slim. Shouldn't even use this
+
+# Remove 2024 from dataset
+dat <- filter(dat, year != 2024)
+get_str(dat)
+dat %>% 
+  group_by(year) %>% 
+  summarize(count = n())
 
 
 

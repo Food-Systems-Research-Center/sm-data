@@ -81,7 +81,6 @@ source('4_scripts/inaturalist.R')
 # Forest Inventory Analysis
 source('4_scripts/fia.R')
 
-
 # Spatial data - MRLC LULC, other spatial data. Note long run time
 source('4_scripts/spatial.R')
 
